@@ -1,0 +1,3438 @@
+{
+  "audit_acls_files_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit Log Files to Not Contain Access Control Lists",
+    "fix_script": "scripts/fix/audit_acls_files_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_acls_files_configure",
+    "scan_script": "scripts/scan/audit_acls_files_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_acls_folders_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit Log Folder to Not Contain Access Control Lists",
+    "fix_script": "scripts/fix/audit_acls_folders_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_acls_folders_configure",
+    "scan_script": "scripts/scan/audit_acls_folders_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_auditd_enabled": {
+    "category": "Auditing",
+    "description": "Enable Security Auditing",
+    "fix_script": "scripts/fix/audit_auditd_enabled.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_auditd_enabled",
+    "scan_script": "scripts/scan/audit_auditd_enabled.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_configure_capacity_notify": {
+    "category": "Auditing",
+    "description": "Configure Audit Capacity Warning",
+    "fix_script": "scripts/fix/audit_configure_capacity_notify.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_configure_capacity_notify",
+    "scan_script": "scripts/scan/audit_configure_capacity_notify.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "audit_control_acls_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit_Control to Not Contain Access Control Lists",
+    "fix_script": "scripts/fix/audit_control_acls_configure.sh",
+    "fix_source": "cisv8",
+    "rule": "audit_control_acls_configure",
+    "scan_script": "scripts/scan/audit_control_acls_configure.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_control_group_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit_Control Group to Wheel",
+    "fix_script": "scripts/fix/audit_control_group_configure.sh",
+    "fix_source": "cisv8",
+    "rule": "audit_control_group_configure",
+    "scan_script": "scripts/scan/audit_control_group_configure.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_control_mode_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit_Control Owner to Mode 440 or Less Permissive",
+    "fix_script": "scripts/fix/audit_control_mode_configure.sh",
+    "fix_source": "cisv8",
+    "rule": "audit_control_mode_configure",
+    "scan_script": "scripts/scan/audit_control_mode_configure.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_control_owner_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit_Control Owner to Root",
+    "fix_script": "scripts/fix/audit_control_owner_configure.sh",
+    "fix_source": "cisv8",
+    "rule": "audit_control_owner_configure",
+    "scan_script": "scripts/scan/audit_control_owner_configure.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_failure_halt": {
+    "category": "Auditing",
+    "description": "Configure System to Shut Down Upon Audit Failure",
+    "fix_script": "scripts/fix/audit_failure_halt.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_failure_halt",
+    "scan_script": "scripts/scan/audit_failure_halt.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "audit_files_group_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit Log Files Group to Wheel",
+    "fix_script": "scripts/fix/audit_files_group_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_files_group_configure",
+    "scan_script": "scripts/scan/audit_files_group_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_files_mode_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit Log Files to Mode 440 or Less Permissive",
+    "fix_script": "scripts/fix/audit_files_mode_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_files_mode_configure",
+    "scan_script": "scripts/scan/audit_files_mode_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_files_owner_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit Log Files to be Owned by Root",
+    "fix_script": "scripts/fix/audit_files_owner_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_files_owner_configure",
+    "scan_script": "scripts/scan/audit_files_owner_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_flags_aa_configure": {
+    "category": "Auditing",
+    "description": "Configure System to Audit All Authorization and Authentication Events",
+    "fix_script": "scripts/fix/audit_flags_aa_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_flags_aa_configure",
+    "scan_script": "scripts/scan/audit_flags_aa_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_flags_ad_configure": {
+    "category": "Auditing",
+    "description": "Configure System to Audit All Administrative Action Events",
+    "fix_script": "scripts/fix/audit_flags_ad_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_flags_ad_configure",
+    "scan_script": "scripts/scan/audit_flags_ad_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_flags_ex_configure": {
+    "category": "Auditing",
+    "description": "Configure System to Audit All Failed Program Execution on the System",
+    "fix_script": "scripts/fix/audit_flags_ex_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_flags_ex_configure",
+    "scan_script": "scripts/scan/audit_flags_ex_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_flags_fd_configure": {
+    "category": "Auditing",
+    "description": "Configure System to Audit All Deletions of Object Attributes",
+    "fix_script": "scripts/fix/audit_flags_fd_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_flags_fd_configure",
+    "scan_script": "scripts/scan/audit_flags_fd_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "audit_flags_fm_failed_configure": {
+    "category": "Auditing",
+    "description": "Configure System to Audit All Failed Change of Object Attributes",
+    "fix_script": "scripts/fix/audit_flags_fm_failed_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_flags_fm_failed_configure",
+    "scan_script": "scripts/scan/audit_flags_fm_failed_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_flags_fr_configure": {
+    "category": "Auditing",
+    "description": "Configure System to Audit All Failed Read Actions on the System",
+    "fix_script": "scripts/fix/audit_flags_fr_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_flags_fr_configure",
+    "scan_script": "scripts/scan/audit_flags_fr_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_flags_fw_configure": {
+    "category": "Auditing",
+    "description": "Configure System to Audit All Failed Write Actions on the System",
+    "fix_script": "scripts/fix/audit_flags_fw_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_flags_fw_configure",
+    "scan_script": "scripts/scan/audit_flags_fw_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_flags_lo_configure": {
+    "category": "Auditing",
+    "description": "Configure System to Audit All Log In and Log Out Events",
+    "fix_script": "scripts/fix/audit_flags_lo_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_flags_lo_configure",
+    "scan_script": "scripts/scan/audit_flags_lo_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_folder_group_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit Log Folders Group to Wheel",
+    "fix_script": "scripts/fix/audit_folder_group_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_folder_group_configure",
+    "scan_script": "scripts/scan/audit_folder_group_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_folder_owner_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit Log Folders to be Owned by Root",
+    "fix_script": "scripts/fix/audit_folder_owner_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_folder_owner_configure",
+    "scan_script": "scripts/scan/audit_folder_owner_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_folders_mode_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit Log Folders to Mode 700 or Less Permissive",
+    "fix_script": "scripts/fix/audit_folders_mode_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_folders_mode_configure",
+    "scan_script": "scripts/scan/audit_folders_mode_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_off_load_records": {
+    "category": "Auditing",
+    "description": "Off-Load Audit Records",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "audit_off_load_records",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "cisv8": true
+    }
+  },
+  "audit_record_reduction_report_generation": {
+    "category": "Auditing",
+    "description": "Audit Record Reduction and Report Generation",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "audit_record_reduction_report_generation",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "audit_records_processing": {
+    "category": "Auditing",
+    "description": "Audit Record Reduction and Report Generation",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "audit_records_processing",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "audit_retention_configure": {
+    "category": "Auditing",
+    "description": "Configure Audit Retention to *ODV*",
+    "fix_script": "scripts/fix/audit_retention_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_retention_configure",
+    "scan_script": "scripts/scan/audit_retention_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "audit_settings_failure_notify": {
+    "category": "Auditing",
+    "description": "Configure Audit Failure Notification",
+    "fix_script": "scripts/fix/audit_settings_failure_notify.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "audit_settings_failure_notify",
+    "scan_script": "scripts/scan/audit_settings_failure_notify.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "auth_pam_login_smartcard_enforce": {
+    "category": "Authentication",
+    "description": "Enforce Multifactor Authentication for Login",
+    "fix_script": "scripts/fix/auth_pam_login_smartcard_enforce.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "auth_pam_login_smartcard_enforce",
+    "scan_script": "scripts/scan/auth_pam_login_smartcard_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "auth_pam_su_smartcard_enforce": {
+    "category": "Authentication",
+    "description": "Enforce Multifactor Authentication for the su Command",
+    "fix_script": "scripts/fix/auth_pam_su_smartcard_enforce.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "auth_pam_su_smartcard_enforce",
+    "scan_script": "scripts/scan/auth_pam_su_smartcard_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "auth_pam_sudo_smartcard_enforce": {
+    "category": "Authentication",
+    "description": "Enforce Multifactor Authentication for Privilege Escalation Through the sudo Command",
+    "fix_script": "scripts/fix/auth_pam_sudo_smartcard_enforce.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "auth_pam_sudo_smartcard_enforce",
+    "scan_script": "scripts/scan/auth_pam_sudo_smartcard_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "auth_smartcard_allow": {
+    "category": "Authentication",
+    "description": "Allow Smartcard Authentication",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "auth_smartcard_allow",
+    "scan_script": "scripts/scan/auth_smartcard_allow.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "auth_smartcard_certificate_trust_enforce_high": {
+    "category": "Authentication",
+    "description": "Set Smartcard Certificate Trust to High",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "auth_smartcard_certificate_trust_enforce_high",
+    "scan_script": "scripts/scan/auth_smartcard_certificate_trust_enforce_high.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "auth_smartcard_enforce": {
+    "category": "Authentication",
+    "description": "Enforce Smartcard Authentication",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "auth_smartcard_enforce",
+    "scan_script": "scripts/scan/auth_smartcard_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "auth_ssh_password_authentication_disable": {
+    "category": "Authentication",
+    "description": "Disable Password Authentication for SSH",
+    "fix_script": "scripts/fix/auth_ssh_password_authentication_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "auth_ssh_password_authentication_disable",
+    "scan_script": "scripts/scan/auth_ssh_password_authentication_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_addressbook_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Address Book",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_addressbook_disable",
+    "scan_script": "scripts/scan/icloud_addressbook_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_appleid_system_settings_disable": {
+    "category": "iCloud",
+    "description": "Disable the System Setting for Apple ID",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_appleid_system_settings_disable",
+    "scan_script": "scripts/scan/icloud_appleid_system_settings_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_bookmarks_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Bookmarks",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_bookmarks_disable",
+    "scan_script": "scripts/scan/icloud_bookmarks_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_calendar_disable": {
+    "category": "iCloud",
+    "description": "Disable the iCloud Calendar Services",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_calendar_disable",
+    "scan_script": "scripts/scan/icloud_calendar_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_drive_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Document Sync",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_drive_disable",
+    "scan_script": "scripts/scan/icloud_drive_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_freeform_disable": {
+    "category": "iCloud",
+    "description": "Disable the iCloud Freeform Services",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_freeform_disable",
+    "scan_script": "scripts/scan/icloud_freeform_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_game_center_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Game Center",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_game_center_disable",
+    "scan_script": "scripts/scan/icloud_game_center_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_keychain_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Keychain Sync",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_keychain_disable",
+    "scan_script": "scripts/scan/icloud_keychain_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_mail_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Mail",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_mail_disable",
+    "scan_script": "scripts/scan/icloud_mail_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_notes_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Notes",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_notes_disable",
+    "scan_script": "scripts/scan/icloud_notes_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_photos_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Photo Library",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_photos_disable",
+    "scan_script": "scripts/scan/icloud_photos_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_private_relay_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Private Relay",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_private_relay_disable",
+    "scan_script": "scripts/scan/icloud_private_relay_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_reminders_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Reminders",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_reminders_disable",
+    "scan_script": "scripts/scan/icloud_reminders_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "icloud_sync_disable": {
+    "category": "iCloud",
+    "description": "Disable iCloud Desktop and Document Folder Sync",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "icloud_sync_disable",
+    "scan_script": "scripts/scan/icloud_sync_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_access_control_mobile_devices": {
+    "category": "Operating System",
+    "description": "Access Control for Mobile Devices",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_access_control_mobile_devices",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_account_modification_disable": {
+    "category": "Operating System",
+    "description": "Disable AppleID and Internet Account Modifications",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_account_modification_disable",
+    "scan_script": "scripts/scan/os_account_modification_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_airdrop_disable": {
+    "category": "Operating System",
+    "description": "Disable AirDrop",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_airdrop_disable",
+    "scan_script": "scripts/scan/os_airdrop_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_anti_virus_installed": {
+    "category": "Operating System",
+    "description": "Must Use an Approved Antivirus Program",
+    "fix_script": "scripts/fix/os_anti_virus_installed.sh",
+    "fix_source": "cisv8",
+    "rule": "os_anti_virus_installed",
+    "scan_script": "scripts/scan/os_anti_virus_installed.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_appleid_prompt_disable": {
+    "category": "Operating System",
+    "description": "Disable Apple ID Setup during Setup Assistant",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_appleid_prompt_disable",
+    "scan_script": "scripts/scan/os_appleid_prompt_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_application_sandboxing": {
+    "category": "Operating System",
+    "description": "Ensure Separate Execution Domain for Processes",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_application_sandboxing",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_asl_log_files_owner_group_configure": {
+    "category": "Operating System",
+    "description": "Configure Apple System Log Files Owned by Root and Group to Wheel",
+    "fix_script": "scripts/fix/os_asl_log_files_owner_group_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_asl_log_files_owner_group_configure",
+    "scan_script": "scripts/scan/os_asl_log_files_owner_group_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_asl_log_files_permissions_configure": {
+    "category": "Operating System",
+    "description": "Configure Apple System Log Files To Mode 640 or Less Permissive",
+    "fix_script": "scripts/fix/os_asl_log_files_permissions_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_asl_log_files_permissions_configure",
+    "scan_script": "scripts/scan/os_asl_log_files_permissions_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_auth_peripherals": {
+    "category": "Operating System",
+    "description": "Must Authenticate Before Establishing a Connection",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_auth_peripherals",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_authenticated_root_enable": {
+    "category": "Operating System",
+    "description": "Enable Authenticated Root",
+    "fix_script": "scripts/fix/os_authenticated_root_enable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_authenticated_root_enable",
+    "scan_script": "scripts/scan/os_authenticated_root_enable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_bonjour_disable": {
+    "category": "Operating System",
+    "description": "Disable Bonjour Multicast",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_bonjour_disable",
+    "scan_script": "scripts/scan/os_bonjour_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_certificate_authority_trust": {
+    "category": "Operating System",
+    "description": "Issue or Obtain Public Key Certificates from an Approved Service Provider",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_certificate_authority_trust",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_config_data_install_enforce": {
+    "category": "Operating System",
+    "description": "Enforce Installation of XProtect Remediator and Gatekeeper Updates Automatically",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_config_data_install_enforce",
+    "scan_script": "scripts/scan/os_config_data_install_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_config_profile_ui_install_disable": {
+    "category": "Operating System",
+    "description": "Disable Installation of Configuration Profiles through the User Interface",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_config_profile_ui_install_disable",
+    "scan_script": "scripts/scan/os_config_profile_ui_install_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_continuous_monitoring": {
+    "category": "Operating System",
+    "description": "Configure Automated Flaw Remediation",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_continuous_monitoring",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_crypto_audit": {
+    "category": "Operating System",
+    "description": "Protect Audit Integrity with Cryptographic Mechanisms",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_crypto_audit",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_dictation_disable": {
+    "category": "Operating System",
+    "description": "Disable Dictation",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_dictation_disable",
+    "scan_script": "scripts/scan/os_dictation_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_directory_services_configured": {
+    "category": "Operating System",
+    "description": "Integrate System into a Directory Services Infrastructure",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_directory_services_configured",
+    "scan_script": "scripts/scan/os_directory_services_configured.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cisv8": true
+    }
+  },
+  "os_enforce_access_restrictions": {
+    "category": "Operating System",
+    "description": "Enforce Access Restrictions",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_enforce_access_restrictions",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_ess_installed": {
+    "category": "Operating System",
+    "description": "Must Use ESS",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_ess_installed",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "cisv8": true
+    }
+  },
+  "os_external_storage_access_defined": {
+    "category": "Operating System",
+    "description": "Access to External Storage Must Be Defined",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_external_storage_access_defined",
+    "scan_script": "scripts/scan/os_external_storage_access_defined.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_fail_secure_state": {
+    "category": "Operating System",
+    "description": "Configure System to Fail to a Known Safe State if System Initialization, Shutdown, or Abort Fails",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_fail_secure_state",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_filevault_authorized_users": {
+    "category": "Operating System",
+    "description": "FileVault Authorized Users",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_filevault_authorized_users",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_filevault_autologin_disable": {
+    "category": "Operating System",
+    "description": "Disable FileVault Automatic Login",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_filevault_autologin_disable",
+    "scan_script": "scripts/scan/os_filevault_autologin_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_firewall_default_deny_require": {
+    "category": "Operating System",
+    "description": "Control Connections to Other Systems via a Deny-All and Allow-by-Exception Firewall Policy",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_firewall_default_deny_require",
+    "scan_script": "scripts/scan/os_firewall_default_deny_require.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_firmware_password_require": {
+    "category": "Operating System",
+    "description": "Enable Firmware Password",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_firmware_password_require",
+    "scan_script": "scripts/scan/os_firmware_password_require.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_gatekeeper_enable": {
+    "category": "Operating System",
+    "description": "Enable Gatekeeper",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_gatekeeper_enable",
+    "scan_script": "scripts/scan/os_gatekeeper_enable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_genmoji_disable": {
+    "category": "Operating System",
+    "description": "Disable Genmoji AI Creation",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_genmoji_disable",
+    "scan_script": "scripts/scan/os_genmoji_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_guest_folder_removed": {
+    "category": "Operating System",
+    "description": "Remove Guest Folder if Present",
+    "fix_script": "scripts/fix/os_guest_folder_removed.sh",
+    "fix_source": "cis_lvl2",
+    "rule": "os_guest_folder_removed",
+    "scan_script": "scripts/scan/os_guest_folder_removed.sh",
+    "scan_source": "cis_lvl2",
+    "standards": {
+      "cis_lvl2": true
+    }
+  },
+  "os_handoff_disable": {
+    "category": "Operating System",
+    "description": "Disable Handoff",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_handoff_disable",
+    "scan_script": "scripts/scan/os_handoff_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_home_folders_secure": {
+    "category": "Operating System",
+    "description": "Secure User's Home Folders",
+    "fix_script": "scripts/fix/os_home_folders_secure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_home_folders_secure",
+    "scan_script": "scripts/scan/os_home_folders_secure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_httpd_disable": {
+    "category": "Operating System",
+    "description": "Disable the Built-in Web Server",
+    "fix_script": "scripts/fix/os_httpd_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_httpd_disable",
+    "scan_script": "scripts/scan/os_httpd_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_icloud_storage_prompt_disable": {
+    "category": "Operating System",
+    "description": "Disable iCloud Storage Setup during Setup Assistant",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_icloud_storage_prompt_disable",
+    "scan_script": "scripts/scan/os_icloud_storage_prompt_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_identify_non-org_users": {
+    "category": "Operating System",
+    "description": "Configure the System to Uniquely Identify and Authenticate Non-Organizational Users",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_identify_non-org_users",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_image_playground_disable": {
+    "category": "Operating System",
+    "description": "Disable Apple Intelligence Image Playground",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_image_playground_disable",
+    "scan_script": "scripts/scan/os_image_playground_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_implement_cryptography": {
+    "category": "Operating System",
+    "description": "Configure the System to Implement Approved Cryptography to Protect Information",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_implement_cryptography",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_implement_memory_protection": {
+    "category": "Operating System",
+    "description": "Configure the System to Protect Memory from Unauthorized Code Execution",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_implement_memory_protection",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_information_validation": {
+    "category": "Operating System",
+    "description": "Information Input Validation",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_information_validation",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_install_log_retention_configure": {
+    "category": "Operating System",
+    "description": "Configure Install.log Retention to *ODV*",
+    "fix_script": "scripts/fix/os_install_log_retention_configure.sh",
+    "fix_source": "cisv8",
+    "rule": "os_install_log_retention_configure",
+    "scan_script": "scripts/scan/os_install_log_retention_configure.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_iphone_mirroring_disable": {
+    "category": "Operating System",
+    "description": "Disable iPhone Mirroring",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_iphone_mirroring_disable",
+    "scan_script": "scripts/scan/os_iphone_mirroring_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_ir_support_disable": {
+    "category": "Operating System",
+    "description": "Disable Infrared (IR) support",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_ir_support_disable",
+    "scan_script": "scripts/scan/os_ir_support_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_isolate_security_functions": {
+    "category": "Operating System",
+    "description": "Configure the System to Separate User and System Functionality",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_isolate_security_functions",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_library_validation_enabled": {
+    "category": "Operating System",
+    "description": "Enable Library Validation",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_library_validation_enabled",
+    "scan_script": "scripts/scan/os_library_validation_enabled.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cisv8": true
+    }
+  },
+  "os_limit_gui_sessions": {
+    "category": "Operating System",
+    "description": "Limit Concurrent GUI Sessions to 10 for all Accounts",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_limit_gui_sessions",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_logical_access": {
+    "category": "Operating System",
+    "description": "Enforce Approved Authorization for Logical Access",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_logical_access",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_loginwindow_adminhostinfo_disabled": {
+    "category": "Operating System",
+    "description": "Prevent AdminHostInfo from Being Available at Login Window",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_loginwindow_adminhostinfo_disabled",
+    "scan_script": "scripts/scan/os_loginwindow_adminhostinfo_disabled.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_mail_smart_reply_disable": {
+    "category": "Operating System",
+    "description": "Disable Apple Intelligence Mail Smart Replies",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_mail_smart_reply_disable",
+    "scan_script": "scripts/scan/os_mail_smart_reply_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_mail_summary_disable": {
+    "category": "Operating System",
+    "description": "Disable Apple Intelligence Mail Summary",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_mail_summary_disable",
+    "scan_script": "scripts/scan/os_mail_summary_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true
+    }
+  },
+  "os_malicious_code_prevention": {
+    "category": "Operating System",
+    "description": "Ensure the System Implements Malicious Code Protection Mechanisms",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_malicious_code_prevention",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_managed_access_control_points": {
+    "category": "Operating System",
+    "description": "Managed Access Control Points",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_managed_access_control_points",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_mdm_require": {
+    "category": "Operating System",
+    "description": "Enforce Enrollment in Mobile Device Management",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_mdm_require",
+    "scan_script": "scripts/scan/os_mdm_require.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_mfa_network_access": {
+    "category": "Operating System",
+    "description": "Enforce multifactor authentication for network access to privileged accounts",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_mfa_network_access",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "cisv8": true
+    }
+  },
+  "os_mobile_file_integrity_enable": {
+    "category": "Operating System",
+    "description": "Enable Apple Mobile File Integrity",
+    "fix_script": "scripts/fix/os_mobile_file_integrity_enable.sh",
+    "fix_source": "cisv8",
+    "rule": "os_mobile_file_integrity_enable",
+    "scan_script": "scripts/scan/os_mobile_file_integrity_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_newsyslog_files_owner_group_configure": {
+    "category": "Operating System",
+    "description": "Configure System Log Files Owned by Root and Group to Wheel",
+    "fix_script": "scripts/fix/os_newsyslog_files_owner_group_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_newsyslog_files_owner_group_configure",
+    "scan_script": "scripts/scan/os_newsyslog_files_owner_group_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_newsyslog_files_permissions_configure": {
+    "category": "Operating System",
+    "description": "Configure System Log Files to Mode 640 or Less Permissive",
+    "fix_script": "scripts/fix/os_newsyslog_files_permissions_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_newsyslog_files_permissions_configure",
+    "scan_script": "scripts/scan/os_newsyslog_files_permissions_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_nfsd_disable": {
+    "category": "Operating System",
+    "description": "Disable Network File System Service",
+    "fix_script": "scripts/fix/os_nfsd_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_nfsd_disable",
+    "scan_script": "scripts/scan/os_nfsd_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_non_repudiation": {
+    "category": "Operating System",
+    "description": "Non-Repudiation",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_non_repudiation",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_nonlocal_maintenance": {
+    "category": "Operating System",
+    "description": "Configure the System for Non-local Maintenance",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_nonlocal_maintenance",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_notes_transcription_disable": {
+    "category": "Operating System",
+    "description": "Disable Apple Intelligence Notes Transcription",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_notes_transcription_disable",
+    "scan_script": "scripts/scan/os_notes_transcription_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true
+    }
+  },
+  "os_notes_transcription_summary_disable": {
+    "category": "Operating System",
+    "description": "Disable Apple Intelligence Notes Transcription Summary",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_notes_transcription_summary_disable",
+    "scan_script": "scripts/scan/os_notes_transcription_summary_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true
+    }
+  },
+  "os_obscure_password": {
+    "category": "Operating System",
+    "description": "Obscure Passwords",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_obscure_password",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_on_device_dictation_enforce": {
+    "category": "Operating System",
+    "description": "Enforce On Device Dictation",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_on_device_dictation_enforce",
+    "scan_script": "scripts/scan/os_on_device_dictation_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_password_hint_remove": {
+    "category": "Operating System",
+    "description": "Remove Password Hint From User Accounts",
+    "fix_script": "scripts/fix/os_password_hint_remove.sh",
+    "fix_source": "cisv8",
+    "rule": "os_password_hint_remove",
+    "scan_script": "scripts/scan/os_password_hint_remove.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_password_proximity_disable": {
+    "category": "Operating System",
+    "description": "Disable Proximity Based Password Sharing Requests",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_password_proximity_disable",
+    "scan_script": "scripts/scan/os_password_proximity_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_password_sharing_disable": {
+    "category": "Operating System",
+    "description": "Disable Password Sharing",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_password_sharing_disable",
+    "scan_script": "scripts/scan/os_password_sharing_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_photos_enhanced_search_disable": {
+    "category": "Operating System",
+    "description": "Disable Photos Enhanced Visual Search",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_photos_enhanced_search_disable",
+    "scan_script": "scripts/scan/os_photos_enhanced_search_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_policy_banner_loginwindow_enforce": {
+    "category": "Operating System",
+    "description": "Display Policy Banner at Login Window",
+    "fix_script": "scripts/fix/os_policy_banner_loginwindow_enforce.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_policy_banner_loginwindow_enforce",
+    "scan_script": "scripts/scan/os_policy_banner_loginwindow_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true
+    }
+  },
+  "os_policy_banner_ssh_configure": {
+    "category": "Operating System",
+    "description": "Display Policy Banner at Remote Login",
+    "fix_script": "scripts/fix/os_policy_banner_ssh_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_policy_banner_ssh_configure",
+    "scan_script": "scripts/scan/os_policy_banner_ssh_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_policy_banner_ssh_enforce": {
+    "category": "Operating System",
+    "description": "Enforce SSH to Display Policy Banner",
+    "fix_script": "scripts/fix/os_policy_banner_ssh_enforce.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_policy_banner_ssh_enforce",
+    "scan_script": "scripts/scan/os_policy_banner_ssh_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_power_nap_disable": {
+    "category": "Operating System",
+    "description": "Disable Power Nap",
+    "fix_script": "scripts/fix/os_power_nap_disable.sh",
+    "fix_source": "cisv8",
+    "rule": "os_power_nap_disable",
+    "scan_script": "scripts/scan/os_power_nap_disable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_prevent_priv_functions": {
+    "category": "Operating System",
+    "description": "Configure the System to Block Non-Privileged Users from Executing Privileged Functions",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_prevent_priv_functions",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_prevent_unauthorized_disclosure": {
+    "category": "Operating System",
+    "description": "Configure the System to Prevent the Unauthorized Disclosure of Data via Shared Resources",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_prevent_unauthorized_disclosure",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_privacy_setup_prompt_disable": {
+    "category": "Operating System",
+    "description": "Disable Privacy Setup Services During Setup Assistant",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_privacy_setup_prompt_disable",
+    "scan_script": "scripts/scan/os_privacy_setup_prompt_disable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cisv8": true
+    }
+  },
+  "os_prohibit_remote_activation_collab_devices": {
+    "category": "Operating System",
+    "description": "Prohibit Remote Activation of Collaborative Computing Devices",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_prohibit_remote_activation_collab_devices",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_protect_dos_attacks": {
+    "category": "Operating System",
+    "description": "Protect Against Denial of Service Attacks by Ensuring Rate-Limiting Measures on Network Interfaces",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_protect_dos_attacks",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_provide_automated_account_management": {
+    "category": "Operating System",
+    "description": "Employ Automated Mechanisms for Account Management Functions",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_provide_automated_account_management",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_rapid_security_response_allow": {
+    "category": "Operating System",
+    "description": "Enforce Rapid Security Response Mechanism",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_rapid_security_response_allow",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_rapid_security_response_removal_disable": {
+    "category": "Operating System",
+    "description": "Disable User Ability from Being Able to Undo Rapid Security Responses",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_rapid_security_response_removal_disable",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_reauth_devices_change_authenticators": {
+    "category": "Operating System",
+    "description": "Require Devices to Reauthenticate when Changing Authenticators",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_reauth_devices_change_authenticators",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_reauth_users_change_authenticators": {
+    "category": "Operating System",
+    "description": "Require users to reauthenticate when changing authenticators",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_reauth_users_change_authenticators",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_recovery_lock_enable": {
+    "category": "Operating System",
+    "description": "Enable Recovery Lock",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_recovery_lock_enable",
+    "scan_script": "scripts/scan/os_recovery_lock_enable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_required_crypto_module": {
+    "category": "Operating System",
+    "description": "Ensure all Federal Laws, Executive Orders, Directives, Policies, Regulations, Standards, and Guidance for Authentication to a Cryptographic Module are Met",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_required_crypto_module",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_root_disable": {
+    "category": "Operating System",
+    "description": "Disable Root Login",
+    "fix_script": "scripts/fix/os_root_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_root_disable",
+    "scan_script": "scripts/scan/os_root_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_safari_advertising_privacy_protection_enable": {
+    "category": "Operating System",
+    "description": "Ensure Advertising Privacy Protection in Safari Is Enabled",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_safari_advertising_privacy_protection_enable",
+    "scan_script": "scripts/scan/os_safari_advertising_privacy_protection_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_safari_open_safe_downloads_disable": {
+    "category": "Operating System",
+    "description": "Disable Automatic Opening of Safe Files in Safari",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_safari_open_safe_downloads_disable",
+    "scan_script": "scripts/scan/os_safari_open_safe_downloads_disable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_safari_prevent_cross-site_tracking_enable": {
+    "category": "Operating System",
+    "description": "Ensure Prevent Cross-site Tracking in Safari Is Enabled",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_safari_prevent_cross-site_tracking_enable",
+    "scan_script": "scripts/scan/os_safari_prevent_cross-site_tracking_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_safari_reader_summary_disable": {
+    "category": "Operating System",
+    "description": "Disable Apple Intelligence Safari Reader Summary",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_safari_reader_summary_disable",
+    "scan_script": "scripts/scan/os_safari_reader_summary_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_safari_show_full_website_address_enable": {
+    "category": "Operating System",
+    "description": "Ensure Show Full Website Address in Safari Is Enabled",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_safari_show_full_website_address_enable",
+    "scan_script": "scripts/scan/os_safari_show_full_website_address_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_safari_show_status_bar_enabled": {
+    "category": "Operating System",
+    "description": "Ensure Show Safari shows the Status Bar is Enabled",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_safari_show_status_bar_enabled",
+    "scan_script": "scripts/scan/os_safari_show_status_bar_enabled.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_safari_warn_fraudulent_website_enable": {
+    "category": "Operating System",
+    "description": "Ensure Warn When Visiting A Fraudulent Website in Safari Is Enabled",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_safari_warn_fraudulent_website_enable",
+    "scan_script": "scripts/scan/os_safari_warn_fraudulent_website_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_screensaver_loginwindow_enforce": {
+    "category": "Operating System",
+    "description": "Enforce Screen Saver at Login Window",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_screensaver_loginwindow_enforce",
+    "scan_script": "scripts/scan/os_screensaver_loginwindow_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_secure_boot_verify": {
+    "category": "Operating System",
+    "description": "Ensure Secure Boot Level Set to Full",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_secure_boot_verify",
+    "scan_script": "scripts/scan/os_secure_boot_verify.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_secure_name_resolution": {
+    "category": "Operating System",
+    "description": "Secure Name Address Resolution Service",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_secure_name_resolution",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_separate_functionality": {
+    "category": "Operating System",
+    "description": "Configure the System to Separate User and System Functionality",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_separate_functionality",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_setup_assistant_filevault_enforce": {
+    "category": "Operating System",
+    "description": "Enforce FileVault in Setup Assistant",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_setup_assistant_filevault_enforce",
+    "scan_script": "scripts/scan/os_setup_assistant_filevault_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_sip_enable": {
+    "category": "Operating System",
+    "description": "Ensure System Integrity Protection is Enabled",
+    "fix_script": "scripts/fix/os_sip_enable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sip_enable",
+    "scan_script": "scripts/scan/os_sip_enable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_siri_prompt_disable": {
+    "category": "Operating System",
+    "description": "Disable Siri Setup during Setup Assistant",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_siri_prompt_disable",
+    "scan_script": "scripts/scan/os_siri_prompt_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_skip_apple_intelligence_enable": {
+    "category": "Operating System",
+    "description": "Disable Apple Intelligence During Setup Assistant",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_skip_apple_intelligence_enable",
+    "scan_script": "scripts/scan/os_skip_apple_intelligence_enable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_skip_unlock_with_watch_enable": {
+    "category": "Operating System",
+    "description": "Disable Unlock with Apple Watch During Setup Assistant",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_skip_unlock_with_watch_enable",
+    "scan_script": "scripts/scan/os_skip_unlock_with_watch_enable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_sleep_and_display_sleep_apple_silicon_enable": {
+    "category": "Operating System",
+    "description": "Ensure Sleep and Display Sleep Is Enabled on Apple Silicon Devices",
+    "fix_script": "scripts/fix/os_sleep_and_display_sleep_apple_silicon_enable.sh",
+    "fix_source": "cisv8",
+    "rule": "os_sleep_and_display_sleep_apple_silicon_enable",
+    "scan_script": "scripts/scan/os_sleep_and_display_sleep_apple_silicon_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_software_update_app_update_enforce": {
+    "category": "Operating System",
+    "description": "Enforce Software Update App Update Updates Automatically",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_software_update_app_update_enforce",
+    "scan_script": "scripts/scan/os_software_update_app_update_enforce.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_software_update_deferral": {
+    "category": "Operating System",
+    "description": "Ensure Software Update Deferment Is Less Than or Equal to *ODV* Days",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_software_update_deferral",
+    "scan_script": "scripts/scan/os_software_update_deferral.sh",
+    "scan_source": "cis_lvl2",
+    "standards": {
+      "cis_lvl2": true
+    }
+  },
+  "os_ssh_fips_compliant": {
+    "category": "Operating System",
+    "description": "Limit SSH to FIPS Compliant Connections",
+    "fix_script": "scripts/fix/os_ssh_fips_compliant.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_ssh_fips_compliant",
+    "scan_script": "scripts/scan/os_ssh_fips_compliant.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_ssh_server_alive_count_max_configure": {
+    "category": "Operating System",
+    "description": "Set SSH Active Server Alive Maximum to *ODV*",
+    "fix_script": "scripts/fix/os_ssh_server_alive_count_max_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_ssh_server_alive_count_max_configure",
+    "scan_script": "scripts/scan/os_ssh_server_alive_count_max_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_ssh_server_alive_interval_configure": {
+    "category": "Operating System",
+    "description": "Configure SSH ServerAliveInterval option set to *ODV*",
+    "fix_script": "scripts/fix/os_ssh_server_alive_interval_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_ssh_server_alive_interval_configure",
+    "scan_script": "scripts/scan/os_ssh_server_alive_interval_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_sshd_channel_timeout_configure": {
+    "category": "Operating System",
+    "description": "Configure SSHD Channel Timeout to *ODV*",
+    "fix_script": "scripts/fix/os_sshd_channel_timeout_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sshd_channel_timeout_configure",
+    "scan_script": "scripts/scan/os_sshd_channel_timeout_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_sshd_client_alive_count_max_configure": {
+    "category": "Operating System",
+    "description": "Configure SSHD ClientAliveCountMax to *ODV*",
+    "fix_script": "scripts/fix/os_sshd_client_alive_count_max_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sshd_client_alive_count_max_configure",
+    "scan_script": "scripts/scan/os_sshd_client_alive_count_max_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_sshd_client_alive_interval_configure": {
+    "category": "Operating System",
+    "description": "Configure SSHD ClientAliveInterval to *ODV*",
+    "fix_script": "scripts/fix/os_sshd_client_alive_interval_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sshd_client_alive_interval_configure",
+    "scan_script": "scripts/scan/os_sshd_client_alive_interval_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_sshd_fips_compliant": {
+    "category": "Operating System",
+    "description": "Limit SSHD to FIPS Compliant Connections",
+    "fix_script": "scripts/fix/os_sshd_fips_compliant.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sshd_fips_compliant",
+    "scan_script": "scripts/scan/os_sshd_fips_compliant.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_sshd_per_source_penalties_configure": {
+    "category": "Operating System",
+    "description": "Configure SSHD PerSourcePenalties",
+    "fix_script": "scripts/fix/os_sshd_per_source_penalties_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sshd_per_source_penalties_configure",
+    "scan_script": "scripts/scan/os_sshd_per_source_penalties_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_sshd_permit_root_login_configure": {
+    "category": "Operating System",
+    "description": "Disable Root Login for SSH",
+    "fix_script": "scripts/fix/os_sshd_permit_root_login_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sshd_permit_root_login_configure",
+    "scan_script": "scripts/scan/os_sshd_permit_root_login_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_sshd_unused_connection_timeout_configure": {
+    "category": "Operating System",
+    "description": "Configure SSHD Unused Connection Timeout to *ODV*",
+    "fix_script": "scripts/fix/os_sshd_unused_connection_timeout_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sshd_unused_connection_timeout_configure",
+    "scan_script": "scripts/scan/os_sshd_unused_connection_timeout_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_store_encrypted_passwords": {
+    "category": "Operating System",
+    "description": "Encrypt Stored Passwords",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_store_encrypted_passwords",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_sudo_log_enforce": {
+    "category": "Operating System",
+    "description": "Configure Sudo To Log Events",
+    "fix_script": "scripts/fix/os_sudo_log_enforce.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sudo_log_enforce",
+    "scan_script": "scripts/scan/os_sudo_log_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_sudo_timeout_configure": {
+    "category": "Operating System",
+    "description": "Configure Sudo Timeout Period to *ODV*",
+    "fix_script": "scripts/fix/os_sudo_timeout_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sudo_timeout_configure",
+    "scan_script": "scripts/scan/os_sudo_timeout_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_sudoers_timestamp_type_configure": {
+    "category": "Operating System",
+    "description": "Configure Sudoers Timestamp Type",
+    "fix_script": "scripts/fix/os_sudoers_timestamp_type_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_sudoers_timestamp_type_configure",
+    "scan_script": "scripts/scan/os_sudoers_timestamp_type_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_system_read_only": {
+    "category": "Operating System",
+    "description": "Ensure System Volume is Read Only",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_system_read_only",
+    "scan_script": "scripts/scan/os_system_read_only.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "os_system_wide_applications_configure": {
+    "category": "Operating System",
+    "description": "Ensure Appropriate Permissions Are Enabled for System Wide Applications",
+    "fix_script": "scripts/fix/os_system_wide_applications_configure.sh",
+    "fix_source": "cisv8",
+    "rule": "os_system_wide_applications_configure",
+    "scan_script": "scripts/scan/os_system_wide_applications_configure.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_terminal_secure_keyboard_enable": {
+    "category": "Operating System",
+    "description": "Ensure Secure Keyboard Entry Terminal.app is Enabled",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_terminal_secure_keyboard_enable",
+    "scan_script": "scripts/scan/os_terminal_secure_keyboard_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_tftpd_disable": {
+    "category": "Operating System",
+    "description": "Disable Trivial File Transfer Protocol Service",
+    "fix_script": "scripts/fix/os_tftpd_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_tftpd_disable",
+    "scan_script": "scripts/scan/os_tftpd_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_time_server_enabled": {
+    "category": "Operating System",
+    "description": "Enable Time Synchronization Daemon",
+    "fix_script": "scripts/fix/os_time_server_enabled.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_time_server_enabled",
+    "scan_script": "scripts/scan/os_time_server_enabled.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_touchid_prompt_disable": {
+    "category": "Operating System",
+    "description": "Disable TouchID Prompt during Setup Assistant",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_touchid_prompt_disable",
+    "scan_script": "scripts/scan/os_touchid_prompt_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_unique_identification": {
+    "category": "Operating System",
+    "description": "Uniquely Identify Users and Processes",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_unique_identification",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_unlock_active_user_session_disable": {
+    "category": "Operating System",
+    "description": "Disable Login to Other User's Active and Locked Sessions",
+    "fix_script": "scripts/fix/os_unlock_active_user_session_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_unlock_active_user_session_disable",
+    "scan_script": "scripts/scan/os_unlock_active_user_session_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_uucp_disable": {
+    "category": "Operating System",
+    "description": "Disable Unix-to-Unix Copy Protocol Service",
+    "fix_script": "scripts/fix/os_uucp_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_uucp_disable",
+    "scan_script": "scripts/scan/os_uucp_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "os_world_writable_library_folder_configure": {
+    "category": "Operating System",
+    "description": "Ensure No World Writable Files Exist in the Library Folder",
+    "fix_script": "scripts/fix/os_world_writable_library_folder_configure.sh",
+    "fix_source": "cisv8",
+    "rule": "os_world_writable_library_folder_configure",
+    "scan_script": "scripts/scan/os_world_writable_library_folder_configure.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_world_writable_system_folder_configure": {
+    "category": "Operating System",
+    "description": "Ensure No World Writable Files Exist in the System Folder",
+    "fix_script": "scripts/fix/os_world_writable_system_folder_configure.sh",
+    "fix_source": "cisv8",
+    "rule": "os_world_writable_system_folder_configure",
+    "scan_script": "scripts/scan/os_world_writable_system_folder_configure.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "os_writing_tools_disable": {
+    "category": "Operating System",
+    "description": "Disable Apple Intelligence Writing Tools",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "os_writing_tools_disable",
+    "scan_script": "scripts/scan/os_writing_tools_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true
+    }
+  },
+  "pwpolicy_account_inactivity_enforce": {
+    "category": "Password Policy",
+    "description": "Disable Accounts after *ODV* Days of Inactivity",
+    "fix_script": "scripts/fix/pwpolicy_account_inactivity_enforce.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "pwpolicy_account_inactivity_enforce",
+    "scan_script": "scripts/scan/pwpolicy_account_inactivity_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_account_lockout_enforce": {
+    "category": "Password Policy",
+    "description": "Limit Consecutive Failed Login Attempts to *ODV*",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_account_lockout_enforce",
+    "scan_script": "scripts/scan/pwpolicy_account_lockout_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_account_lockout_timeout_enforce": {
+    "category": "Password Policy",
+    "description": "Set Account Lockout Time to *ODV* Minutes",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_account_lockout_timeout_enforce",
+    "scan_script": "scripts/scan/pwpolicy_account_lockout_timeout_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_alpha_numeric_enforce": {
+    "category": "Password Policy",
+    "description": "Require Passwords Contain a Minimum of One Numeric Character",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_alpha_numeric_enforce",
+    "scan_script": "scripts/scan/pwpolicy_alpha_numeric_enforce.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_custom_regex_enforce": {
+    "category": "Password Policy",
+    "description": "Require Passwords to Match the Defined Custom Regular Expression",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_custom_regex_enforce",
+    "scan_script": "scripts/scan/pwpolicy_custom_regex_enforce.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_emergency_accounts_disable": {
+    "category": "Password Policy",
+    "description": "Automatically Remove or Disable Emergency Accounts within 72 Hours",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_emergency_accounts_disable",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "pwpolicy_force_password_change": {
+    "category": "Password Policy",
+    "description": "Force Password Change at Next Logon",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_force_password_change",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_history_enforce": {
+    "category": "Password Policy",
+    "description": "Prohibit Password Reuse for a Minimum of *ODV* Generations",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_history_enforce",
+    "scan_script": "scripts/scan/pwpolicy_history_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_max_lifetime_enforce": {
+    "category": "Password Policy",
+    "description": "Restrict Maximum Password Lifetime to *ODV* Days",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_max_lifetime_enforce",
+    "scan_script": "scripts/scan/pwpolicy_max_lifetime_enforce.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_minimum_length_enforce": {
+    "category": "Password Policy",
+    "description": "Require a Minimum Password Length of *ODV* Characters",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_minimum_length_enforce",
+    "scan_script": "scripts/scan/pwpolicy_minimum_length_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_minimum_lifetime_enforce": {
+    "category": "Password Policy",
+    "description": "Set Minimum Password Lifetime to *ODV* Hours",
+    "fix_script": "scripts/fix/pwpolicy_minimum_lifetime_enforce.sh",
+    "fix_source": "cisv8",
+    "rule": "pwpolicy_minimum_lifetime_enforce",
+    "scan_script": "scripts/scan/pwpolicy_minimum_lifetime_enforce.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cisv8": true
+    }
+  },
+  "pwpolicy_simple_sequence_disable": {
+    "category": "Password Policy",
+    "description": "Prohibit Repeating, Ascending, and Descending Character Sequences",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_simple_sequence_disable",
+    "scan_script": "scripts/scan/pwpolicy_simple_sequence_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_special_character_enforce": {
+    "category": "Password Policy",
+    "description": "Require Passwords Contain a Minimum of One Special Character",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_special_character_enforce",
+    "scan_script": "scripts/scan/pwpolicy_special_character_enforce.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "pwpolicy_temporary_accounts_disable": {
+    "category": "Password Policy",
+    "description": "Automatically Remove or Disable Temporary User Accounts within 72 Hours",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_temporary_accounts_disable",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "pwpolicy_temporary_or_emergency_accounts_disable": {
+    "category": "Password Policy",
+    "description": "Automatically Remove or Disable Temporary or Emergency User Accounts within 72 Hours",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "pwpolicy_temporary_or_emergency_accounts_disable",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "supplemental_cis_manual": {
+    "category": "Other",
+    "description": "CIS Manual Recommendations",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "supplemental_cis_manual",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "cis_lvl2": true
+    }
+  },
+  "supplemental_controls": {
+    "category": "Other",
+    "description": "Out of Scope Supplemental",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "supplemental_controls",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "supplemental_filevault": {
+    "category": "Other",
+    "description": "FileVault Supplemental",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "supplemental_filevault",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "supplemental_firewall_pf": {
+    "category": "Other",
+    "description": "Packet Filter (pf) Supplemental",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "supplemental_firewall_pf",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "supplemental_password_policy": {
+    "category": "Other",
+    "description": "Password Policy Supplemental",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "supplemental_password_policy",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "supplemental_smartcard": {
+    "category": "Other",
+    "description": "Smartcard Supplemental",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "supplemental_smartcard",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_airplay_receiver_disable": {
+    "category": "System Settings",
+    "description": "Disable Airplay Receiver",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_airplay_receiver_disable",
+    "scan_script": "scripts/scan/system_settings_airplay_receiver_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_apple_watch_unlock_disable": {
+    "category": "System Settings",
+    "description": "Prevent Apple Watch from Terminating a Session Lock",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_apple_watch_unlock_disable",
+    "scan_script": "scripts/scan/system_settings_apple_watch_unlock_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_automatic_login_disable": {
+    "category": "System Settings",
+    "description": "Disable Unattended or Automatic Logon to the System",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_automatic_login_disable",
+    "scan_script": "scripts/scan/system_settings_automatic_login_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_automatic_logout_enforce": {
+    "category": "System Settings",
+    "description": "Enforce Auto Logout After *ODV* Seconds of Inactivity",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_automatic_logout_enforce",
+    "scan_script": "scripts/scan/system_settings_automatic_logout_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_bluetooth_disable": {
+    "category": "System Settings",
+    "description": "Disable Bluetooth When no Approved Device is Connected",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_bluetooth_disable",
+    "scan_script": "scripts/scan/system_settings_bluetooth_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_bluetooth_menu_enable": {
+    "category": "System Settings",
+    "description": "Enable Bluetooth Menu",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_bluetooth_menu_enable",
+    "scan_script": "scripts/scan/system_settings_bluetooth_menu_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cisv8": true
+    }
+  },
+  "system_settings_bluetooth_settings_disable": {
+    "category": "System Settings",
+    "description": "Disable the Bluetooth System Settings Pane",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_bluetooth_settings_disable",
+    "scan_script": "scripts/scan/system_settings_bluetooth_settings_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_bluetooth_sharing_disable": {
+    "category": "System Settings",
+    "description": "Disable Bluetooth Sharing",
+    "fix_script": "scripts/fix/system_settings_bluetooth_sharing_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_bluetooth_sharing_disable",
+    "scan_script": "scripts/scan/system_settings_bluetooth_sharing_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_content_caching_disable": {
+    "category": "System Settings",
+    "description": "Disable Content Caching Service",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_content_caching_disable",
+    "scan_script": "scripts/scan/system_settings_content_caching_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_critical_update_install_enforce": {
+    "category": "System Settings",
+    "description": "Enforce Critical Security Updates to be Installed",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_critical_update_install_enforce",
+    "scan_script": "scripts/scan/system_settings_critical_update_install_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_diagnostics_reports_disable": {
+    "category": "System Settings",
+    "description": "Disable Sending Diagnostic and Usage Data to Apple",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_diagnostics_reports_disable",
+    "scan_script": "scripts/scan/system_settings_diagnostics_reports_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_download_software_update_enforce": {
+    "category": "System Settings",
+    "description": "Enforce Software Update Downloads Updates Automatically using DDM.",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_download_software_update_enforce",
+    "scan_script": "scripts/scan/system_settings_download_software_update_enforce.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cisv8": true
+    }
+  },
+  "system_settings_external_intelligence_disable": {
+    "category": "System Settings",
+    "description": "Disable External Intelligence Integrations",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_external_intelligence_disable",
+    "scan_script": "scripts/scan/system_settings_external_intelligence_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_external_intelligence_sign_in_disable": {
+    "category": "System Settings",
+    "description": "Disable External Intelligence Integration Sign In",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_external_intelligence_sign_in_disable",
+    "scan_script": "scripts/scan/system_settings_external_intelligence_sign_in_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_filevault_enforce": {
+    "category": "System Settings",
+    "description": "Enforce FileVault",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_filevault_enforce",
+    "scan_script": "scripts/scan/system_settings_filevault_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_find_my_disable": {
+    "category": "System Settings",
+    "description": "Disable Find My Service",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_find_my_disable",
+    "scan_script": "scripts/scan/system_settings_find_my_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_firewall_enable": {
+    "category": "System Settings",
+    "description": "Enable macOS Application Firewall",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_firewall_enable",
+    "scan_script": "scripts/scan/system_settings_firewall_enable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_firewall_stealth_mode_enable": {
+    "category": "System Settings",
+    "description": "Enable Firewall Stealth Mode",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_firewall_stealth_mode_enable",
+    "scan_script": "scripts/scan/system_settings_firewall_stealth_mode_enable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_gatekeeper_identified_developers_allowed": {
+    "category": "System Settings",
+    "description": "Apply Gatekeeper Settings to Block Applications from Unidentified Developers",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_gatekeeper_identified_developers_allowed",
+    "scan_script": "scripts/scan/system_settings_gatekeeper_identified_developers_allowed.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_gatekeeper_override_disallow": {
+    "category": "System Settings",
+    "description": "Configure Gatekeeper to Disallow End User Override",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_gatekeeper_override_disallow",
+    "scan_script": "scripts/scan/system_settings_gatekeeper_override_disallow.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_guest_access_smb_disable": {
+    "category": "System Settings",
+    "description": "Disable Guest Access to Shared SMB Folders",
+    "fix_script": "scripts/fix/system_settings_guest_access_smb_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_guest_access_smb_disable",
+    "scan_script": "scripts/scan/system_settings_guest_access_smb_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_guest_account_disable": {
+    "category": "System Settings",
+    "description": "Disable the Guest Account",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_guest_account_disable",
+    "scan_script": "scripts/scan/system_settings_guest_account_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_hot_corners_disable": {
+    "category": "System Settings",
+    "description": "Disable Hot Corners",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_hot_corners_disable",
+    "scan_script": "scripts/scan/system_settings_hot_corners_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_hot_corners_secure": {
+    "category": "System Settings",
+    "description": "Secure Hot Corners",
+    "fix_script": "scripts/fix/system_settings_hot_corners_secure.sh",
+    "fix_source": "cisv8",
+    "rule": "system_settings_hot_corners_secure",
+    "scan_script": "scripts/scan/system_settings_hot_corners_secure.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_improve_assistive_voice_disable": {
+    "category": "System Settings",
+    "description": "Disable Sending Audio Recordings and Transcripts to Apple",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_improve_assistive_voice_disable",
+    "scan_script": "scripts/scan/system_settings_improve_assistive_voice_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_improve_search_disable": {
+    "category": "System Settings",
+    "description": "Disable Improve Search Information to Apple",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_improve_search_disable",
+    "scan_script": "scripts/scan/system_settings_improve_search_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_improve_siri_dictation_disable": {
+    "category": "System Settings",
+    "description": "Disable Improve Siri and Dictation Information to Apple",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_improve_siri_dictation_disable",
+    "scan_script": "scripts/scan/system_settings_improve_siri_dictation_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_install_macos_updates_enforce": {
+    "category": "System Settings",
+    "description": "Enforce macOS Updates are Automatically Installed",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_install_macos_updates_enforce",
+    "scan_script": "scripts/scan/system_settings_install_macos_updates_enforce.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_internet_accounts_disable": {
+    "category": "System Settings",
+    "description": "Disable the Internet Accounts System Preference Pane",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_internet_accounts_disable",
+    "scan_script": "scripts/scan/system_settings_internet_accounts_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_internet_sharing_disable": {
+    "category": "System Settings",
+    "description": "Disable Internet Sharing",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_internet_sharing_disable",
+    "scan_script": "scripts/scan/system_settings_internet_sharing_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_location_services_disable": {
+    "category": "System Settings",
+    "description": "Disable Location Services",
+    "fix_script": "scripts/fix/system_settings_location_services_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_location_services_disable",
+    "scan_script": "scripts/scan/system_settings_location_services_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_location_services_enable": {
+    "category": "System Settings",
+    "description": "Enable Location Services",
+    "fix_script": "scripts/fix/system_settings_location_services_enable.sh",
+    "fix_source": "cisv8",
+    "rule": "system_settings_location_services_enable",
+    "scan_script": "scripts/scan/system_settings_location_services_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_location_services_menu_enforce": {
+    "category": "System Settings",
+    "description": "Ensure Location Services Is In the Menu Bar",
+    "fix_script": "scripts/fix/system_settings_location_services_menu_enforce.sh",
+    "fix_source": "cis_lvl2",
+    "rule": "system_settings_location_services_menu_enforce",
+    "scan_script": "scripts/scan/system_settings_location_services_menu_enforce.sh",
+    "scan_source": "cis_lvl2",
+    "standards": {
+      "cis_lvl2": true
+    }
+  },
+  "system_settings_loginwindow_loginwindowtext_enable": {
+    "category": "System Settings",
+    "description": "Configure Login Window to Show A Custom Message",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_loginwindow_loginwindowtext_enable",
+    "scan_script": "scripts/scan/system_settings_loginwindow_loginwindowtext_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_loginwindow_prompt_username_password_enforce": {
+    "category": "System Settings",
+    "description": "Configure Login Window to Prompt for Username and Password",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_loginwindow_prompt_username_password_enforce",
+    "scan_script": "scripts/scan/system_settings_loginwindow_prompt_username_password_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_media_sharing_disabled": {
+    "category": "System Settings",
+    "description": "Disable Media Sharing",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_media_sharing_disabled",
+    "scan_script": "scripts/scan/system_settings_media_sharing_disabled.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_password_hints_disable": {
+    "category": "System Settings",
+    "description": "Disable Password Hints",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_password_hints_disable",
+    "scan_script": "scripts/scan/system_settings_password_hints_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_personalized_advertising_disable": {
+    "category": "System Settings",
+    "description": "Disable Personalized Advertising",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_personalized_advertising_disable",
+    "scan_script": "scripts/scan/system_settings_personalized_advertising_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_printer_sharing_disable": {
+    "category": "System Settings",
+    "description": "Disable Printer Sharing",
+    "fix_script": "scripts/fix/system_settings_printer_sharing_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_printer_sharing_disable",
+    "scan_script": "scripts/scan/system_settings_printer_sharing_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_rae_disable": {
+    "category": "System Settings",
+    "description": "Disable Remote Apple Events",
+    "fix_script": "scripts/fix/system_settings_rae_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_rae_disable",
+    "scan_script": "scripts/scan/system_settings_rae_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_remote_management_disable": {
+    "category": "System Settings",
+    "description": "Disable Remote Management",
+    "fix_script": "scripts/fix/system_settings_remote_management_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_remote_management_disable",
+    "scan_script": "scripts/scan/system_settings_remote_management_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_screen_sharing_disable": {
+    "category": "System Settings",
+    "description": "Disable Screen Sharing and Apple Remote Desktop",
+    "fix_script": "scripts/fix/system_settings_screen_sharing_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_screen_sharing_disable",
+    "scan_script": "scripts/scan/system_settings_screen_sharing_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_screensaver_ask_for_password_delay_enforce": {
+    "category": "System Settings",
+    "description": "Enforce Session Lock After Screen Saver is Started",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_screensaver_ask_for_password_delay_enforce",
+    "scan_script": "scripts/scan/system_settings_screensaver_ask_for_password_delay_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_screensaver_password_enforce": {
+    "category": "System Settings",
+    "description": "Enforce Screen Saver Password",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_screensaver_password_enforce",
+    "scan_script": "scripts/scan/system_settings_screensaver_password_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true
+    }
+  },
+  "system_settings_screensaver_timeout_enforce": {
+    "category": "System Settings",
+    "description": "Enforce Screen Saver Timeout",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_screensaver_timeout_enforce",
+    "scan_script": "scripts/scan/system_settings_screensaver_timeout_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_security_update_install": {
+    "category": "System Settings",
+    "description": "Enforce Automatic Installs of Available Security Updates using DDM.",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_security_update_install",
+    "scan_script": "scripts/scan/system_settings_security_update_install.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_siri_disable": {
+    "category": "System Settings",
+    "description": "Disable Siri",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_siri_disable",
+    "scan_script": "scripts/scan/system_settings_siri_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_siri_listen_disable": {
+    "category": "System Settings",
+    "description": "Ensure Siri Listen For is Disabled",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_siri_listen_disable",
+    "scan_script": "scripts/scan/system_settings_siri_listen_disable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cisv8": true
+    }
+  },
+  "system_settings_siri_settings_disable": {
+    "category": "System Settings",
+    "description": "Disable the System Settings Pane for Siri",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_siri_settings_disable",
+    "scan_script": "scripts/scan/system_settings_siri_settings_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_smbd_disable": {
+    "category": "System Settings",
+    "description": "Disable Server Message Block Sharing",
+    "fix_script": "scripts/fix/system_settings_smbd_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_smbd_disable",
+    "scan_script": "scripts/scan/system_settings_smbd_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_software_update_download_enforce": {
+    "category": "System Settings",
+    "description": "Enforce Software Update Downloads Updates Automatically",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_software_update_download_enforce",
+    "scan_script": "scripts/scan/system_settings_software_update_download_enforce.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_softwareupdate_current": {
+    "category": "System Settings",
+    "description": "Ensure Software Update is Updated and Current",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_softwareupdate_current",
+    "scan_script": "scripts/scan/system_settings_softwareupdate_current.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_ssh_disable": {
+    "category": "System Settings",
+    "description": "Disable SSH Server for Remote Access Sessions",
+    "fix_script": "scripts/fix/system_settings_ssh_disable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_ssh_disable",
+    "scan_script": "scripts/scan/system_settings_ssh_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_ssh_enable": {
+    "category": "System Settings",
+    "description": "Enable SSH Server for Remote Access Sessions",
+    "fix_script": "scripts/fix/system_settings_ssh_enable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_ssh_enable",
+    "scan_script": "scripts/scan/system_settings_ssh_enable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_system_wide_preferences_configure": {
+    "category": "System Settings",
+    "description": "Require Administrator Password to Modify System-Wide Preferences",
+    "fix_script": "scripts/fix/system_settings_system_wide_preferences_configure.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "system_settings_system_wide_preferences_configure",
+    "scan_script": "scripts/scan/system_settings_system_wide_preferences_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_time_machine_auto_backup_enable": {
+    "category": "System Settings",
+    "description": "Configure Time Machine for Automatic Backups",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_time_machine_auto_backup_enable",
+    "scan_script": "scripts/scan/system_settings_time_machine_auto_backup_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_time_machine_encrypted_configure": {
+    "category": "System Settings",
+    "description": "Ensure Time Machine Volumes are Encrypted",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_time_machine_encrypted_configure",
+    "scan_script": "scripts/scan/system_settings_time_machine_encrypted_configure.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_time_server_configure": {
+    "category": "System Settings",
+    "description": "Configure macOS to Use an Authorized Time Server",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_time_server_configure",
+    "scan_script": "scripts/scan/system_settings_time_server_configure.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_time_server_enforce": {
+    "category": "System Settings",
+    "description": "Enforce macOS Time Synchronization",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_time_server_enforce",
+    "scan_script": "scripts/scan/system_settings_time_server_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_token_removal_enforce": {
+    "category": "System Settings",
+    "description": "Configure User Session Lock When a Smart Token is Removed",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_token_removal_enforce",
+    "scan_script": "scripts/scan/system_settings_token_removal_enforce.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_touch_id_settings_disable": {
+    "category": "System Settings",
+    "description": "Disable the Touch ID System Settings Pane",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_touch_id_settings_disable",
+    "scan_script": "scripts/scan/system_settings_touch_id_settings_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_touchid_unlock_disable": {
+    "category": "System Settings",
+    "description": "Disable TouchID for Unlocking the Device",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_touchid_unlock_disable",
+    "scan_script": "scripts/scan/system_settings_touchid_unlock_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_usb_restricted_mode": {
+    "category": "System Settings",
+    "description": "USB Devices Must be Authorized Before Allowing",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_usb_restricted_mode",
+    "scan_script": "scripts/scan/system_settings_usb_restricted_mode.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_wake_network_access_disable": {
+    "category": "System Settings",
+    "description": "Ensure Wake for Network Access Is Disabled",
+    "fix_script": "scripts/fix/system_settings_wake_network_access_disable.sh",
+    "fix_source": "cisv8",
+    "rule": "system_settings_wake_network_access_disable",
+    "scan_script": "scripts/scan/system_settings_wake_network_access_disable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cis_lvl2": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_wallet_applepay_settings_disable": {
+    "category": "System Settings",
+    "description": "Disable the System Settings Pane for Wallet and Apple Pay",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_wallet_applepay_settings_disable",
+    "scan_script": "scripts/scan/system_settings_wallet_applepay_settings_disable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_wifi_disable": {
+    "category": "System Settings",
+    "description": "Disable Wi-Fi Interface",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_wifi_disable",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
+    }
+  },
+  "system_settings_wifi_disable_when_connected_to_ethernet": {
+    "category": "System Settings",
+    "description": "Disable Wi-Fi When Connected to Ethernet",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_wifi_disable_when_connected_to_ethernet",
+    "scan_script": null,
+    "scan_source": null,
+    "standards": {
+      "800-53r5_high": true
+    }
+  },
+  "system_settings_wifi_menu_enable": {
+    "category": "System Settings",
+    "description": "Enable Wifi Menu",
+    "fix_script": null,
+    "fix_source": null,
+    "rule": "system_settings_wifi_menu_enable",
+    "scan_script": "scripts/scan/system_settings_wifi_menu_enable.sh",
+    "scan_source": "cisv8",
+    "standards": {
+      "cisv8": true
+    }
+  }
+}
