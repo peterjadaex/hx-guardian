@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Play, ChevronRight, Wrench } from 'lucide-react'
+import { Search, Play, ChevronRight, Wrench, Loader2 } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
 import { getRules, getRuleMeta, startScan } from '../lib/api'
@@ -16,6 +16,7 @@ export function Rules() {
   const [category, setCategory] = useState('')
   const [status, setStatus] = useState('')
   const [standard, setStandard] = useState('')
+  const [scanning, setScanning] = useState(false)
 
   useEffect(() => {
     getRuleMeta().then(setMeta).catch(() => {})
@@ -45,10 +46,13 @@ export function Rules() {
 
   const handleScanCategory = async () => {
     const filter = category ? { category } : standard ? { standard } : undefined
+    setScanning(true)
     try {
       await startScan(filter)
     } catch (e: any) {
       setError(e.message)
+    } finally {
+      setScanning(false)
     }
   }
 
@@ -57,10 +61,13 @@ export function Rules() {
       <PageHeader title="Security Rules" subtitle={`${rules.length} rules`}>
         <button
           onClick={handleScanCategory}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-colors"
+          disabled={scanning}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
         >
-          <Play className="w-4 h-4" />
-          Scan {category || standard || 'All'}
+          {scanning
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <Play className="w-4 h-4" />}
+          {scanning ? 'Starting...' : `Scan ${category || standard || 'All'}`}
         </button>
       </PageHeader>
 

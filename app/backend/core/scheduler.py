@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime
+from typing import Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 _scheduler = AsyncIOScheduler()
 
 
-async def _run_scheduled_scan(schedule_id: int, filter_json: str | None = None):
+async def _run_scheduled_scan(schedule_id: int, filter_json: Optional[str] = None):
     """Execute a scheduled scan batch via runner_client."""
     from core import runner_client  # import here to avoid circular at module level
 

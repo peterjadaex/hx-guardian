@@ -18,6 +18,7 @@ import socket
 import sys
 import threading
 import time
+from typing import Optional
 from pathlib import Path
 
 # Allow imports from backend package
@@ -55,12 +56,12 @@ def load_manifest() -> None:
     logger.info("Manifest loaded: %d rules", len(_manifest))
 
 
-def get_rule(name: str) -> dict | None:
+def get_rule(name: str) -> Optional[dict]:
     with _manifest_lock:
         return _manifest.get(name)
 
 
-def resolve_script(relative_path: str | None) -> str | None:
+def resolve_script(relative_path: Optional[str]) -> Optional[str]:
     if not relative_path:
         return None
     return str(STANDARDS_BASE / relative_path)
