@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.hxguardian.runner</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/admin/Documents/airgap/hx-guardian/app/backend/hxg_runner.py</string>
+    </array>
+
+    <key>UserName</key>
+    <string>root</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Library/Logs/hxguardian-runner.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Library/Logs/hxguardian-runner-error.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/admin/Documents/airgap/hx-guardian/app/backend</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONPATH</key>
+        <string>/Users/admin/Documents/airgap/hx-guardian/app/backend</string>
+    </dict>
+</dict>
+</plist>

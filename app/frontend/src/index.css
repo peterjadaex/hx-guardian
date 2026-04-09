@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/* Custom security dashboard theme */
+:root {
+  --bg-dark: #0a0e1a;
+  --bg-card: #0f1629;
+  --bg-card-hover: #151d38;
+  --border-color: #1e2d4a;
+  --accent: #3b82f6;
+  --text-primary: #e2e8f0;
+  --text-muted: #64748b;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  margin: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4a5568; }
+
+/* Terminal output */
+.terminal {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  background-color: #000;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow: auto;
+  max-height: 16rem;
+  color: #22c55e;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
