@@ -104,7 +104,10 @@ async def scan_batch_stream(rules: Optional[list[str]] = None) -> AsyncGenerator
 
         while True:
             try:
-                line = await asyncio.wait_for(reader.readline(), timeout=90.0)
+                # 120s per line — enough for any single script (executor cap is 60s)
+                # plus some headroom. With streaming, each line arrives as soon as
+                # one script finishes, so this timeout is per-script not per-batch.
+                line = await asyncio.wait_for(reader.readline(), timeout=120.0)
             except asyncio.TimeoutError:
                 break
             if not line:

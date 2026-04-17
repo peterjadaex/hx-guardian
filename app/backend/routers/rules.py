@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.auth import verify_token
 from core.database import get_db
-from core.manifest import get_all_rules, get_rule, get_categories, get_standards
+from core.manifest import get_all_rules, get_rule, get_categories, get_standards, compute_severity, compute_impact
 from core.models import ScanResult, Exemption, ScanSession
 
 router = APIRouter(prefix="/api/rules", tags=["rules"])
@@ -58,6 +58,7 @@ def list_rules(
     category: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     standard: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     _: str = Depends(verify_token),
@@ -96,7 +97,12 @@ def list_rules(
             "exemption": exemption,
             "has_scan": bool(r.get("scan_script")),
             "has_fix": bool(r.get("fix_script")),
+            "severity": compute_severity(r),
+            "impact": compute_impact(r),
         })
+
+    if severity:
+        results = [r for r in results if r["severity"] == severity.lower()]
 
     return {"rules": results, "total": len(results)}
 
@@ -153,4 +159,6 @@ def get_rule_detail(
         "scan_history": history_list,
         "has_scan": bool(rule.get("scan_script")),
         "has_fix": bool(rule.get("fix_script")),
+        "severity": compute_severity(rule),
+        "impact": compute_impact(rule),
     }

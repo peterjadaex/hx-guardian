@@ -133,3 +133,17 @@ class MdmProfile(Base):
     last_checked = Column(DateTime, nullable=True)
     mobileconfig_path = Column(Text, nullable=True)
     rules_json = Column(Text, nullable=True)   # JSON list of rule names this profile covers
+
+
+class UsbWhitelist(Base):
+    __tablename__ = "usb_whitelist"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(128), nullable=False)       # display label
+    vendor = Column(String(128), nullable=True)      # manufacturer string
+    product_id = Column(String(32), nullable=True)   # hex product ID (e.g. "0x12ab")
+    serial = Column(String(128), nullable=True)      # serial number
+    volume_uuid = Column(String(64), nullable=True)  # volume UUID for storage-specific whitelisting
+    notes = Column(Text, nullable=True)
+    added_by = Column(String(64), default="admin")
+    added_at = Column(DateTime, nullable=False, default=datetime.utcnow)

@@ -201,10 +201,22 @@ export function Dashboard() {
           <Card className="p-5 col-span-2">
             <div className="text-slate-400 text-xs font-medium mb-4">COMPLIANCE BY CATEGORY</div>
             {categories.length > 0 ? (
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={categories} layout="vertical" barSize={10} barCategoryGap={8}>
+              <ResponsiveContainer width="100%" height={categories.length * 32 + 20}>
+                <BarChart data={categories} layout="vertical" barSize={10} barCategoryGap={8} margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
                   <XAxis type="number" domain={[0, 100]} tick={{ fill: '#475569', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
-                  <YAxis type="category" dataKey="category" tick={{ fill: '#94a3b8', fontSize: 11 }} width={110} axisLine={false} tickLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="category"
+                    width={140}
+                    interval={0}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={({ x, y, payload }: any) => (
+                      <text x={x} y={y} dy={4} textAnchor="end" fill="#94a3b8" fontSize={11}>
+                        {payload.value}
+                      </text>
+                    )}
+                  />
                   <Tooltip
                     contentStyle={{ background: '#0f1629', border: '1px solid #1e2d4a', borderRadius: 8, color: '#e2e8f0' }}
                     formatter={(v: unknown) => [`${v}%`, 'Score']}

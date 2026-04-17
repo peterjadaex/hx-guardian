@@ -73,3 +73,46 @@ def get_standards() -> list[str]:
 
 def is_valid_rule(name: str) -> bool:
     return name in load_manifest()
+
+
+# ── Severity & impact ─────────────────────────────────────────────────────────
+
+_HIGH_CATEGORIES = {"Authentication", "Auditing"}
+_LOW_CATEGORIES  = {"iCloud", "Other"}
+
+_IMPACT_TEMPLATES: dict = {
+    "Authentication":   "Without this control, unauthorized users may access the device or escalate privileges — potentially compromising signing keys and all signed artifacts.",
+    "Auditing":         "Audit records will not be captured or may be tampered with. Signing operations cannot be traced, attributed, or audited, violating non-repudiation requirements.",
+    "Operating System": "Core OS security is weakened. Attackers may gain elevated access, bypass signing restrictions, or exfiltrate cryptographic material.",
+    "Password Policy":  "Weak password controls increase the risk of unauthorized account access. A compromised account on a signing device can result in fraudulent signatures.",
+    "System Settings":  "Unnecessary services expose attack surface. Data may leak or external connections may be established, breaking airgap isolation.",
+    "iCloud":           "Apple cloud sync may be active. Files, keychain entries, or clipboard content could be synced off the airgap device, exposing signing credentials.",
+    "Other":            "Security control is not enforced. Review manual implementation requirements for this airgap environment.",
+}
+
+
+def compute_severity(rule: dict) -> str:
+    """
+    Derive severity from standards coverage and category.
+    Returns 'high', 'medium', or 'low'.
+    """
+    category        = rule.get("category", "")
+    standards       = rule.get("standards", {})
+    standards_count = sum(1 for v in standards.values() if v)
+
+    if category in _HIGH_CATEGORIES:
+        return "high"
+    if standards_count == 3:
+        return "high"
+    if category == "Operating System" and standards.get("800-53r5_high"):
+        return "high"
+    if category in _LOW_CATEGORIES:
+        return "low"
+    if standards_count == 1 and not standards.get("800-53r5_high"):
+        return "low"
+    return "medium"
+
+
+def compute_impact(rule: dict) -> str:
+    """Return the airgap-device impact statement for a rule's category."""
+    return _IMPACT_TEMPLATES.get(rule.get("category", ""), _IMPACT_TEMPLATES["Other"])

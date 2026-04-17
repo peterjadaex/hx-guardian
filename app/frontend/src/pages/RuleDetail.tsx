@@ -48,7 +48,7 @@ export function RuleDetail() {
       setScanOutput(JSON.stringify(res, null, 2))
       await loadRule()
     } catch (e: any) {
-      setScanOutput(`Error: ${e.message}`)
+      setScanOutput(`Error: ${e.response?.data?.detail || e.message}`)
     } finally {
       setScanning(false)
     }

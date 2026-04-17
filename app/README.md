@@ -131,13 +131,64 @@ If you need to start the services manually without LaunchDaemon/LaunchAgent:
 
 ```bash
 # Terminal 1 — privileged runner (must be root)
+# Run from the repo root; the runner resolves manifest and script paths relative to it
 sudo python3 app/backend/hxg_runner.py
 
-# Terminal 2 — web server
+# Terminal 2 — web server (with hot-reload)
 zsh app/start-dev.sh
 ```
 
-The session token will be printed to Terminal 2 output.
+The session token is printed to **Terminal 2 stdout** at startup:
+```
+INFO  ============================================================
+INFO  Dashboard session token (copy this):
+INFO    a3f8c2d1...
+INFO  Open: http://127.0.0.1:8000
+INFO  ============================================================
+```
+
+When running via LaunchAgent, retrieve it from the log file instead:
+```bash
+grep -A1 "session token" /Library/Logs/hxguardian-server.log
+```
+
+The token changes on every restart — re-copy it each time the server is restarted.
+
+---
+
+## USB Watcher Daemon
+
+The USB watcher enforces the device whitelist at the OS layer — ejecting unauthorized storage
+volumes and firing audit log entries independently of the dashboard.
+
+**Prerequisite:** Grant your terminal **Full Disk Access** in
+`System Settings → Privacy & Security → Full Disk Access` before running the watcher as root.
+Without it, `sudo python3` cannot open files under `/Users/` and fails with `[Errno 1]`.
+
+**Install (survives reboots):**
+```bash
+sudo zsh standards/scripts/setup/install_usb_watcher.sh
+```
+
+**Start / stop after install:**
+```bash
+sudo launchctl unload /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist   # stop
+sudo launchctl load   /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist   # start
+launchctl list com.hxguardian.usbwatcher                                        # status
+tail -f /var/log/hxguardian_usb.log                                             # live log
+```
+
+**Run manually for testing (no install required):**
+```bash
+sudo touch /var/log/hxguardian_usb.log && sudo chmod 644 /var/log/hxguardian_usb.log
+sudo sh -c 'python3 /path/to/app/backend/usb_watcher.py >> /var/log/hxguardian_usb.log 2>&1' &
+sudo kill $(pgrep -f usb_watcher.py)   # stop
+```
+
+The daemon re-reads the whitelist every 30 seconds. Changes made via the Connections page
+take effect within one poll cycle — no restart needed. When a storage volume (SD card, USB
+drive) is ejected and reinserted into the same reader, the daemon detects the new BSD disk
+name and ejects it again automatically.
 
 ---
 
@@ -210,6 +261,12 @@ scan/fix scripts              ← standards/scripts/scan/*.sh
 - The dashboard binds to `127.0.0.1` only — never accessible from the network
 - Every operator action (scan, fix, exemption, report) is written to the audit log
 
+**Scan streaming:**
+The runner streams each script result back to the server as it completes, rather than
+waiting for the entire batch to finish. This means the UI can display results as they arrive
+and avoids socket timeouts on large scans (266 rules). The frontend polls the session status
+every 2 seconds and reloads the rule list automatically when the scan is done.
+
 ---
 
 ## Dashboard Features
@@ -221,7 +278,7 @@ scan/fix scripts              ← standards/scripts/scan/*.sh
 | **Rule Detail** | Scan now, apply fix, scan history, exemption management |
 | **Scan History** | Compliance trend chart, past scan sessions, CSV export |
 | **Device Status** | macOS version, SIP, FileVault, Gatekeeper, Secure Boot |
-| **Connections** | Live USB devices, Bluetooth state, network interfaces, established TCP connections |
+| **Connections** | Live USB devices and storage volumes with whitelist management, Bluetooth state, network interfaces, established TCP connections |
 | **Device Logs** | System log viewer with live streaming and keyword filter |
 | **MDM Profiles** | Maps 52 MDM-only rules to mobileconfig profiles; check install status; download profiles |
 | **Exemptions** | Grant / revoke rule exemptions with reason and expiry date |
@@ -248,9 +305,43 @@ sudo launchctl list | grep hxguardian.runner
 sudo launchctl load -w /Library/LaunchDaemons/com.hxguardian.runner.plist
 ```
 
+When running manually, ensure Terminal 1 (`sudo python3 app/backend/hxg_runner.py`) is still
+open and shows `hxg_runner listening on /var/run/hxg/runner.sock`. Restarting the backend
+(Terminal 2) does not restart the runner.
+
 **Scan returns ERROR for all rules**
-- The runner must be running as root. Check `hxguardian-runner.log`.
+- The runner must be running as root. Check `hxguardian-runner.log` or Terminal 1.
 - Verify the socket exists: `ls -la /var/run/hxg/runner.sock`
+- The scan button on Rule Detail shows the full server error — check that output for details.
+
+**Scan results not updating after "Scan All" or "Run Full Scan"**
+- The frontend polls the session status and reloads automatically when the scan finishes.
+  If results still look stale, wait for the "Scanning…" button to return to normal, then
+  check the Rules page — it reloads on completion.
+- If results never update, check that the runner is connected (`/api/health`). A disconnected
+  runner means scan sessions finish instantly with zero results.
+
+**MDM rules still showing `MDM_REQUIRED` after deploying a profile**
+MDM-only rules (those with no scan script) are verified solely by whether the relevant
+configuration profile is installed. Deploying the profile does not automatically update
+past scan results — run a new full scan after deploying the profile to record the
+current state. Rules with scan scripts that check MDM-managed preferences (e.g.
+`com.apple.applicationaccess` keys) will pick up the new values on the next scan.
+
+**USB watcher: `[Errno 1] Operation not permitted` when opening the script**
+
+macOS TCC blocks `sudo python3` from reading files under `/Users/` unless the terminal has
+Full Disk Access. Fix:
+1. `System Settings → Privacy & Security → Full Disk Access`
+2. Add Terminal.app (or iTerm2), toggle on, quit and reopen the terminal
+
+**USB watcher: device detected but not ejected / not re-ejected after replug**
+
+Check the live log: `tail -f /var/log/hxguardian_usb.log`
+- `Could not eject` in the log → `diskutil eject` failed; ensure Full Disk Access is granted
+- No log entry at all → watcher is not running; check `launchctl list com.hxguardian.usbwatcher`
+- Ejected once but not again → update to latest `usb_watcher.py` (re-eject-on-replug fix)
+- Device shows Whitelisted in Connections → remove the whitelist entry to re-enable enforcement
 
 **`ModuleNotFoundError` on startup**
 ```bash

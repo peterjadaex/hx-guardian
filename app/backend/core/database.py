@@ -32,7 +32,15 @@ def get_db():
 
 
 def init_db() -> None:
-    """Create all tables if they don't exist."""
+    """Create all tables if they don't exist, and apply incremental migrations."""
     from core import models  # noqa: F401 — ensure models are imported
+    from sqlalchemy import inspect, text
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
+    # Migration: add volume_uuid to usb_whitelist if it was created before this column existed
+    inspector = inspect(engine)
+    existing_cols = [c["name"] for c in inspector.get_columns("usb_whitelist")]
+    if "volume_uuid" not in existing_cols:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE usb_whitelist ADD COLUMN volume_uuid VARCHAR(64)"))
+            conn.commit()

@@ -71,7 +71,7 @@ sudo profiles install -path standards/800-53r5_high/mobileconfigs/unsigned/<prof
 | Software updates | `com.apple.SoftwareUpdate.mobileconfig` | Enforces update checks |
 | Password policy | `com.apple.mobiledevice.passwordpolicy.mobileconfig` | Min length, complexity, history |
 | Gatekeeper | `com.apple.systempolicy.control.mobileconfig` | Identified developers only |
-| App access | `com.apple.applicationaccess.mobileconfig` | Blocks AirDrop, Siri, dictation |
+| App access | `com.apple.applicationaccess.mobileconfig` | Blocks AirDrop, Siri, dictation, enforces USB restricted mode — see §1.5 |
 | System preferences | `com.apple.systempreferences.mobileconfig` | Locks sensitive settings panes |
 | Siri | `com.apple.assistant.support.mobileconfig` | Disables Siri + assistant |
 | Setup assistant | `com.apple.SetupAssistant.managed.mobileconfig` | Suppresses setup prompts |
@@ -86,6 +86,286 @@ The `com.apple.applicationaccess.mobileconfig` profile in the baseline sets
 - Set it to `<true/>`
 
 This allows operators to use Touch ID for unlock and sudo authentication.
+
+---
+
+## Phase 1.1 — Start HX-Guardian
+
+HX-Guardian is the local compliance dashboard used throughout the rest of this runbook.
+It must be running **before** Phase 1.5 (USB whitelisting) and **before** Phase 4 (verification).
+
+### Prerequisites
+
+- Python 3.11 or later (`python3 --version`)
+- pip (`python3 -m pip --version`)
+- The frontend is already built in `app/frontend/dist/` — no Node.js required unless you need to rebuild it
+
+### 1.1.1 Install Python Dependencies
+
+```bash
+# From the repository root
+pip install -r app/backend/requirements.txt
+```
+
+Run this once. After airgapping you can skip it (dependencies are already installed).
+
+### 1.1.2 Start the Privileged Runner Daemon
+
+The runner daemon executes scan and fix scripts as root. It must be running for any scan
+or fix to work. Open a **dedicated terminal** and leave it running:
+
+```bash
+# Terminal 1 — keep this open at all times
+sudo python3 app/backend/hxg_runner.py
+```
+
+Expected output:
+```
+2026-xx-xx [runner] INFO Manifest loaded: 266 rules
+2026-xx-xx [runner] INFO hxg_runner listening on /var/run/hxg/runner.sock (uid=0)
+```
+
+> **Note:** The runner creates `/var/run/hxg/runner.sock` at startup. If you see
+> `Manifest not found`, confirm you are running from the repository root.
+
+### 1.1.3 Start the Dashboard Backend
+
+Open a **second terminal** and run:
+
+```bash
+# Terminal 2 — keep this open at all times
+cd app/backend
+python3 -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+On startup uvicorn prints a session token to the log — **copy it now**:
+
+```
+INFO  ============================================================
+INFO  Dashboard session token (copy this):
+INFO    a3f8c2...  ← copy this entire string
+INFO  Open: http://127.0.0.1:8000
+INFO  ============================================================
+```
+
+> **The token changes every time the server restarts.** Keep Terminal 2 open; restarting
+> requires re-copying the token and logging in again.
+
+### 1.1.4 Log In to the Dashboard
+
+1. Open `http://127.0.0.1:8000` in a browser
+2. Paste the token from the startup log into the login field
+3. Click **Sign In**
+
+### 1.1.5 Verify Runner Is Connected
+
+After logging in, check the runner connection:
+
+```bash
+curl -s -H "Authorization: Bearer <token>" http://127.0.0.1:8000/api/health
+```
+
+Expected response:
+```json
+{"status": "ok", "runner_connected": true, "version": "1.0.0"}
+```
+
+If `runner_connected` is `false`, the runner daemon (Terminal 1) is not running or failed
+to create its socket. Check Terminal 1 for errors and restart it.
+
+### 1.1.6 Rebuild the Frontend (Optional)
+
+Only needed if you have modified the frontend source under `app/frontend/src/`.
+Requires Node.js 18+:
+
+```bash
+cd app/frontend
+npm install
+npm run build
+```
+
+Then restart the backend (Terminal 2) to serve the new build.
+
+---
+
+## Phase 1.5 — USB Restriction & Device Whitelisting
+
+Complete this phase **after** deploying MDM profiles and **before** airgapping, while internet and
+USB peripherals are still accessible for whitelisting.
+
+---
+
+### 1.5.1 USB Restricted Mode
+
+**What it does:** When enabled, macOS requires the device to be unlocked before a newly connected
+USB accessory is allowed to communicate. If the device has been locked for more than one hour,
+any new USB connection is blocked until the operator authenticates. This prevents USB-based
+attacks (e.g. juice-jacking, hardware implants) against a locked, unattended airgapped device.
+
+**MDM key:** `allowUSBRestrictedMode` in the `com.apple.applicationaccess` payload.
+
+**Enable via the deployed profile:** The `com.apple.applicationaccess.mobileconfig` profile
+already deployed in Phase 1 controls this setting. Before deploying the profile, open it and
+ensure the following key is present in the payload dictionary:
+
+```xml
+<key>allowUSBRestrictedMode</key>
+<true/>
+```
+
+If the key is missing, add it before running `profiles install`. If the profile is already
+installed, update the plist and re-deploy:
+
+```bash
+sudo profiles remove -identifier com.apple.applicationaccess
+sudo profiles install -path standards/800-53r5_high/mobileconfigs/unsigned/com.apple.applicationaccess.mobileconfig
+```
+
+**Verify compliance:**
+
+```bash
+sudo zsh standards/scripts/scan/system_settings_usb_restricted_mode.sh
+```
+
+Expected output: `PASS` (exit code 0). If `FAIL`, re-deploy the profile above.
+
+> **Note:** USB Restricted Mode only controls *new* accessories connected while locked. Devices
+> already trusted (connected and authenticated before locking) remain active.
+
+---
+
+### 1.5.2 Whitelist Known-Good USB Devices
+
+Before airgapping, register all USB peripherals that will be used on this device (YubiKeys, CAC
+readers, approved keyboards/mice, encrypted drives) in the HX Guardian whitelist. Any device
+connected at runtime that is not on the whitelist will be flagged **Unauthorized** in the
+Connection Monitor.
+
+**Steps:**
+
+1. Connect each approved USB device
+2. Open HX Guardian → **Connections** (`http://127.0.0.1:8000/connections`)
+3. Each connected device appears in the **USB DEVICES** section
+   - Unrecognised devices show a red **Unauthorized** badge
+4. Click **Add to Whitelist** next to each approved device — the form pre-fills with the
+   device name, vendor, product ID, and serial number
+5. Add an optional note (e.g. operator name, asset tag, purpose) and click **Add to Whitelist**
+6. Verify the device now shows a green **Whitelisted** badge
+
+**Whitelisting storage volumes (SD cards, USB drives):**
+
+Mounted storage volumes (SD cards, USB drives) appear in the separate **USB VOLUMES** section
+directly below USB DEVICES. Each volume shows its mount point, filesystem, size, and the name
+of its parent USB device (the card reader or hub port it arrived through).
+
+- Volumes inherit whitelist status from their **parent USB device** — whitelisting the device
+  also permits its storage volumes
+- Click **Add to Whitelist** on a volume row to pre-fill the form with the parent device's
+  identifiers, then save
+- If the USB watcher daemon is running, it will stop ejecting the volume within 30 seconds
+  of the whitelist entry being saved (the daemon re-reads the DB every 30 s)
+
+To manage the whitelist manually, use the **USB WHITELIST** card below the device list:
+- **Add Device** — add a device by entering its identifiers manually
+- **Remove** (trash icon) — revoke a previously whitelisted entry
+
+All add/remove actions are written to the Audit Log (`/audit-log`).
+
+**Match criteria:** A connected device is considered whitelisted if its `product_id` **or**
+`serial` matches any whitelist entry (whichever fields are non-empty). Use serial when available
+for strongest identity binding; product ID alone matches any unit of the same model.
+
+---
+
+### 1.5.3 Install the USB Enforcement Daemon
+
+The HX Guardian USB Watcher is a root-level daemon that enforces the whitelist at the OS layer —
+not just in the UI. Install it **before airgapping** while you still have admin access.
+
+**Prerequisite — grant Terminal Full Disk Access:**
+
+macOS requires the terminal to have Full Disk Access before `sudo python3` can read files
+under `/Users/`. Without it the daemon fails with `[Errno 1] Operation not permitted`.
+
+1. **System Settings → Privacy & Security → Full Disk Access**
+2. Click `+` → add Terminal.app (or iTerm2)
+3. Toggle it on, then quit and reopen the terminal
+
+This is a one-time step. It is also required for the install script to work.
+
+**Install via launchd (recommended — survives reboots):**
+
+```bash
+sudo zsh standards/scripts/setup/install_usb_watcher.sh
+```
+
+**Run manually for testing (foreground, no reboot persistence):**
+
+```bash
+sudo touch /var/log/hxguardian_usb.log
+sudo chmod 644 /var/log/hxguardian_usb.log
+sudo sh -c 'python3 /path/to/app/backend/usb_watcher.py >> /var/log/hxguardian_usb.log 2>&1' &
+tail -f /var/log/hxguardian_usb.log
+```
+
+**What it does:**
+
+| Action | Detail |
+|--------|--------|
+| Polls USB bus | Every 5 seconds via `system_profiler SPUSBDataType` |
+| Checks whitelist | Reads `usb_whitelist` table directly from SQLite every 30 s |
+| Ejects storage | Runs `diskutil eject` on any unauthorized removable volume |
+| Re-ejects on replug | Tracks ejected BSD disk names — re-ejects if a card is removed and reinserted into the same reader |
+| Notifies operator | macOS system notification with sound (`Basso`) via `launchctl asuser` |
+| Logs to audit trail | Writes `USB_UNAUTHORIZED_DEVICE` record to HX Guardian `audit_log` |
+| Survives reboots | `KeepAlive` LaunchDaemon — restarts automatically after crash or reboot |
+
+**Start / stop (after launchd install):**
+
+```bash
+# Stop
+sudo launchctl unload /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
+
+# Start
+sudo launchctl load /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
+
+# Status
+launchctl list com.hxguardian.usbwatcher
+
+# Live log
+tail -f /var/log/hxguardian_usb.log
+```
+
+**Stop manual background run:**
+
+```bash
+sudo kill $(pgrep -f usb_watcher.py)
+```
+
+**Uninstall:**
+
+```bash
+sudo launchctl unload /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
+sudo rm /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
+```
+
+> **Note:** The daemon re-reads the whitelist every 30 seconds, so newly whitelisted devices
+> take effect without a restart.
+
+---
+
+### 1.5.4 Post-Airgap USB Policy
+
+Once airgapped:
+
+- Operators should connect **only whitelisted** USB devices
+- Any unrecognised device triggers an immediate macOS notification, storage ejection (if
+  applicable), and an entry in the HX Guardian Audit Log and Connections page
+- Unauthorized USB events appear in the **UNAUTHORIZED USB EVENTS** section on the
+  Connections page (`http://127.0.0.1:8000/connections`)
+- To add a new device after airgapping, an authorised operator must access HX Guardian locally,
+  add the device via the whitelist form, and confirm the watcher picks it up within 30 seconds;
+  this action is audit-logged
 
 ---
 
@@ -354,6 +634,15 @@ Do **not** run these fix scripts or deploy the Touch ID–disabling MDM keys.
 
 ## Phase 4 — Verification
 
+**Option A — HX-Guardian dashboard (recommended)**
+
+With the runner and backend running (Phase 1.1), open `http://127.0.0.1:8000` and click
+**Run Full Scan** on the Dashboard. HX-Guardian runs all 266 rules, shows a compliance
+score, and highlights failures by category. Individual rules can be re-scanned or fixed
+from the Rules page without re-running the full suite.
+
+**Option B — Command line**
+
 Run the master compliance script and review the report:
 
 ```bash
@@ -401,3 +690,13 @@ All scripts live under `standards/scripts/` and require `sudo zsh <script>`.
 
 Full rule index: `standards/scripts/manifest.json`  
 Standards comparison: `standards/security_standards_comparison.md`
+
+### USB Enforcement
+
+| Script / File | Purpose |
+|---------------|---------|
+| `standards/scripts/setup/install_usb_watcher.sh` | Install & start the USB enforcement daemon |
+| `app/backend/usb_watcher.py` | The daemon itself (do not run directly; use launchd) |
+| `standards/launchd/com.hxguardian.usbwatcher.plist` | LaunchDaemon template (path filled at install time) |
+| `/Library/LaunchDaemons/com.hxguardian.usbwatcher.plist` | Installed plist (post-install) |
+| `/var/log/hxguardian_usb.log` | Daemon runtime log |

@@ -71,31 +71,34 @@ def resolve_script(relative_path: Optional[str]) -> Optional[str]:
 # Request handler
 # ---------------------------------------------------------------------------
 
-def handle_request(req: dict) -> list[dict]:
+def handle_request(req: dict):
     """
-    Process a single request dict and return list of result dicts to send.
+    Process a single request dict and yield result dicts one at a time.
+    Streaming one result per yield lets the client read progress without waiting
+    for the entire batch to finish (avoids socket timeout on large scans).
     """
     action = req.get("action")
     req_id = req.get("req_id", "")
 
     if action == "ping":
-        return [{"req_id": req_id, "pong": True}]
+        yield {"req_id": req_id, "pong": True}
 
-    if action == "scan":
-        return [_exec_scan(req_id, req.get("rule", ""))]
+    elif action == "scan":
+        yield _exec_scan(req_id, req.get("rule", ""))
 
-    if action == "fix":
-        return [_exec_fix(req_id, req.get("rule", ""))]
+    elif action == "fix":
+        yield _exec_fix(req_id, req.get("rule", ""))
 
-    if action == "scan_batch":
+    elif action == "scan_batch":
         rules = req.get("rules") or list(_manifest.keys())
-        results = []
+        count = 0
         for rule_name in rules:
-            results.append(_exec_scan(req_id, rule_name))
-        results.append({"req_id": req_id, "done": True, "total": len(rules)})
-        return results
+            yield _exec_scan(req_id, rule_name)
+            count += 1
+        yield {"req_id": req_id, "done": True, "total": count}
 
-    return [{"req_id": req_id, "status": "ERROR", "message": f"Unknown action: {action}"}]
+    else:
+        yield {"req_id": req_id, "status": "ERROR", "message": f"Unknown action: {action}"}
 
 
 def _exec_scan(req_id: str, rule_name: str) -> dict:

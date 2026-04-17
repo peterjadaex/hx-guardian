@@ -1,73 +1,75 @@
-# React + TypeScript + Vite
+# HX-Guardian Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite single-page application.
+Served as static files by the FastAPI backend — no separate server needed for normal use.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Structure
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+├── pages/
+│   ├── Dashboard.tsx        # Compliance score, device strip, trend charts, Run Full Scan
+│   ├── Rules.tsx            # All 266 rules with filter/sort/scan; polls scan session until done
+│   ├── RuleDetail.tsx       # Per-rule scan now, apply fix, history, exemptions
+│   ├── History.tsx          # Past scan sessions, trend chart, CSV export
+│   ├── Device.tsx           # macOS device status (SIP, FileVault, Gatekeeper, etc.)
+│   ├── Connections.tsx      # USB devices, Bluetooth, network interfaces, TCP connections
+│   ├── MdmProfiles.tsx      # MDM profile install status
+│   ├── Exemptions.tsx       # Manage rule exemptions
+│   ├── Schedule.tsx         # Recurring scan schedule (cron-based)
+│   ├── Reports.tsx          # HTML / CSV compliance report download
+│   ├── AuditLog.tsx         # Append-only operator action log
+│   └── Logs.tsx             # System log viewer
+├── components/
+│   ├── Layout.tsx           # Shell, sidebar nav, PageHeader, Card, LoadingSpinner
+│   └── StatusBadge.tsx      # Coloured status pill (PASS / FAIL / MDM_REQUIRED / …)
+└── lib/
+    └── api.ts               # Typed axios client; all API calls go through here
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Development
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Requires Node.js 18+.
+
+```bash
+cd app/frontend
+npm install
+npm run dev      # Vite dev server with HMR on http://localhost:5173
 ```
+
+The backend must be running at `http://127.0.0.1:8000` for API calls to work.
+Configure the proxy in `vite.config.ts` if you use a different port.
+
+### Build for production
+
+```bash
+npm run build    # outputs to dist/; served by the FastAPI backend
+```
+
+Commit `dist/` so the backend can serve it without requiring Node.js on the target device.
+
+### Lint
+
+```bash
+npm run lint
+```
+
+---
+
+## Key Behaviours
+
+**Full scan polling** — `Rules.tsx` calls `POST /api/scans`, then polls
+`GET /api/scans/{session_id}` every 2 seconds until `is_running` is false, then reloads
+the rule list. The scan button shows "Scanning…" throughout.
+
+**Individual scan** — `RuleDetail.tsx` calls `POST /api/rules/{rule}/scan` (synchronous),
+shows the raw JSON result in a terminal-style output block, and reloads the rule detail.
+If the runner is not running, the server error message is shown directly in the output.
+
+**Authentication** — the session token is stored in `localStorage` under `hxg_token`.
+All requests include it as `Authorization: Bearer <token>`. A 401 response clears the
+token and redirects to `/login`.

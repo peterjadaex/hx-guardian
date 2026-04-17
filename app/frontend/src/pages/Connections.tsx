@@ -1,20 +1,140 @@
 import { useEffect, useState } from 'react'
-import { RefreshCw, Usb, Bluetooth, Wifi, AlertTriangle } from 'lucide-react'
+import { RefreshCw, Usb, Bluetooth, Wifi, AlertTriangle, Plus, Trash2, ShieldCheck, HardDrive } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
-import { getConnections } from '../lib/api'
+import { getConnections, getUsbWhitelist, addUsbWhitelist, removeUsbWhitelist, getUsbSecurityEvents } from '../lib/api'
+
+const INPUT_CLS = "w-full bg-[#0a0e1a] border border-[#1e2d4a] rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
+
+type WhitelistEntry = {
+  id: number
+  name: string
+  vendor: string | null
+  product_id: string | null
+  serial: string | null
+  volume_uuid: string | null
+  notes: string | null
+  added_by: string
+  added_at: string
+}
+
+type UsbDevice = {
+  name: string
+  vendor: string
+  product_id: string
+  serial: string
+  whitelisted: boolean
+}
+
+type UsbVolume = {
+  vol_name: string
+  bsd_name: string
+  mount_point: string
+  file_system: string
+  size: string
+  volume_uuid: string
+  parent_name: string
+  parent_vendor: string
+  parent_product_id: string
+  parent_serial: string
+  whitelisted: boolean
+}
+
+const emptyForm = { name: '', vendor: '', product_id: '', serial: '', volume_uuid: '', notes: '' }
 
 export function Connections() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [data, setData] = useState<any>(null)
+  const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([])
+  const [usbEvents, setUsbEvents] = useState<any[]>([])
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addForm, setAddForm] = useState(emptyForm)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
 
   useEffect(() => { load() }, [])
 
   const load = async () => {
     setLoading(true)
-    try { setData(await getConnections()) }
-    catch (e: any) { setError(e.message) }
-    finally { setLoading(false) }
+    setError('')
+    try {
+      const [conn, wl, evts] = await Promise.all([getConnections(), getUsbWhitelist(), getUsbSecurityEvents(20)])
+      setData(conn)
+      setWhitelist(wl)
+      setUsbEvents(evts?.entries ?? [])
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const refreshWhitelist = async () => {
+    const wl = await getUsbWhitelist()
+    setWhitelist(wl)
+  }
+
+  const prefillFormFromVolume = (vol: UsbVolume) => {
+    setAddForm({
+      name:        vol.parent_name || '',
+      vendor:      vol.parent_vendor || '',
+      product_id:  vol.parent_product_id || '',
+      serial:      vol.parent_serial || '',
+      volume_uuid: vol.volume_uuid || '',
+      notes:       '',
+    })
+    setShowAddForm(true)
+    setFormError('')
+  }
+
+  const prefillForm = (dev: UsbDevice) => {
+    setAddForm({
+      name: dev.name || '',
+      vendor: dev.vendor || '',
+      product_id: dev.product_id || '',
+      serial: dev.serial || '',
+      volume_uuid: '',
+      notes: '',
+    })
+    setShowAddForm(true)
+    setFormError('')
+  }
+
+  const handleAdd = async () => {
+    if (!addForm.name.trim()) { setFormError('Name is required'); return }
+    setSaving(true)
+    setFormError('')
+    try {
+      await addUsbWhitelist({
+        name: addForm.name.trim(),
+        vendor: addForm.vendor.trim() || undefined,
+        product_id: addForm.product_id.trim() || undefined,
+        serial: addForm.serial.trim() || undefined,
+        volume_uuid: addForm.volume_uuid.trim() || undefined,
+        notes: addForm.notes.trim() || undefined,
+      })
+      setAddForm(emptyForm)
+      setShowAddForm(false)
+      await refreshWhitelist()
+      // re-fetch connections so whitelisted flags update
+      const conn = await getConnections()
+      setData(conn)
+    } catch (e: any) {
+      setFormError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRemove = async (id: number) => {
+    try {
+      await removeUsbWhitelist(id)
+      await refreshWhitelist()
+      const conn = await getConnections()
+      setData(conn)
+    } catch (e: any) {
+      setError(e.message)
+    }
   }
 
   if (loading) return <Layout><LoadingSpinner /></Layout>
@@ -49,13 +169,28 @@ export function Connections() {
           </div>
           {data?.usb_devices?.length > 0 ? (
             <div className="space-y-2">
-              {data.usb_devices.map((d: any, i: number) => (
+              {data.usb_devices.map((d: UsbDevice, i: number) => (
                 <div key={i} className="flex items-center justify-between py-2 border-b border-[#1e2d4a]/50 last:border-0">
                   <div>
                     <div className="text-white text-sm">{d.name}</div>
                     {d.vendor && <div className="text-slate-500 text-xs">{d.vendor}</div>}
                   </div>
-                  <div className="text-slate-500 text-xs font-mono">{d.product_id || d.serial || '—'}</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-slate-500 text-xs font-mono">{d.product_id || d.serial || '—'}</div>
+                    {d.whitelisted ? (
+                      <span className="text-xs px-1.5 py-0.5 bg-green-900/30 text-green-400 rounded">Whitelisted</span>
+                    ) : (
+                      <>
+                        <span className="text-xs px-1.5 py-0.5 bg-red-900/30 text-red-400 rounded">Unauthorized</span>
+                        <button
+                          onClick={() => prefillForm(d)}
+                          className="text-xs px-2 py-0.5 bg-blue-600/20 border border-blue-700/50 text-blue-400 rounded hover:bg-blue-600/30 transition-colors"
+                        >
+                          Add to Whitelist
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -63,6 +198,211 @@ export function Connections() {
             <div className="text-slate-600 text-sm">No USB devices detected</div>
           )}
         </Card>
+
+        {/* USB Volumes */}
+        <Card className="p-5">
+          <div className="flex items-center gap-2 text-slate-400 text-xs font-medium mb-3">
+            <HardDrive className="w-4 h-4" /> USB VOLUMES ({data?.usb_volumes?.length || 0})
+          </div>
+          {data?.usb_volumes?.length > 0 ? (
+            <div className="space-y-2">
+              {data.usb_volumes.map((v: UsbVolume, i: number) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-[#1e2d4a]/50 last:border-0">
+                  <div>
+                    <div className="text-white text-sm">{v.vol_name || v.bsd_name}</div>
+                    <div className="text-slate-500 text-xs">
+                      {v.mount_point}
+                      {v.file_system && <span className="ml-2 text-slate-600">{v.file_system}</span>}
+                      {v.size && <span className="ml-2 text-slate-600">{v.size}</span>}
+                    </div>
+                    <div className="text-slate-600 text-xs mt-0.5">via {v.parent_name}</div>
+                    {v.volume_uuid && <div className="text-slate-700 text-xs font-mono mt-0.5">{v.volume_uuid}</div>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-slate-500 text-xs font-mono">{v.bsd_name}</div>
+                    {v.whitelisted ? (
+                      <span className="text-xs px-1.5 py-0.5 bg-green-900/30 text-green-400 rounded">Whitelisted</span>
+                    ) : (
+                      <>
+                        <span className="text-xs px-1.5 py-0.5 bg-red-900/30 text-red-400 rounded">Unauthorized</span>
+                        <button
+                          onClick={() => prefillFormFromVolume(v)}
+                          className="text-xs px-2 py-0.5 bg-blue-600/20 border border-blue-700/50 text-blue-400 rounded hover:bg-blue-600/30 transition-colors"
+                        >
+                          Add to Whitelist
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-slate-600 text-sm">No USB storage volumes mounted</div>
+          )}
+        </Card>
+
+        {/* USB Whitelist Management */}
+        <Card className="p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+              <ShieldCheck className="w-4 h-4" /> USB WHITELIST ({whitelist.length})
+            </div>
+            <button
+              onClick={() => { setShowAddForm(v => !v); setAddForm(emptyForm); setFormError('') }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 border border-blue-700/50 text-blue-400 text-xs rounded-lg hover:bg-blue-600/30 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Device
+            </button>
+          </div>
+
+          {showAddForm && (
+            <div className="mb-4 p-4 bg-[#0a0e1a] border border-[#1e2d4a] rounded-lg space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Name *</label>
+                  <input
+                    className={INPUT_CLS}
+                    placeholder="e.g. YubiKey 5C"
+                    value={addForm.name}
+                    onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Vendor</label>
+                  <input
+                    className={INPUT_CLS}
+                    placeholder="e.g. Yubico"
+                    value={addForm.vendor}
+                    onChange={e => setAddForm(f => ({ ...f, vendor: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Product ID</label>
+                  <input
+                    className={INPUT_CLS}
+                    placeholder="e.g. 0x0407"
+                    value={addForm.product_id}
+                    onChange={e => setAddForm(f => ({ ...f, product_id: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Serial Number</label>
+                  <input
+                    className={INPUT_CLS}
+                    placeholder="Device serial"
+                    value={addForm.serial}
+                    onChange={e => setAddForm(f => ({ ...f, serial: e.target.value }))}
+                  />
+                </div>
+                {addForm.volume_uuid && (
+                  <div className="col-span-2">
+                    <label className="block text-xs text-slate-500 mb-1">Volume UUID <span className="text-slate-600">(locks to this specific SD card)</span></label>
+                    <input
+                      className={INPUT_CLS + ' font-mono'}
+                      value={addForm.volume_uuid}
+                      onChange={e => setAddForm(f => ({ ...f, volume_uuid: e.target.value }))}
+                    />
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Notes</label>
+                <input
+                  className={INPUT_CLS}
+                  placeholder="Optional — operator name, purpose, etc."
+                  value={addForm.notes}
+                  onChange={e => setAddForm(f => ({ ...f, notes: e.target.value }))}
+                />
+              </div>
+              {formError && <div className="text-red-400 text-xs">{formError}</div>}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleAdd}
+                  disabled={saving}
+                  className="px-4 py-1.5 bg-blue-600/30 border border-blue-600/50 text-blue-300 text-sm rounded-lg hover:bg-blue-600/40 transition-colors disabled:opacity-50"
+                >
+                  {saving ? 'Saving…' : 'Add to Whitelist'}
+                </button>
+                <button
+                  onClick={() => { setShowAddForm(false); setAddForm(emptyForm); setFormError('') }}
+                  className="px-4 py-1.5 bg-slate-700/30 border border-slate-600/30 text-slate-400 text-sm rounded-lg hover:bg-slate-700/50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {whitelist.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#1e2d4a]/50">
+                    <th className="text-left text-slate-500 font-medium pb-2 text-xs">Name</th>
+                    <th className="text-left text-slate-500 font-medium pb-2 text-xs">Vendor</th>
+                    <th className="text-left text-slate-500 font-medium pb-2 text-xs">Product ID</th>
+                    <th className="text-left text-slate-500 font-medium pb-2 text-xs">Serial</th>
+                    <th className="text-left text-slate-500 font-medium pb-2 text-xs">Volume UUID</th>
+                    <th className="text-left text-slate-500 font-medium pb-2 text-xs">Notes</th>
+                    <th className="pb-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {whitelist.map(e => (
+                    <tr key={e.id} className="border-b border-[#1e2d4a]/30 last:border-0 hover:bg-white/[0.02]">
+                      <td className="py-2 text-white">{e.name}</td>
+                      <td className="py-2 text-slate-400 text-xs">{e.vendor || '—'}</td>
+                      <td className="py-2 font-mono text-slate-400 text-xs">{e.product_id || '—'}</td>
+                      <td className="py-2 font-mono text-slate-400 text-xs">{e.serial || '—'}</td>
+                      <td className="py-2 font-mono text-slate-600 text-xs">{e.volume_uuid || '—'}</td>
+                      <td className="py-2 text-slate-500 text-xs">{e.notes || '—'}</td>
+                      <td className="py-2 text-right">
+                        <button
+                          onClick={() => handleRemove(e.id)}
+                          className="p-1 text-slate-600 hover:text-red-400 transition-colors"
+                          title="Remove from whitelist"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-slate-600 text-sm">No devices whitelisted yet</div>
+          )}
+        </Card>
+
+        {/* USB Security Events */}
+        {usbEvents.length > 0 && (
+          <Card className="p-5 border border-red-900/40">
+            <div className="flex items-center gap-2 text-red-400 text-xs font-medium mb-3">
+              <AlertTriangle className="w-4 h-4" /> UNAUTHORIZED USB EVENTS ({usbEvents.length})
+            </div>
+            <div className="space-y-2">
+              {usbEvents.map((e: any, i: number) => (
+                <div key={i} className="flex items-start justify-between py-2 border-b border-[#1e2d4a]/50 last:border-0">
+                  <div>
+                    <div className="text-red-300 text-sm font-medium">{e.target}</div>
+                    <div className="text-slate-500 text-xs mt-0.5">
+                      {e.detail?.vendor && <span>{e.detail.vendor} · </span>}
+                      {e.detail?.product_id && <span className="font-mono">{e.detail.product_id}</span>}
+                      {e.detail?.ejected_volumes?.length > 0 && (
+                        <span className="ml-2 text-orange-400">Storage ejected</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-slate-600 text-xs font-mono whitespace-nowrap ml-4">
+                    {e.ts ? new Date(e.ts).toLocaleString() : '—'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Bluetooth */}
         <Card className="p-5">

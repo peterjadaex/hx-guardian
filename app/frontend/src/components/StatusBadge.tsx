@@ -11,6 +11,10 @@ const STATUS_CONFIG: Record<string, { label: string; classes: string }> = {
   GREEN:          { label: '● Ready',      classes: 'bg-green-900/40 text-green-400 border border-green-700/50' },
   YELLOW:         { label: '● Caution',    classes: 'bg-yellow-900/40 text-yellow-400 border border-yellow-700/50' },
   RED:            { label: '● Not Ready',  classes: 'bg-red-900/40 text-red-400 border border-red-700/50' },
+  // Severity levels (lowercase keys — no collision with uppercase status strings)
+  high:           { label: 'HIGH',         classes: 'bg-red-900/40 text-red-400 border border-red-700/50' },
+  medium:         { label: 'MEDIUM',       classes: 'bg-yellow-900/40 text-yellow-400 border border-yellow-700/50' },
+  low:            { label: 'LOW',          classes: 'bg-blue-900/40 text-blue-400 border border-blue-700/50' },
 }
 
 interface Props {

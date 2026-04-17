@@ -101,6 +101,19 @@ export const getDeviceStatus = () =>
 export const getConnections = () =>
   api.get('/device/connections').then(r => r.data)
 
+export const getUsbWhitelist = () =>
+  api.get('/device/usb-whitelist').then(r => r.data)
+
+export const addUsbWhitelist = (data: {
+  name: string; vendor?: string; product_id?: string; serial?: string; volume_uuid?: string; notes?: string
+}) => api.post('/device/usb-whitelist', data).then(r => r.data)
+
+export const removeUsbWhitelist = (id: number) =>
+  api.delete(`/device/usb-whitelist/${id}`).then(r => r.data)
+
+export const getUsbSecurityEvents = (limit = 20) =>
+  api.get('/audit-log', { params: { action: 'USB_UNAUTHORIZED_DEVICE', limit } }).then(r => r.data)
+
 export const getPreflight = () =>
   api.get('/preflight').then(r => r.data)
 

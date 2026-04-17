@@ -55,7 +55,7 @@
 	<key>allowFindMyFriends</key>
 	<false/>
 	<key>allowFingerprintForUnlock</key>
-	<false/>
+	<true/>
 	<key>allowGameCenter</key>
 	<false/>
 	<key>allowGenmoji</key>
