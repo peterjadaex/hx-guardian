@@ -39,6 +39,46 @@ Download everything the device will need offline:
 - Xcode Command Line Tools: `xcode-select --install`
 - Any package manager caches (Homebrew, pip wheels, etc.)
 
+#### 0.2.1 Prepare the HX-Guardian SD Card Bundle
+
+Run this **on the internet-connected Mac** to download all runtime dependencies into the repo so
+everything can be transferred via SD card and installed fully offline:
+
+```bash
+cd hx-guardian
+zsh app/prepare_sd_card.sh
+```
+
+What it downloads:
+- All Python wheels for `app/backend/requirements.txt` → `app/backend/vendor/python/`
+- Python 3.13 universal installer `.pkg` → `app/backend/vendor/installers/`
+
+Pass `--with-node` if you need to rebuild the frontend on the airgap device (not normally
+required — the pre-built `frontend/dist/` is committed to the repo):
+
+```bash
+zsh app/prepare_sd_card.sh --with-node
+```
+
+The script prints a checklist at the end confirming all artifacts are present.
+
+**Copy to SD card:**
+
+```bash
+cp -R hx-guardian /Volumes/<SD_CARD_NAME>/hx-guardian
+```
+
+**On the airgap device** (copy from SD card, then install):
+
+```bash
+cp -R /Volumes/<SD_CARD_NAME>/hx-guardian ~/Documents/airgap/hx-guardian
+cd ~/Documents/airgap/hx-guardian
+sudo zsh app/install.sh
+```
+
+`install.sh` automatically detects `vendor/python/` and installs all Python packages offline.
+If Python 3 is not yet installed, it also runs the bundled `.pkg` installer silently.
+
 ### 0.3 Sign Out of Apple ID
 
 ```
@@ -96,18 +136,32 @@ It must be running **before** Phase 1.5 (USB whitelisting) and **before** Phase 
 
 ### Prerequisites
 
-- Python 3.11 or later (`python3 --version`)
-- pip (`python3 -m pip --version`)
-- The frontend is already built in `app/frontend/dist/` — no Node.js required unless you need to rebuild it
+- Python 3.9 or later (`python3 --version`) — installed by `install.sh` from the bundled `.pkg` if absent
+- The frontend is already built in `app/frontend/dist/` — no Node.js required at runtime
 
-### 1.1.1 Install Python Dependencies
+### 1.1.1 Install HX-Guardian (Recommended — Production)
+
+If you prepared the SD card bundle in §0.2.1 and ran `install.sh`, HX-Guardian is already
+installed as persistent launchd services and you can skip to §1.1.2.
+
+If you have not run the installer yet:
 
 ```bash
-# From the repository root
-pip install -r app/backend/requirements.txt
+cd ~/Documents/airgap/hx-guardian
+sudo zsh app/install.sh
 ```
 
-Run this once. After airgapping you can skip it (dependencies are already installed).
+The installer handles everything offline (Python runtime check, wheel install, DB init, and
+launchd service registration) in a single pass. Jump to §1.1.4 to log in.
+
+### 1.1.1b Install Python Dependencies (Manual / Dev)
+
+Only needed if running in development mode rather than via `install.sh`:
+
+```bash
+# From the repository root — uses vendor/python/ if present, else requires internet
+pip3 install -r app/backend/requirements.txt
+```
 
 ### 1.1.2 Start the Privileged Runner Daemon
 

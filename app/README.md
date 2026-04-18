@@ -14,9 +14,9 @@ Before installing, verify the following on the target Mac:
 | Python | 3.9 or later (system Python is fine) | `python3 --version` |
 | Xcode Command Line Tools | Any | `xcode-select -p` |
 | Admin account | Required | Must be in the `admin` group |
-| Internet access | Required **only during setup** | For pip install |
+| Internet access | Required **only during bundle prep** | See [Offline Installation](#offline-installation-airgap) |
 
-> **Airgap note:** Internet is only needed once during setup to install Python dependencies. See [Offline Installation](#offline-installation-airgap) to pre-bundle dependencies before the device is isolated.
+> **Airgap note:** Internet is only needed once, on a separate connected Mac, to run `prepare_sd_card.sh`. The target device never needs network access. See [Offline Installation](#offline-installation-airgap).
 
 ---
 
@@ -68,7 +68,8 @@ sudo zsh app/install.sh
 ```
 
 The installer performs these steps automatically:
-1. Installs Python dependencies (fastapi, uvicorn, sqlalchemy, apscheduler, etc.)
+0. Checks for Python 3 — if absent, installs from `vendor/installers/python-*.pkg` (offline)
+1. Installs Python dependencies — from `vendor/python/` wheels if present (offline), else PyPI
 2. Creates `app/data/` directory with correct permissions
 3. Creates the Unix socket directory at `/var/run/hxg/`
 4. Initialises the SQLite database at `app/data/hxguardian.db`
@@ -97,31 +98,51 @@ Paste the session token from Step 3 and click **Access Dashboard**.
 
 ## Offline Installation (Airgap)
 
-For devices that have no internet access, pre-bundle the Python dependencies on an internet-connected Mac **before** the device is isolated.
+For devices with no internet access, use `prepare_sd_card.sh` to download all runtime
+dependencies on a connected Mac, transfer via SD card, then install fully offline.
 
-### On an internet-connected Mac (same macOS version and architecture):
+### Step 1 — On an internet-connected Mac: build the bundle
 
 ```bash
-cd hx-guardian/app/backend
+cd hx-guardian
 
-# Download all wheels into vendor/python/
-pip3 download -r requirements.txt -d vendor/python/
+# Downloads Python wheels + Python installer .pkg into vendor/
+zsh app/prepare_sd_card.sh
 
-# Build the frontend (requires Node.js and npm)
-cd ../frontend
-npm install
-npm run build
-# The dist/ folder is now ready — it is committed to the repo
+# Optional: also download Node.js installers (only needed to rebuild the frontend)
+zsh app/prepare_sd_card.sh --with-node
 ```
 
-Then copy the entire `hx-guardian/` directory to the airgap device (USB drive, etc.).
+The script populates:
+- `app/backend/vendor/python/` — all Python wheels for offline `pip install`
+- `app/backend/vendor/installers/python-*.pkg` — Python 3 universal installer (used if Python
+  is not yet present on the target device)
 
-### On the airgap device:
+It prints a checklist at the end confirming every artifact is present.
+
+> **Frontend:** `frontend/dist/` is pre-built and committed — Node.js is not required on the
+> airgap device unless you intend to rebuild the UI from source there.
+
+### Step 2 — Copy to SD card
 
 ```bash
+cp -R hx-guardian /Volumes/<SD_CARD_NAME>/hx-guardian
+```
+
+### Step 3 — On the airgap device: install from SD card
+
+```bash
+# Copy from SD card to the device
+cp -R /Volumes/<SD_CARD_NAME>/hx-guardian ~/Documents/airgap/hx-guardian
+cd ~/Documents/airgap/hx-guardian
+
+# Install (fully offline)
 sudo zsh app/install.sh
-# The installer detects vendor/python/ and installs offline automatically
 ```
+
+`install.sh` detects `vendor/python/` and installs wheels with `--no-index`. If Python 3 is
+absent, it silently runs the bundled `.pkg` before proceeding. No internet connection is needed
+at any point on the target device.
 
 ---
 

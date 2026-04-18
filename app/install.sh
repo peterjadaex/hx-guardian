@@ -23,9 +23,29 @@ fi
 ACTUAL_USER="${SUDO_USER:-admin}"
 echo "Installing for user: $ACTUAL_USER"
 
+# ── 0. Ensure Python runtime ──────────────────────────────────────────────────
+echo ""
+echo "[0/7] Checking Python runtime..."
+INSTALLER_DIR="$APP_DIR/backend/vendor/installers"
+if /usr/bin/python3 --version &>/dev/null 2>&1; then
+    echo "  ✓ Python found: $(/usr/bin/python3 --version 2>&1)"
+else
+    echo "  Python 3 not found — looking for bundled installer..."
+    PKG=$(ls "$INSTALLER_DIR"/python-*.pkg 2>/dev/null | sort -V | tail -1)
+    if [[ -n "$PKG" ]]; then
+        echo "  Installing Python runtime from $(basename "$PKG") ..."
+        installer -pkg "$PKG" -target /
+        echo "  ✓ Python installed"
+    else
+        echo "ERROR: Python 3 not found and no python-*.pkg in $INSTALLER_DIR"
+        echo "  Run: zsh app/prepare_sd_card.sh  (on an internet-connected Mac)"
+        exit 1
+    fi
+fi
+
 # ── 1. Python dependencies ────────────────────────────────────────────────────
 echo ""
-echo "[1/6] Installing Python dependencies..."
+echo "[1/7] Installing Python dependencies..."
 if [[ -d "$BACKEND_DIR/vendor/python" ]] && ls "$BACKEND_DIR/vendor/python"/*.whl &>/dev/null 2>&1; then
     echo "  Using vendored wheels (offline install)..."
     sudo -u "$ACTUAL_USER" /usr/bin/python3 -m pip install \
@@ -43,7 +63,7 @@ echo "  ✓ Python dependencies installed"
 
 # ── 2. Data directory ─────────────────────────────────────────────────────────
 echo ""
-echo "[2/6] Setting up data directory..."
+echo "[2/7] Setting up data directory..."
 mkdir -p "$DATA_DIR/reports"
 chown -R "$ACTUAL_USER":staff "$DATA_DIR"
 chmod -R 750 "$DATA_DIR"
@@ -51,7 +71,7 @@ echo "  ✓ Data directory: $DATA_DIR"
 
 # ── 3. Unix socket directory ──────────────────────────────────────────────────
 echo ""
-echo "[3/6] Creating Unix socket directory..."
+echo "[3/7] Creating Unix socket directory..."
 mkdir -p /var/run/hxg
 chown root:admin /var/run/hxg 2>/dev/null || chown root:staff /var/run/hxg
 chmod 770 /var/run/hxg
@@ -59,7 +79,7 @@ echo "  ✓ Socket directory: /var/run/hxg"
 
 # ── 4. Initialize database ────────────────────────────────────────────────────
 echo ""
-echo "[4/6] Initializing database..."
+echo "[4/7] Initializing database..."
 PYTHONPATH="$BACKEND_DIR" sudo -u "$ACTUAL_USER" \
     /usr/bin/python3 -c "
 import sys; sys.path.insert(0, '$BACKEND_DIR')
@@ -70,7 +90,7 @@ print('  Database initialized at: $DATA_DIR/hxguardian.db')
 
 # ── 5. LaunchDaemon (runner — root) ───────────────────────────────────────────
 echo ""
-echo "[5/6] Installing LaunchDaemon (privileged runner)..."
+echo "[5/7] Installing LaunchDaemon (privileged runner)..."
 RUNNER_PLIST="/Library/LaunchDaemons/com.hxguardian.runner.plist"
 cp "$APP_DIR/launchd/com.hxguardian.runner.plist" "$RUNNER_PLIST"
 chown root:wheel "$RUNNER_PLIST"
@@ -87,7 +107,7 @@ echo "  ✓ LaunchDaemon loaded: com.hxguardian.runner"
 
 # ── 6. LaunchAgent (server — user) ───────────────────────────────────────────
 echo ""
-echo "[6/6] Installing LaunchAgent (web server)..."
+echo "[6/7] Installing LaunchAgent (web server)..."
 AGENT_PLIST="/Library/LaunchAgents/com.hxguardian.server.plist"
 cp "$APP_DIR/launchd/com.hxguardian.server.plist" "$AGENT_PLIST"
 chown root:wheel "$AGENT_PLIST"
