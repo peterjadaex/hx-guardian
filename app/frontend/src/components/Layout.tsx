@@ -1,11 +1,10 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
   Shield, LayoutDashboard, ListChecks, History, Monitor,
-  FileText, Usb, Settings, LogOut, Cpu, Calendar,
-  ClipboardList, BookOpen
+  FileText, Usb, Settings, Cpu, Calendar,
+  ClipboardList, BookOpen, SlidersHorizontal
 } from 'lucide-react'
-import { clearToken } from '../lib/api'
 
 const NAV_ITEMS = [
   { path: '/',            label: 'Dashboard',     icon: LayoutDashboard },
@@ -19,16 +18,10 @@ const NAV_ITEMS = [
   { path: '/schedule',    label: 'Schedule',      icon: Calendar },
   { path: '/reports',     label: 'Reports',       icon: ClipboardList },
   { path: '/audit-log',   label: 'Audit Log',     icon: BookOpen },
+  { path: '/settings',    label: 'Settings',      icon: SlidersHorizontal },
 ]
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate()
-
-  const handleLogout = () => {
-    clearToken()
-    navigate('/login')
-  }
-
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0e1a]">
       {/* Sidebar */}
@@ -64,16 +57,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* Footer */}
-        <div className="px-3 py-4 border-t border-[#1e2d4a] space-y-0.5">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-400 hover:text-red-400 hover:bg-red-900/10 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </button>
-        </div>
       </aside>
 
       {/* Main content */}

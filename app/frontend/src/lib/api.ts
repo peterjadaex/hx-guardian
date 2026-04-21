@@ -1,42 +1,9 @@
 import axios from 'axios'
 
-const TOKEN_KEY = 'hxg_token'
-
-export function getToken(): string {
-  return localStorage.getItem(TOKEN_KEY) || ''
-}
-
-export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token)
-}
-
-export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY)
-}
-
 const api = axios.create({
   baseURL: '/api',
   timeout: 30000,
 })
-
-api.interceptors.request.use((config) => {
-  const token = getToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      clearToken()
-      window.location.href = '/login'
-    }
-    return Promise.reject(err)
-  }
-)
 
 export default api
 
@@ -54,8 +21,10 @@ export const getRuleDetail = (rule: string) =>
 export const scanRule = (rule: string) =>
   api.post(`/rules/${rule}/scan`).then(r => r.data)
 
-export const fixRule = (rule: string) =>
-  api.post(`/rules/${rule}/fix`).then(r => r.data)
+export const fixRule = (rule: string, twoFaToken?: string) =>
+  api.post(`/rules/${rule}/fix`, null, {
+    headers: twoFaToken ? { 'X-2FA-Token': twoFaToken } : undefined,
+  }).then(r => r.data)
 
 export const getFixHistory = (rule: string) =>
   api.get(`/rules/${rule}/fix-history`).then(r => r.data)
@@ -87,11 +56,15 @@ export const getCategoryBreakdown = (sessionId?: number) =>
 export const getExemptions = () =>
   api.get('/exemptions').then(r => r.data)
 
-export const grantExemption = (data: { rule: string; reason: string; expires_at?: string }) =>
-  api.post('/exemptions', data).then(r => r.data)
+export const grantExemption = (data: { rule: string; reason: string; expires_at?: string }, twoFaToken?: string) =>
+  api.post('/exemptions', data, {
+    headers: twoFaToken ? { 'X-2FA-Token': twoFaToken } : undefined,
+  }).then(r => r.data)
 
-export const revokeExemption = (rule: string) =>
-  api.delete(`/exemptions/${rule}`).then(r => r.data)
+export const revokeExemption = (rule: string, twoFaToken?: string) =>
+  api.delete(`/exemptions/${rule}`, {
+    headers: twoFaToken ? { 'X-2FA-Token': twoFaToken } : undefined,
+  }).then(r => r.data)
 
 // ─── Device ───────────────────────────────────────────────────────────────────
 
@@ -104,15 +77,20 @@ export const getConnections = () =>
 export const getUsbWhitelist = () =>
   api.get('/device/usb-whitelist').then(r => r.data)
 
-export const addUsbWhitelist = (data: {
-  name: string; vendor?: string; product_id?: string; serial?: string; volume_uuid?: string; notes?: string
-}) => api.post('/device/usb-whitelist', data).then(r => r.data)
+export const addUsbWhitelist = (
+  data: { name: string; vendor?: string; product_id?: string; serial?: string; volume_uuid?: string; notes?: string },
+  twoFaToken?: string,
+) => api.post('/device/usb-whitelist', data, {
+  headers: twoFaToken ? { 'X-2FA-Token': twoFaToken } : undefined,
+}).then(r => r.data)
 
-export const removeUsbWhitelist = (id: number) =>
-  api.delete(`/device/usb-whitelist/${id}`).then(r => r.data)
+export const removeUsbWhitelist = (id: number, twoFaToken?: string) =>
+  api.delete(`/device/usb-whitelist/${id}`, {
+    headers: twoFaToken ? { 'X-2FA-Token': twoFaToken } : undefined,
+  }).then(r => r.data)
 
-export const getUsbSecurityEvents = (limit = 20) =>
-  api.get('/audit-log', { params: { action: 'USB_UNAUTHORIZED_DEVICE', limit } }).then(r => r.data)
+export const getUsbSecurityEvents = (page = 0, limit = 10) =>
+  api.get('/audit-log', { params: { action: 'USB_UNAUTHORIZED_DEVICE', limit, offset: page * limit } }).then(r => r.data)
 
 export const getPreflight = () =>
   api.get('/preflight').then(r => r.data)
@@ -124,6 +102,12 @@ export const getMdmProfiles = () =>
 
 export const refreshMdmProfiles = () =>
   api.get('/device/profiles/refresh').then(r => r.data)
+
+export const installMdmProfile = (profileId: string) =>
+  api.post(`/device/profiles/${encodeURIComponent(profileId)}/install`).then(r => r.data)
+
+export const installAllMdmProfiles = (standard?: string) =>
+  api.post('/device/profiles/install-all', standard ? { standard } : {}).then(r => r.data)
 
 // ─── Logs ─────────────────────────────────────────────────────────────────────
 
@@ -167,7 +151,22 @@ export const exportAuditCsv = () => '/api/audit-log/export/csv'
 export const getHealth = () =>
   api.get('/health').then(r => r.data)
 
-export const verifyToken = (token: string) =>
-  axios.get('/api/token/verify', {
-    headers: { Authorization: `Bearer ${token}` }
-  }).then(r => r.data)
+// ─── Settings / 2FA ───────────────────────────────────────────────────────────
+
+export const get2faStatus = () =>
+  api.get('/settings/2fa/status').then(r => r.data)
+
+export const init2faSetup = (otp?: string) =>
+  api.post('/settings/2fa/setup/init', { otp }).then(r => r.data)
+
+export const confirm2faSetup = (otp: string) =>
+  api.post('/settings/2fa/setup/confirm', { otp }).then(r => r.data)
+
+export const view2faQr = (otp: string) =>
+  api.post('/settings/2fa/view-qr', { otp }).then(r => r.data)
+
+export const verify2fa = (otp: string) =>
+  api.post('/settings/2fa/verify', { otp }).then(r => r.data)
+
+export const disable2fa = (otp: string) =>
+  api.post('/settings/2fa/disable', { otp }).then(r => r.data)

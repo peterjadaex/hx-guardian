@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
-import { RefreshCw, Usb, Bluetooth, Wifi, AlertTriangle, Plus, Trash2, ShieldCheck, HardDrive } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { RefreshCw, Usb, Bluetooth, Wifi, AlertTriangle, Plus, Trash2, ShieldCheck, HardDrive, Lock } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
-import { getConnections, getUsbWhitelist, addUsbWhitelist, removeUsbWhitelist, getUsbSecurityEvents } from '../lib/api'
+import {
+  getConnections, getUsbWhitelist, addUsbWhitelist, removeUsbWhitelist,
+  getUsbSecurityEvents, get2faStatus, verify2fa,
+} from '../lib/api'
 
 const INPUT_CLS = "w-full bg-[#0a0e1a] border border-[#1e2d4a] rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
 
@@ -41,27 +44,126 @@ type UsbVolume = {
 
 const emptyForm = { name: '', vendor: '', product_id: '', serial: '', volume_uuid: '', notes: '' }
 
+// ─── Inline OTP prompt ───────────────────────────────────────────────────────
+
+function OtpPrompt({
+  onVerified,
+  onCancel,
+}: {
+  onVerified: (token: string) => void
+  onCancel: () => void
+}) {
+  const [otp, setOtp] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 6)
+    setOtp(v)
+    if (v.length === 6) setTimeout(() => submit(v), 50)
+  }
+
+  const submit = async (code: string) => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await verify2fa(code)
+      if (res.valid && res.session_token) {
+        onVerified(res.session_token)
+      } else {
+        setError('Invalid code — try again')
+        setOtp('')
+        inputRef.current?.focus()
+      }
+    } catch {
+      setError('Verification failed')
+      setOtp('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="mb-4 p-4 bg-blue-950/30 border border-blue-700/40 rounded-lg flex items-start gap-3">
+      <Lock className="w-4 h-4 text-blue-400 flex-shrink-0 mt-2.5" />
+      <div className="flex-1 space-y-3">
+        <div>
+          <p className="text-blue-300 text-sm font-medium">2FA verification required</p>
+          <p className="text-slate-400 text-xs mt-0.5">Enter the 6-digit code from your authenticator app to modify the whitelist</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            value={otp}
+            onChange={handleChange}
+            disabled={loading}
+            placeholder="000000"
+            className="w-28 bg-[#0a0e1a] border border-[#1e2d4a] rounded-lg px-3 py-2 text-white text-center text-lg font-mono tracking-widest focus:outline-none focus:border-blue-500 disabled:opacity-50"
+          />
+          <button
+            onClick={() => submit(otp)}
+            disabled={otp.length !== 6 || loading}
+            className="px-3 py-2 bg-blue-600/30 border border-blue-500/40 text-blue-300 text-sm rounded-lg hover:bg-blue-600/40 transition-colors disabled:opacity-40"
+          >
+            {loading ? 'Verifying…' : 'Verify'}
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-3 py-2 text-slate-500 hover:text-slate-300 text-sm transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export function Connections() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [data, setData] = useState<any>(null)
   const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([])
   const [usbEvents, setUsbEvents] = useState<any[]>([])
+  const [eventsPage, setEventsPage] = useState(0)
+  const [eventsTotal, setEventsTotal] = useState(0)
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
 
-  useEffect(() => { load() }, [])
+  // 2FA state
+  const [twoFaEnabled, setTwoFaEnabled] = useState(false)
+  const [twoFaToken, setTwoFaToken] = useState('')
+  const [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null)
+  const [showOtpPrompt, setShowOtpPrompt] = useState(false)
+
+  useEffect(() => {
+    load()
+    get2faStatus()
+      .then(d => setTwoFaEnabled(d.enabled))
+      .catch(() => {})
+  }, [])
 
   const load = async () => {
     setLoading(true)
     setError('')
     try {
-      const [conn, wl, evts] = await Promise.all([getConnections(), getUsbWhitelist(), getUsbSecurityEvents(20)])
+      const [conn, wl, evts] = await Promise.all([getConnections(), getUsbWhitelist(), getUsbSecurityEvents(0)])
       setData(conn)
       setWhitelist(wl)
       setUsbEvents(evts?.entries ?? [])
+      setEventsTotal(evts?.total ?? 0)
+      setEventsPage(0)
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -69,10 +171,59 @@ export function Connections() {
     }
   }
 
+  const loadEventsPage = async (page: number) => {
+    try {
+      const evts = await getUsbSecurityEvents(page)
+      setUsbEvents(evts?.entries ?? [])
+      setEventsTotal(evts?.total ?? 0)
+      setEventsPage(page)
+    } catch (e: any) {
+      setError(e.message)
+    }
+  }
+
   const refreshWhitelist = async () => {
     const wl = await getUsbWhitelist()
     setWhitelist(wl)
   }
+
+  // ── 2FA helper ─────────────────────────────────────────────────────────────
+  // Runs `action` immediately if no 2FA gate is needed, otherwise queues it
+  // behind an OTP prompt.  The prompt calls onVerified → stores token → runs.
+  const withTwoFa = (action: () => Promise<void>) => {
+    if (!twoFaEnabled || twoFaToken) {
+      action()
+      return
+    }
+    setPendingAction(() => action)
+    setShowOtpPrompt(true)
+    setFormError('')
+  }
+
+  const handleOtpVerified = async (token: string) => {
+    setTwoFaToken(token)
+    setShowOtpPrompt(false)
+    if (pendingAction) {
+      await pendingAction()
+      setPendingAction(null)
+    }
+  }
+
+  const handleOtpCancel = () => {
+    setShowOtpPrompt(false)
+    setPendingAction(null)
+    setSaving(false)
+  }
+
+  // When the server returns 403 (session expired), clear the stored token and
+  // re-prompt so the user can get a fresh one before retrying.
+  const handleAuthExpired = (retryFn: () => Promise<void>) => {
+    setTwoFaToken('')
+    setPendingAction(() => retryFn)
+    setShowOtpPrompt(true)
+  }
+
+  // ── Prefill helpers ────────────────────────────────────────────────────────
 
   const prefillFormFromVolume = (vol: UsbVolume) => {
     setAddForm({
@@ -85,6 +236,32 @@ export function Connections() {
     })
     setShowAddForm(true)
     setFormError('')
+  }
+
+  const prefillFormFromEvent = (e: any) => {
+    setAddForm({
+      name:        e.target || e.detail?.name || '',
+      vendor:      e.detail?.vendor || '',
+      product_id:  e.detail?.product_id || '',
+      serial:      e.detail?.serial || '',
+      volume_uuid: '',
+      notes:       '',
+    })
+    setShowAddForm(true)
+    setFormError('')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const isEventWhitelisted = (e: any) => {
+    const pid = e.detail?.product_id || ''
+    const serial = e.detail?.serial || ''
+    return whitelist.some(w => {
+      if (w.volume_uuid) return false
+      const checks = []
+      if (w.product_id) checks.push(pid === w.product_id)
+      if (w.serial) checks.push(serial === w.serial)
+      return checks.length > 0 && checks.every(Boolean)
+    })
   }
 
   const prefillForm = (dev: UsbDevice) => {
@@ -100,41 +277,57 @@ export function Connections() {
     setFormError('')
   }
 
-  const handleAdd = async () => {
+  // ── Write actions (wrapped with 2FA) ───────────────────────────────────────
+
+  const handleAdd = () => {
     if (!addForm.name.trim()) { setFormError('Name is required'); return }
-    setSaving(true)
-    setFormError('')
-    try {
-      await addUsbWhitelist({
-        name: addForm.name.trim(),
-        vendor: addForm.vendor.trim() || undefined,
-        product_id: addForm.product_id.trim() || undefined,
-        serial: addForm.serial.trim() || undefined,
-        volume_uuid: addForm.volume_uuid.trim() || undefined,
-        notes: addForm.notes.trim() || undefined,
-      })
-      setAddForm(emptyForm)
-      setShowAddForm(false)
-      await refreshWhitelist()
-      // re-fetch connections so whitelisted flags update
-      const conn = await getConnections()
-      setData(conn)
-    } catch (e: any) {
-      setFormError(e.message)
-    } finally {
-      setSaving(false)
+    const snapshot = { ...addForm }   // capture form at click time
+    const doAdd = async () => {
+      setSaving(true)
+      setFormError('')
+      try {
+        await addUsbWhitelist({
+          name:       snapshot.name.trim(),
+          vendor:     snapshot.vendor.trim() || undefined,
+          product_id: snapshot.product_id.trim() || undefined,
+          serial:     snapshot.serial.trim() || undefined,
+          volume_uuid: snapshot.volume_uuid.trim() || undefined,
+          notes:      snapshot.notes.trim() || undefined,
+        }, twoFaToken)
+        setAddForm(emptyForm)
+        setShowAddForm(false)
+        await refreshWhitelist()
+        const conn = await getConnections()
+        setData(conn)
+      } catch (e: any) {
+        if (e.response?.status === 403) {
+          handleAuthExpired(doAdd)
+        } else {
+          setFormError(e.response?.data?.detail || e.message)
+        }
+      } finally {
+        setSaving(false)
+      }
     }
+    withTwoFa(doAdd)
   }
 
-  const handleRemove = async (id: number) => {
-    try {
-      await removeUsbWhitelist(id)
-      await refreshWhitelist()
-      const conn = await getConnections()
-      setData(conn)
-    } catch (e: any) {
-      setError(e.message)
+  const handleRemove = (id: number) => {
+    const doRemove = async () => {
+      try {
+        await removeUsbWhitelist(id, twoFaToken)
+        await refreshWhitelist()
+        const conn = await getConnections()
+        setData(conn)
+      } catch (e: any) {
+        if (e.response?.status === 403) {
+          handleAuthExpired(doRemove)
+        } else {
+          setError(e.response?.data?.detail || e.message)
+        }
+      }
     }
+    withTwoFa(doRemove)
   }
 
   if (loading) return <Layout><LoadingSpinner /></Layout>
@@ -247,6 +440,11 @@ export function Connections() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
               <ShieldCheck className="w-4 h-4" /> USB WHITELIST ({whitelist.length})
+              {twoFaEnabled && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-900/30 border border-blue-700/40 text-blue-400 rounded text-xs">
+                  <Lock className="w-3 h-3" /> 2FA protected
+                </span>
+              )}
             </div>
             <button
               onClick={() => { setShowAddForm(v => !v); setAddForm(emptyForm); setFormError('') }}
@@ -256,7 +454,12 @@ export function Connections() {
             </button>
           </div>
 
-          {showAddForm && (
+          {/* 2FA OTP prompt — shown above the form when verification is needed */}
+          {showOtpPrompt && (
+            <OtpPrompt onVerified={handleOtpVerified} onCancel={handleOtpCancel} />
+          )}
+
+          {showAddForm && !showOtpPrompt && (
             <div className="mb-4 p-4 bg-[#0a0e1a] border border-[#1e2d4a] rounded-lg space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -377,10 +580,33 @@ export function Connections() {
         </Card>
 
         {/* USB Security Events */}
-        {usbEvents.length > 0 && (
+        {eventsTotal > 0 && (
           <Card className="p-5 border border-red-900/40">
-            <div className="flex items-center gap-2 text-red-400 text-xs font-medium mb-3">
-              <AlertTriangle className="w-4 h-4" /> UNAUTHORIZED USB EVENTS ({usbEvents.length})
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-red-400 text-xs font-medium">
+                <AlertTriangle className="w-4 h-4" /> UNAUTHORIZED USB EVENTS ({eventsTotal})
+              </div>
+              {eventsTotal > 10 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-600 text-xs">
+                    {eventsPage * 10 + 1}–{Math.min((eventsPage + 1) * 10, eventsTotal)} of {eventsTotal}
+                  </span>
+                  <button
+                    onClick={() => loadEventsPage(eventsPage - 1)}
+                    disabled={eventsPage === 0}
+                    className="px-2 py-0.5 text-xs text-slate-400 border border-[#1e2d4a] rounded hover:border-slate-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={() => loadEventsPage(eventsPage + 1)}
+                    disabled={(eventsPage + 1) * 10 >= eventsTotal}
+                    className="px-2 py-0.5 text-xs text-slate-400 border border-[#1e2d4a] rounded hover:border-slate-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               {usbEvents.map((e: any, i: number) => (
@@ -395,8 +621,20 @@ export function Connections() {
                       )}
                     </div>
                   </div>
-                  <div className="text-slate-600 text-xs font-mono whitespace-nowrap ml-4">
-                    {e.ts ? new Date(e.ts).toLocaleString() : '—'}
+                  <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                    <div className="text-slate-600 text-xs font-mono whitespace-nowrap">
+                      {e.ts ? new Date(e.ts).toLocaleString() : '—'}
+                    </div>
+                    {isEventWhitelisted(e) ? (
+                      <span className="text-xs px-1.5 py-0.5 bg-green-900/30 text-green-400 rounded">Whitelisted</span>
+                    ) : (
+                      <button
+                        onClick={() => prefillFormFromEvent(e)}
+                        className="text-xs px-2 py-0.5 bg-blue-600/20 border border-blue-700/50 text-blue-400 rounded hover:bg-blue-600/30 transition-colors whitespace-nowrap"
+                      >
+                        Add to Whitelist
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

@@ -116,7 +116,6 @@ sudo profiles install -path standards/800-53r5_high/mobileconfigs/unsigned/<prof
 | Siri | `com.apple.assistant.support.mobileconfig` | Disables Siri + assistant |
 | Setup assistant | `com.apple.SetupAssistant.managed.mobileconfig` | Suppresses setup prompts |
 | Diagnostics | `com.apple.SubmitDiagInfo.mobileconfig` | Disables crash reporting to Apple |
-| Smart card | `com.apple.security.smartcard.mobileconfig` | Optional: if using PIV/CAC cards |
 
 #### Touch ID Exception — Profile Edit Required
 
@@ -469,27 +468,153 @@ Exit codes: `0` = PASS / SUCCESS, `1` = FAIL, `2` = NOT_APPLICABLE, `3` = ERROR
 
 ### 3.1 FileVault (Full Disk Encryption)
 
-| Script | Purpose |
-|--------|---------|
-| `scan/system_settings_filevault_enforce.sh` | Verify FileVault is on |
-| `fix/system_settings_filevault_enforce.sh` | Enable FileVault |
-| `scan/os_filevault_autologin_disable.sh` | Verify auto-login is blocked |
-| `fix/os_filevault_autologin_disable.sh` | Disable auto-login |
+**How enforcement works:** The `com.apple.MCX.FileVault2.mobileconfig` profile deployed in Phase 1
+sets `ForceEnableInSetupAssistant = true`. On the **next login** after profile deployment, macOS
+automatically launches the FileVault activation flow.
 
-> After enabling FileVault, save the **local recovery key** — do **not** use iCloud recovery
-> (the device will be airgapped). Store the key offline, physically secured.
+> There are no automated fix scripts for FileVault — remediation is via MDM profile + the manual
+> steps below.
+
+#### 3.1.1 Record the Recovery Key (triggered by profile)
+
+When the activation flow appears after login:
+
+1. macOS generates a **Personal Recovery Key (PRK)** and displays it on screen — **write it down immediately**, this is the only time it is shown
+2. Store the key on paper, physically secured offline — do **not** use iCloud recovery (the device will be airgapped and iCloud will be unavailable)
+3. Click **Continue** to confirm the key was recorded; FileVault begins encrypting in the background
+
+#### 3.1.2 Manual Fallback (if the flow did not appear after login)
+
+```
+System Settings > Privacy & Security > FileVault > Turn On FileVault…
+```
+
+- Select **"Create a local recovery key"** — do **not** use iCloud
+- Record the key and click Continue
+- Encryption runs in the background; monitor progress under the same pane
+
+#### 3.1.3 Disable Auto-Login (CLI fallback)
+
+The `com.apple.loginwindow.mobileconfig` profile already sets `DisableFDEAutoLogin`. If that
+profile is not deployed, run:
+
+```bash
+sudo defaults write /Library/Preferences/com.apple.loginwindow DisableFDEAutoLogin -bool true
+```
+
+#### 3.1.4 Verify
+
+```bash
+# Confirm the MDM profile is installed
+profiles -P | grep -i filevault
+
+# Confirm encryption is active
+sudo fdesetup status
+# Expected: FileVault is On.
+```
+
+#### 3.1.5 Run Scan Scripts
+
+```bash
+sudo zsh standards/scripts/scan/system_settings_filevault_enforce.sh
+sudo zsh standards/scripts/scan/os_filevault_autologin_disable.sh
+```
+
+Both should return `PASS`.
+
+| Result | Remediation |
+|--------|------------|
+| `system_settings_filevault_enforce` FAIL | Re-deploy `com.apple.MCX.FileVault2.mobileconfig`, log out and back in |
+| `os_filevault_autologin_disable` FAIL | Run the `defaults write` command in §3.1.3 |
 
 ---
 
 ### 3.2 Firewall
 
-| Script | Purpose |
-|--------|---------|
-| `scan/system_settings_firewall_enable.sh` | Verify firewall is on |
-| `fix/system_settings_firewall_enable.sh` | Enable firewall |
-| `scan/system_settings_firewall_stealth_mode_enable.sh` | Verify stealth mode |
-| `fix/system_settings_firewall_stealth_mode_enable.sh` | Enable stealth mode |
-| `scan/os_firewall_default_deny_require.sh` | Verify default-deny posture |
+**How enforcement works:** The `com.apple.security.firewall.mobileconfig` profile deployed in Phase 1
+sets both `EnableFirewall = true` and `EnableStealthMode = true`. The `os_firewall_default_deny_require`
+check is pf-based and has **no MDM or script fix** — it requires a manual pf rule.
+
+> There are no automated fix scripts for firewall settings — remediation is via MDM profile +
+> the manual steps below.
+
+#### 3.2.1 Manual Fallback (if MDM profile is not deployed)
+
+**Via System Settings:**
+
+```
+System Settings > Network > Firewall > Turn On Firewall
+```
+
+Then click **Options…** and enable **Enable stealth mode**.
+
+**Via CLI:**
+
+```bash
+# Enable application firewall
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
+
+# Enable stealth mode (no response to ICMP/port probes)
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
+
+# Optional: block all incoming connections (most restrictive)
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall on
+```
+
+#### 3.2.2 Verify Application Firewall
+
+```bash
+# Confirm the MDM profile is installed
+profiles -P | grep -i firewall
+
+# Confirm firewall state
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
+# Expected: Firewall is enabled.
+
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getstealthmode
+# Expected: Stealth mode enabled.
+```
+
+#### 3.2.3 Default-Deny Rule (pf) — Manual Step
+
+The scan script `os_firewall_default_deny_require.sh` checks `pfctl -sr` for a `block drop in all`
+rule. This rule is **not** set by the MDM profile and has no fix script.
+
+> **Before adding this rule,** confirm that `/etc/pf.conf` already contains `pass on lo0` and
+> `pass out all`. Without those, the HX-Guardian dashboard on `127.0.0.1:8000` and local
+> services will stop working.
+
+```bash
+# Review existing rules first
+sudo pfctl -sr
+
+# Append the block rule — add it before your last 'pass' lines
+sudo cp /etc/pf.conf /etc/pf.conf.bak
+sudo sh -c 'echo "block drop in all" >> /etc/pf.conf'
+
+# Reload and enable pf
+sudo pfctl -f /etc/pf.conf
+sudo pfctl -e
+
+# Verify the rule is active
+sudo pfctl -sr | grep "block drop"
+```
+
+#### 3.2.4 Run Scan Scripts
+
+```bash
+sudo zsh standards/scripts/scan/system_settings_firewall_enable.sh
+sudo zsh standards/scripts/scan/system_settings_firewall_stealth_mode_enable.sh
+sudo zsh standards/scripts/scan/os_firewall_default_deny_require.sh
+```
+
+All three should return `PASS`.
+
+| Result | Remediation |
+|--------|------------|
+| `system_settings_firewall_enable` FAIL | Re-deploy `com.apple.security.firewall.mobileconfig` or run §3.2.1 CLI commands |
+| `system_settings_firewall_stealth_mode_enable` FAIL | Re-deploy profile or run `--setstealthmode on` from §3.2.1 |
+| `os_firewall_default_deny_require` FAIL | Apply the pf rule in §3.2.3 |
 
 ---
 

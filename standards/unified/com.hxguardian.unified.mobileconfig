@@ -1,0 +1,777 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ConsentText</key>
+	<dict>
+		<key>default</key>
+		<string>This profile enforces security hardening based on NIST 800-53r5 High, CIS Controls v8, and CIS Benchmark Level 2. Installing this profile will restrict certain system features. By proceeding you accept these restrictions.</string>
+	</dict>
+	<key>PayloadContent</key>
+	<array>
+
+		<!-- 1. APPLICATION ACCESS RESTRICTIONS -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.applicationaccess.e426548a-8e4b-4efb-8280-33e2f5b2e811</string>
+			<key>PayloadType</key>
+			<string>com.apple.applicationaccess</string>
+			<key>PayloadUUID</key>
+			<string>e426548a-8e4b-4efb-8280-33e2f5b2e811</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>allowAccountModification</key>
+			<false/>
+			<key>allowActivityContinuation</key>
+			<false/>
+			<key>allowAirDrop</key>
+			<false/>
+			<key>allowAirPlayIncomingRequests</key>
+			<false/>
+			<key>allowApplePersonalizedAdvertising</key>
+			<false/>
+			<key>allowAssistant</key>
+			<false/>
+			<key>allowAutoUnlock</key>
+			<false/>
+			<key>allowCloudAddressBook</key>
+			<false/>
+			<key>allowCloudBookmarks</key>
+			<false/>
+			<key>allowCloudCalendar</key>
+			<false/>
+			<key>allowCloudDesktopAndDocuments</key>
+			<false/>
+			<key>allowCloudDocumentSync</key>
+			<false/>
+			<key>allowCloudFreeform</key>
+			<false/>
+			<key>allowCloudKeychainSync</key>
+			<false/>
+			<key>allowCloudMail</key>
+			<false/>
+			<key>allowCloudNotes</key>
+			<false/>
+			<key>allowCloudPhotoLibrary</key>
+			<false/>
+			<key>allowCloudPrivateRelay</key>
+			<false/>
+			<key>allowCloudReminders</key>
+			<false/>
+			<key>allowContentCaching</key>
+			<false/>
+			<key>allowDiagnosticSubmission</key>
+			<false/>
+			<key>allowDictation</key>
+			<false/>
+			<key>allowExternalIntelligenceIntegrations</key>
+			<false/>
+			<key>allowExternalIntelligenceIntegrationsSignIn</key>
+			<false/>
+			<key>allowFindMyDevice</key>
+			<false/>
+			<key>allowFindMyFriends</key>
+			<false/>
+			<key>allowFingerprintForUnlock</key>
+			<false/>
+			<key>allowGameCenter</key>
+			<false/>
+			<key>allowGenmoji</key>
+			<false/>
+			<key>allowImagePlayground</key>
+			<false/>
+			<key>allowMailSmartReplies</key>
+			<false/>
+			<key>allowMailSummary</key>
+			<false/>
+			<key>allowMediaSharing</key>
+			<false/>
+			<key>allowMediaSharingModification</key>
+			<false/>
+			<key>allowNotesTranscription</key>
+			<false/>
+			<key>allowNotesTranscriptionSummary</key>
+			<false/>
+			<key>allowPasswordProximityRequests</key>
+			<false/>
+			<key>allowPasswordSharing</key>
+			<false/>
+			<key>allowSafariSummary</key>
+			<false/>
+			<key>allowUIConfigurationProfileInstallation</key>
+			<false/>
+			<key>allowUSBRestrictedMode</key>
+			<true/>
+			<key>allowWritingTools</key>
+			<false/>
+			<key>allowiPhoneMirroring</key>
+			<false/>
+			<key>forceOnDeviceOnlyDictation</key>
+			<true/>
+		</dict>
+
+		<!-- 2. PASSWORD POLICY -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.passwordpolicy.77799cde-09f6-4343-a68c-469307aabff7</string>
+			<key>PayloadType</key>
+			<string>com.apple.mobiledevice.passwordpolicy</string>
+			<key>PayloadUUID</key>
+			<string>77799cde-09f6-4343-a68c-469307aabff7</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>allowSimple</key>
+			<false/>
+			<key>requireAlphanumeric</key>
+			<true/>
+			<key>minLength</key>
+			<integer>15</integer>
+			<key>minComplexChars</key>
+			<integer>1</integer>
+			<key>maxFailedAttempts</key>
+			<integer>3</integer>
+			<key>minutesUntilFailedLoginReset</key>
+			<integer>15</integer>
+			<key>pinHistory</key>
+			<integer>5</integer>
+			<key>maxPINAgeInDays</key>
+			<integer>365</integer>
+			<key>customRegex</key>
+			<array>
+				<dict>
+					<key>passwordContentRegex</key>
+					<string>^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$</string>
+					<key>passwordContentDescription</key>
+					<string>Password must contain at least one uppercase letter, one lowercase letter, and one number.</string>
+				</dict>
+			</array>
+		</dict>
+
+		<!-- 3. FIREWALL -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.firewall.ab8d4c91-6015-4369-8da3-300fd71b5799</string>
+			<key>PayloadType</key>
+			<string>com.apple.security.firewall</string>
+			<key>PayloadUUID</key>
+			<string>ab8d4c91-6015-4369-8da3-300fd71b5799</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>EnableFirewall</key>
+			<true/>
+			<key>EnableStealthMode</key>
+			<true/>
+		</dict>
+
+		<!-- 4. SCREENSAVER -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.screensaver.488aa987-367b-4b65-8dd7-703342cb4ea8</string>
+			<key>PayloadType</key>
+			<string>com.apple.screensaver</string>
+			<key>PayloadUUID</key>
+			<string>488aa987-367b-4b65-8dd7-703342cb4ea8</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>askForPassword</key>
+			<true/>
+			<key>askForPasswordDelay</key>
+			<integer>5</integer>
+			<key>idleTime</key>
+			<integer>1200</integer>
+			<key>moduleName</key>
+			<string>Tahoe</string>
+		</dict>
+
+		<!-- 5. LOGIN WINDOW -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.loginwindow.37f4024d-1112-4bef-bc81-63d86bd47e79</string>
+			<key>PayloadType</key>
+			<string>com.apple.loginwindow</string>
+			<key>PayloadUUID</key>
+			<string>37f4024d-1112-4bef-bc81-63d86bd47e79</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>DisableFDEAutoLogin</key>
+			<true/>
+			<key>RetriesUntilHint</key>
+			<integer>0</integer>
+			<key>SHOWFULLNAME</key>
+			<true/>
+			<key>com.apple.login.mcx.DisableAutoLoginClient</key>
+			<true/>
+			<key>LoginwindowText</key>
+			<string>This system is for authorized use only. All activity is monitored and recorded. Unauthorized access is prohibited and subject to prosecution.</string>
+			<key>screenUnlockMode</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 6. MCX (Guest Account, FileVault, Internet Sharing, Time) -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mcx.e29e0b55-1eda-4013-bf23-cc0ca197c45f</string>
+			<key>PayloadType</key>
+			<string>com.apple.MCX</string>
+			<key>PayloadUUID</key>
+			<string>e29e0b55-1eda-4013-bf23-cc0ca197c45f</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>DisableGuestAccount</key>
+			<true/>
+			<key>EnableGuestAccount</key>
+			<false/>
+			<key>dontAllowFDEDisable</key>
+			<true/>
+			<key>forceInternetSharingOff</key>
+			<true/>
+			<key>timeServer</key>
+			<string>time.nist.gov</string>
+		</dict>
+
+		<!-- 7. FILEVAULT -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.filevault.916b1c77-ca3f-41c7-91c2-a3cec29f4576</string>
+			<key>PayloadType</key>
+			<string>com.apple.MCX.FileVault2</string>
+			<key>PayloadUUID</key>
+			<string>916b1c77-ca3f-41c7-91c2-a3cec29f4576</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>ForceEnableInSetupAssistant</key>
+			<true/>
+		</dict>
+
+		<!-- 8. MCX PREF: IR Controller disable -->
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.driver.AppleIRController</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>DeviceEnabled</key>
+								<false/>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mcxpref.ir.86ed7f31-8a83-40e2-815c-1cba2952647f</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>86ed7f31-8a83-40e2-815c-1cba2952647f</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 9. MCX PREF: Login window AdminHostInfo -->
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.loginwindow</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>AdminHostInfo</key>
+								<integer>-1</integer>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mcxpref.loginwindow.8aed1e06-ec1a-4831-9085-7ac6f211ee09</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>8aed1e06-ec1a-4831-9085-7ac6f211ee09</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 10. MCX PREF: Bluetooth disable -->
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.MCXBluetooth</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>DisableBluetooth</key>
+								<true/>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mcxpref.bluetooth.f28a5f71-e071-4514-a5ce-e6d51e68fa3a</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>f28a5f71-e071-4514-a5ce-e6d51e68fa3a</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 11. MCX PREF: Hot corner bottom-left -->
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.dock</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>wvous-bl-corner</key>
+								<integer>0</integer>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mcxpref.dock.bl.8aecf8f4-68c6-4a5b-a056-8fd984c6a8de</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>8aecf8f4-68c6-4a5b-a056-8fd984c6a8de</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 12. MCX PREF: Hot corner bottom-right -->
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.dock</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>wvous-br-corner</key>
+								<integer>0</integer>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mcxpref.dock.br.c333a948-e38e-435c-9403-596e7f8609c7</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>c333a948-e38e-435c-9403-596e7f8609c7</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 13. MCX PREF: Hot corner top-right -->
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.dock</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>wvous-tr-corner</key>
+								<integer>0</integer>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mcxpref.dock.tr.5319f3fb-40b8-485d-a5b6-be53e45eaf2e</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>5319f3fb-40b8-485d-a5b6-be53e45eaf2e</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 14. MCX PREF: Hot corner top-left -->
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.dock</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>wvous-tl-corner</key>
+								<integer>0</integer>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mcxpref.dock.tl.c00149c1-001c-453f-be25-3e7daf67d781</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>c00149c1-001c-453f-be25-3e7daf67d781</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 15. MCX PREF: Time automatic only -->
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.timed</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>TMAutomaticTimeOnlyEnabled</key>
+								<true/>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mcxpref.timed.92ef3e90-f4e4-4026-92d5-765074f99c6c</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>92ef3e90-f4e4-4026-92d5-765074f99c6c</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 16. SETUP ASSISTANT -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.setupassistant.cae5ae87-311b-4ed9-b363-518b67748a26</string>
+			<key>PayloadType</key>
+			<string>com.apple.SetupAssistant.managed</string>
+			<key>PayloadUUID</key>
+			<string>cae5ae87-311b-4ed9-b363-518b67748a26</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>SkipSetupItems</key>
+			<array>
+				<string>AppleID</string>
+				<string>iCloudStorage</string>
+				<string>Privacy</string>
+				<string>Siri</string>
+				<string>Intelligence</string>
+				<string>WatchMigration</string>
+			</array>
+		</dict>
+
+		<!-- 17. SOFTWARE UPDATE (critical/config only) -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.softwareupdate.4c8e8614-d2bf-421a-a9e7-5b493e9feccd</string>
+			<key>PayloadType</key>
+			<string>com.apple.SoftwareUpdate</string>
+			<key>PayloadUUID</key>
+			<string>4c8e8614-d2bf-421a-a9e7-5b493e9feccd</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>ConfigDataInstall</key>
+			<true/>
+			<key>CriticalUpdateInstall</key>
+			<true/>
+		</dict>
+
+		<!-- 18. DIAGNOSTICS -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.diagnostics.e6279276-e0cd-451f-9932-e6dc77cb2446</string>
+			<key>PayloadType</key>
+			<string>com.apple.SubmitDiagInfo</string>
+			<key>PayloadUUID</key>
+			<string>e6279276-e0cd-451f-9932-e6dc77cb2446</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>AutoSubmit</key>
+			<false/>
+		</dict>
+
+		<!-- 19. SIRI DATA SHARING -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.assistant.e794d15e-394f-42dd-9343-bef634e948ed</string>
+			<key>PayloadType</key>
+			<string>com.apple.assistant.support</string>
+			<key>PayloadUUID</key>
+			<string>e794d15e-394f-42dd-9343-bef634e948ed</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>Search Queries Data Sharing Status</key>
+			<integer>2</integer>
+			<key>Siri Data Sharing Opt-In Status</key>
+			<integer>2</integer>
+		</dict>
+
+		<!-- 20. SIRI VOICE TRIGGER -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.siri.35929425-84dd-4a90-a0da-35841bfe2183</string>
+			<key>PayloadType</key>
+			<string>com.apple.Siri</string>
+			<key>PayloadUUID</key>
+			<string>35929425-84dd-4a90-a0da-35841bfe2183</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>VoiceTriggerUserEnabled</key>
+			<false/>
+		</dict>
+
+		<!-- 21. iCLOUD MANAGED -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.icloud.40773d6c-0069-4044-9877-0780c2f739ea</string>
+			<key>PayloadType</key>
+			<string>com.apple.icloud.managed</string>
+			<key>PayloadUUID</key>
+			<string>40773d6c-0069-4044-9877-0780c2f739ea</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>DisableFMMiCloudSetting</key>
+			<true/>
+		</dict>
+
+		<!-- 22. mDNS (Bonjour) -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mdns.09c90a35-6df7-4c30-a0a7-70d1f7ffccd6</string>
+			<key>PayloadType</key>
+			<string>com.apple.mDNSResponder</string>
+			<key>PayloadUUID</key>
+			<string>09c90a35-6df7-4c30-a0a7-70d1f7ffccd6</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>NoMulticastAdvertisements</key>
+			<true/>
+		</dict>
+
+		<!-- 23. ACCESSIBILITY -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.accessibility.617119b8-2404-4f4e-854f-81ed4a35f680</string>
+			<key>PayloadType</key>
+			<string>com.apple.Accessibility</string>
+			<key>PayloadUUID</key>
+			<string>617119b8-2404-4f4e-854f-81ed4a35f680</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>AXSAudioDonationSiriImprovementEnabled</key>
+			<false/>
+		</dict>
+
+		<!-- 24. PHOTOS -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.photos.688767a1-a099-4976-9d90-52d68d6b1130</string>
+			<key>PayloadType</key>
+			<string>com.apple.photos.shareddefaults</string>
+			<key>PayloadUUID</key>
+			<string>688767a1-a099-4976-9d90-52d68d6b1130</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>IPXDefaultEnhancedVisualSearchEnabled</key>
+			<false/>
+		</dict>
+
+		<!-- 25. GATEKEEPER -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.gatekeeper.6b990515-0429-410a-ab35-5378b4fb9e13</string>
+			<key>PayloadType</key>
+			<string>com.apple.systempolicy.control</string>
+			<key>PayloadUUID</key>
+			<string>6b990515-0429-410a-ab35-5378b4fb9e13</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>AllowIdentifiedDevelopers</key>
+			<true/>
+			<key>EnableAssessment</key>
+			<true/>
+		</dict>
+
+		<!-- 26. GATEKEEPER OVERRIDE -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.gatekeeperoverride.088f2719-2421-4a6e-9f11-28a7b788fbca</string>
+			<key>PayloadType</key>
+			<string>com.apple.systempolicy.managed</string>
+			<key>PayloadUUID</key>
+			<string>088f2719-2421-4a6e-9f11-28a7b788fbca</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>DisableOverride</key>
+			<true/>
+		</dict>
+
+		<!-- 27. SYSTEM PREFERENCES RESTRICTIONS -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.sysprefs.6598567b-915f-4262-a6e5-9a8be9ebbe94</string>
+			<key>PayloadType</key>
+			<string>com.apple.systempreferences</string>
+			<key>PayloadUUID</key>
+			<string>6598567b-915f-4262-a6e5-9a8be9ebbe94</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>DisabledSystemSettings</key>
+			<array>
+				<string>com.apple.systempreferences.AppleIDSettings</string>
+				<string>com.apple.BluetoothSettings</string>
+				<string>com.apple.Internet-Accounts-Settings.extension</string>
+				<string>com.apple.Siri-Settings.extension</string>
+				<string>com.apple.WalletSettingsExtension</string>
+			</array>
+		</dict>
+
+		<!-- 28. GLOBAL PREFERENCES (Auto-logout) -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.globalprefs.caddd8d5-8f9f-4496-9884-a370f36b984d</string>
+			<key>PayloadType</key>
+			<string>.GlobalPreferences</string>
+			<key>PayloadUUID</key>
+			<string>caddd8d5-8f9f-4496-9884-a370f36b984d</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>com.apple.autologout.AutoLogOutDelay</key>
+			<integer>86400</integer>
+		</dict>
+
+		<!-- 29. SAFARI -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.safari.1bd53fc6-4c0e-4507-8998-3c83ebedf6cb</string>
+			<key>PayloadType</key>
+			<string>com.apple.Safari</string>
+			<key>PayloadUUID</key>
+			<string>1bd53fc6-4c0e-4507-8998-3c83ebedf6cb</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>AutoOpenSafeDownloads</key>
+			<false/>
+			<key>BlockStoragePolicy</key>
+			<integer>2</integer>
+			<key>ShowFullURLInSmartSearchField</key>
+			<true/>
+			<key>ShowOverlayStatusBar</key>
+			<true/>
+			<key>WarnAboutFraudulentWebsites</key>
+			<true/>
+			<key>WebKitPreferences.privateClickMeasurementEnabled</key>
+			<true/>
+			<key>WebKitPreferences.storageBlockingPolicy</key>
+			<integer>1</integer>
+			<key>WebKitStorageBlockingPolicy</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 30. TERMINAL -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.terminal.a6f57c07-223a-4df2-8ed5-87abb51c739b</string>
+			<key>PayloadType</key>
+			<string>com.apple.Terminal</string>
+			<key>PayloadUUID</key>
+			<string>a6f57c07-223a-4df2-8ed5-87abb51c739b</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>SecureKeyboardEntry</key>
+			<true/>
+		</dict>
+
+		<!-- 31. TIME MACHINE -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.timemachine.34ec62d6-9b1b-4b09-9fbf-096e54544bf2</string>
+			<key>PayloadType</key>
+			<string>com.apple.TimeMachine</string>
+			<key>PayloadUUID</key>
+			<string>34ec62d6-9b1b-4b09-9fbf-096e54544bf2</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>AutoBackup</key>
+			<true/>
+		</dict>
+
+		<!-- 32. CONTROL CENTER -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.controlcenter.01ca282b-43cf-4ecd-bad6-ab168b089d04</string>
+			<key>PayloadType</key>
+			<string>com.apple.controlcenter</string>
+			<key>PayloadUUID</key>
+			<string>01ca282b-43cf-4ecd-bad6-ab168b089d04</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>Bluetooth</key>
+			<integer>18</integer>
+			<key>WiFi</key>
+			<integer>18</integer>
+		</dict>
+
+		<!-- 33. LIBRARY VALIDATION -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.libvalidation.f5c336df-6c99-4c6f-bdf6-07162d5bc64a</string>
+			<key>PayloadType</key>
+			<string>com.apple.security.libraryvalidation</string>
+			<key>PayloadUUID</key>
+			<string>f5c336df-6c99-4c6f-bdf6-07162d5bc64a</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>DisableLibraryValidation</key>
+			<false/>
+		</dict>
+
+	</array>
+	<key>PayloadDescription</key>
+	<string>HX-Guardian Unified Security Profile. Merged from NIST 800-53r5 High, CIS Controls v8, and CIS Benchmark Level 2. Excludes: smartcard, auto-update, root disable, biometric disable.</string>
+	<key>PayloadDisplayName</key>
+	<string>HX-Guardian Unified Security</string>
+	<key>PayloadIdentifier</key>
+	<string>com.hxguardian.unified</string>
+	<key>PayloadOrganization</key>
+	<string>HX-Guardian</string>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>9d3048fc-d258-49a4-b929-d1b66a49c5af</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+	<key>PayloadRemovalDisallowed</key>
+	<true/>
+</dict>
+</plist>

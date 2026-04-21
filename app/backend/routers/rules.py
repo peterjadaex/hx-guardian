@@ -8,7 +8,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from core.auth import verify_token
 from core.database import get_db
 from core.manifest import get_all_rules, get_rule, get_categories, get_standards, compute_severity, compute_impact
 from core.models import ScanResult, Exemption, ScanSession
@@ -61,7 +60,6 @@ def list_rules(
     severity: Optional[str] = Query(None),
     q: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     rules = get_all_rules()
 
@@ -108,7 +106,7 @@ def list_rules(
 
 
 @router.get("/meta")
-def get_meta(_: str = Depends(verify_token)):
+def get_meta():
     """Return available categories and standards for filter dropdowns."""
     return {"categories": get_categories(), "standards": get_standards()}
 
@@ -117,7 +115,6 @@ def get_meta(_: str = Depends(verify_token)):
 def get_rule_detail(
     rule_name: str,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     rule = get_rule(rule_name)
     if not rule:

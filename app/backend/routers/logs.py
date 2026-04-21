@@ -7,9 +7,7 @@ import logging
 import os
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
-
-from core.auth import verify_token
+from fastapi import APIRouter, Query
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/logs", tags=["logs"])
@@ -23,7 +21,6 @@ async def get_system_log(
     lines: int = Query(200, ge=1, le=2000),
     filter: Optional[str] = Query(None),
     log_file: str = Query("system", pattern="^(system|install)$"),
-    _: str = Depends(verify_token),
 ):
     """Return last N lines of a system log file, optionally filtered."""
     path = SYSTEM_LOG if log_file == "system" else INSTALL_LOG

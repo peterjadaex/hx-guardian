@@ -13,8 +13,10 @@ Security model:
 """
 import json
 import logging
+import re
 import os
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -27,7 +29,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 from runner.executor import run_script
 
 HXG_SOCKET_PATH = "/var/run/hxg/runner.sock"
-STANDARDS_BASE = Path(__file__).parent.parent.parent / "standards"
+if getattr(sys, 'frozen', False):
+    STANDARDS_BASE = Path("/Library/Application Support/hxguardian")
+else:
+    STANDARDS_BASE = Path(__file__).parent.parent.parent / "standards"
 MANIFEST_PATH = STANDARDS_BASE / "scripts" / "manifest.json"
 
 logging.basicConfig(
@@ -81,13 +86,17 @@ def handle_request(req: dict):
     req_id = req.get("req_id", "")
 
     if action == "ping":
-        yield {"req_id": req_id, "pong": True}
+        yield {"req_id": req_id, "pong": True, "done": True}
 
     elif action == "scan":
-        yield _exec_scan(req_id, req.get("rule", ""))
+        result = _exec_scan(req_id, req.get("rule", ""))
+        result["done"] = True
+        yield result
 
     elif action == "fix":
-        yield _exec_fix(req_id, req.get("rule", ""))
+        result = _exec_fix(req_id, req.get("rule", ""))
+        result["done"] = True
+        yield result
 
     elif action == "scan_batch":
         rules = req.get("rules") or list(_manifest.keys())
@@ -96,6 +105,26 @@ def handle_request(req: dict):
             yield _exec_scan(req_id, rule_name)
             count += 1
         yield {"req_id": req_id, "done": True, "total": count}
+
+    elif action == "list_profiles":
+        result = _exec_list_profiles(req_id)
+        result["done"] = True
+        yield result
+
+    elif action == "install_profile":
+        result = _exec_install_profile(req_id, req.get("profile_path", ""))
+        result["done"] = True
+        yield result
+
+    elif action == "install_profiles_batch":
+        paths = req.get("profile_paths") or []
+        installed = 0
+        for p in paths:
+            result = _exec_install_profile(req_id, p)
+            if result.get("status") == "INSTALLED":
+                installed += 1
+            yield result
+        yield {"req_id": req_id, "done": True, "total": len(paths), "installed": installed}
 
     else:
         yield {"req_id": req_id, "status": "ERROR", "message": f"Unknown action: {action}"}
@@ -145,6 +174,103 @@ def _exec_fix(req_id: str, rule_name: str) -> dict:
         "exit_code": exit_code,
         "duration_ms": duration_ms,
     }
+
+
+# ---------------------------------------------------------------------------
+# MDM profile installation
+# ---------------------------------------------------------------------------
+
+def _validate_profile_path(path_str: str) -> tuple[bool, str]:
+    """Validate that a profile path is safe to install."""
+    try:
+        path = Path(path_str)
+        if not path.is_absolute():
+            return False, "Path must be absolute"
+        if not path.is_file():
+            return False, "File not found"
+        if path.suffix != ".mobileconfig":
+            return False, "Not a .mobileconfig file"
+        try:
+            path.resolve().relative_to(STANDARDS_BASE.resolve())
+        except ValueError:
+            return False, "Path is not within the standards directory"
+        if "/mobileconfigs/unsigned/" not in str(path):
+            return False, "Path is not in a mobileconfigs/unsigned directory"
+        return True, ""
+    except Exception as e:
+        return False, str(e)
+
+
+def _exec_list_profiles(req_id: str) -> dict:
+    """Run 'profiles list' as root and return installed profile identifiers."""
+    try:
+        result = subprocess.run(
+            ["/usr/bin/profiles", "list"],
+            capture_output=True, text=True, timeout=10,
+        )
+        output = result.stdout
+        profile_ids = re.findall(r"profileIdentifier: ([^\s]+)", output)
+        # Fallback to XML format if text parsing found nothing
+        if not profile_ids:
+            try:
+                result2 = subprocess.run(
+                    ["/usr/bin/profiles", "list", "-output", "stdout-xml"],
+                    capture_output=True, text=True, timeout=10,
+                )
+                profile_ids = re.findall(
+                    r"<key>ProfileIdentifier</key>\s*<string>([^<]+)</string>",
+                    result2.stdout,
+                )
+            except Exception:
+                pass
+        return {"req_id": req_id, "profile_ids": profile_ids}
+    except Exception as e:
+        logger.warning("profiles list failed: %s", e)
+        return {"req_id": req_id, "profile_ids": []}
+
+
+def _exec_install_profile(req_id: str, profile_path: str) -> dict:
+    valid, err = _validate_profile_path(profile_path)
+    if not valid:
+        return {"req_id": req_id, "profile_path": profile_path,
+                "status": "ERROR", "message": err}
+
+    try:
+        result = subprocess.run(
+            ["/usr/bin/profiles", "install", "-path", profile_path],
+            capture_output=True, text=True, timeout=30,
+        )
+        stderr = result.stderr.strip()
+        stdout = result.stdout.strip()
+        logger.info("profiles install exit=%d path=%s stderr=%r stdout=%r",
+                    result.returncode, profile_path, stderr[:300], stdout[:300])
+        if result.returncode == 0:
+            logger.info("Profile installed: %s", profile_path)
+            return {"req_id": req_id, "profile_path": profile_path,
+                    "status": "INSTALLED", "message": "Profile installed successfully"}
+        else:
+            # Exit 71 (EX_PROTOCOL) and 73 (EX_CANTCREAT) both indicate user-approval required
+            # on macOS Ventura+ / Sequoia. Also check stderr text as a fallback.
+            approval_keywords = ("requires user approval", "user approval", "user must approve",
+                                 "system settings", "must be approved")
+            needs_approval = (
+                result.returncode in (71, 73)
+                or any(kw in stderr.lower() for kw in approval_keywords)
+                or any(kw in stdout.lower() for kw in approval_keywords)
+            )
+            if needs_approval:
+                return {"req_id": req_id, "profile_path": profile_path,
+                        "status": "USER_APPROVAL_REQUIRED",
+                        "message": f"Profile requires user approval in System Settings > Privacy & Security > Profiles. {stderr}"}
+            return {"req_id": req_id, "profile_path": profile_path,
+                    "status": "ERROR",
+                    "message": f"profiles install failed (exit {result.returncode}): {stderr or stdout}"}
+    except subprocess.TimeoutExpired:
+        return {"req_id": req_id, "profile_path": profile_path,
+                "status": "ERROR", "message": "Profile installation timed out"}
+    except Exception as e:
+        return {"req_id": req_id, "profile_path": profile_path,
+                "status": "ERROR", "message": str(e)}
 
 
 # ---------------------------------------------------------------------------

@@ -13,7 +13,6 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 
-from core.auth import verify_token
 from core.database import get_db
 from core.models import ScanSession, ScanResult, DeviceSnapshot
 
@@ -107,7 +106,6 @@ def _status_badge(status: str) -> str:
 def generate_html_report(
     session_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     if not session_id:
         latest = (
@@ -205,7 +203,6 @@ def generate_html_report(
 def export_results_csv(
     session_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     if not session_id:
         latest = (

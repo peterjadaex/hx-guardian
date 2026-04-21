@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 import core.audit as audit
-from core.auth import verify_token
+from core.two_factor import require_2fa
 from core.database import get_db
 from core.manifest import get_rule
 from core.models import FixResult, ScanResult, ScanSession
@@ -23,7 +23,7 @@ router = APIRouter(tags=["fixes"])
 async def apply_fix(
     rule_name: str,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
+    _: None = Depends(require_2fa),
 ):
     rule = get_rule(rule_name)
     if not rule:
@@ -114,7 +114,6 @@ async def apply_fix(
 def get_fix_history(
     rule_name: str,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     results = (
         db.query(FixResult)

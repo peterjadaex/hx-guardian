@@ -46,7 +46,33 @@
       "Bash(npm create:*)",
       "Bash(npm install:*)",
       "Bash(npm run:*)",
-      "Bash(chmod +x /Users/admin/Documents/airgap/hx-guardian/app/install.sh /Users/admin/Documents/airgap/hx-guardian/app/start-dev.sh)"
+      "Bash(chmod +x /Users/admin/Documents/airgap/hx-guardian/app/install.sh /Users/admin/Documents/airgap/hx-guardian/app/start-dev.sh)",
+      "Bash(python3)",
+      "Bash(/usr/sbin/system_profiler SPBluetoothDataType -json)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c ' *)",
+      "Bash(/usr/bin/csrutil status *)",
+      "Bash(curl -s http://127.0.0.1:8000/api/health)",
+      "Bash(sqlite3 /Users/admin/Documents/airgap/hx-guardian/app/data/hxguardian.db \".tables\")",
+      "Bash(chmod +x /Users/admin/Documents/airgap/hx-guardian/standards/scripts/setup/install_usb_watcher.sh)",
+      "Bash(diskutil info *)",
+      "Bash(python3 -c \" import plistlib, sys data = plistlib.loads\\(sys.stdin.buffer.read\\(\\)\\) keys = ['VolumeName', 'MountPoint', 'FilesystemName', 'VolumeSize', 'DeviceIdentifier', 'MediaType'] for k in keys: v = data.get\\(k, 'N/A'\\) print\\(f'{k}: {v}'\\) \")",
+      "Bash(/usr/sbin/system_profiler SPUSBDataType -json)",
+      "Bash(python3 -c \" import json, sys data = json.load\\(sys.stdin\\) def find_media\\(items, depth=0\\): for item in items: if not isinstance\\(item, dict\\): continue name = item.get\\('_name', ''\\) vendor = item.get\\('manufacturer', ''\\) product_id = item.get\\('product_id', ''\\) serial = item.get\\('serial_num', ''\\) media_items = item.get\\('Media', []\\) if media_items: print\\(f'Parent device: {name!r} vendor={vendor!r} product_id={product_id!r} serial={serial!r}'\\) for m in media_items: print\\(f' Media entry keys: {list\\(m.keys\\(\\)\\)}'\\) vols = m.get\\('volumes', []\\) print\\(f' volumes count: {len\\(vols\\)}'\\) for v in vols: print\\(f' Volume keys: {list\\(v.keys\\(\\)\\)}'\\) print\\(f' Volume data: {json.dumps\\(v, indent=4\\)}'\\) for key in ['_items', 'hub_device']: sub = item.get\\(key\\) if isinstance\\(sub, list\\): find_media\\(sub, depth+1\\) for entry in data.get\\('SPUSBDataType', []\\): find_media\\(entry.get\\('_items', []\\)\\) \")",
+      "Bash(python3 -c \" import json, sys data = json.load\\(sys.stdin\\) def find_all_volumes\\(items\\): results = [] for item in items: if not isinstance\\(item, dict\\): continue name = item.get\\('_name', ''\\) vendor = item.get\\('manufacturer', ''\\) product_id = item.get\\('product_id', ''\\) serial = item.get\\('serial_num', ''\\) for media in item.get\\('Media', []\\): for vol in media.get\\('volumes', []\\): mount = vol.get\\('mount_point', ''\\) results.append\\({ 'parent_name': name, 'parent_vendor': vendor, 'parent_product_id': product_id, 'parent_serial': serial, 'vol_name': vol.get\\('_name', ''\\), 'bsd_name': vol.get\\('bsd_name', ''\\), 'mount_point': mount, 'file_system': vol.get\\('file_system', ''\\), 'size': vol.get\\('size', ''\\), 'is_mounted': bool\\(mount\\), }\\) for key in ['_items', 'hub_device']: sub = item.get\\(key\\) if isinstance\\(sub, list\\): results.extend\\(find_all_volumes\\(sub\\)\\) return results volumes = [] for entry in data.get\\('SPUSBDataType', []\\): volumes.extend\\(find_all_volumes\\(entry.get\\('_items', []\\)\\)\\) print\\(f'Total USB volumes found: {len\\(volumes\\)}'\\) for v in volumes: print\\(json.dumps\\(v, indent=2\\)\\) \")",
+      "Bash(npx tsc *)",
+      "Bash(sudo launchctl *)",
+      "Bash(launchctl list *)",
+      "Bash(ls -la /Library/LaunchAgents/com.hxguardian.*)",
+      "Bash(ls -la /Library/LaunchDaemons/com.hxguardian.*)",
+      "Bash(ls -la /Library/Logs/hxguardian*)",
+      "Read(//Library/Application Support/hxguardian/bin/**)",
+      "Bash(sudo /usr/bin/profiles list)",
+      "Bash(ioreg -p IOUSB -w0 -l)",
+      "Bash(grep -l \"filevault\\\\|firewall\" /Users/admin/Documents/airgap/hx-guardian/standards/scripts/fix/*.sh)"
+    ],
+    "additionalDirectories": [
+      "/Users/admin/Documents/airgap/hx-guardian/standards"
     ]
   }
 }

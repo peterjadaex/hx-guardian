@@ -10,7 +10,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from core.auth import verify_token
 from core.database import get_db
 from core.models import ScanSession, ScanResult
 
@@ -22,7 +21,6 @@ def list_history(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     total = db.query(ScanSession).count()
     sessions = (
@@ -57,7 +55,6 @@ def list_history(
 def get_trends(
     days: int = Query(30, ge=1, le=365),
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     """Return compliance score over time for the trend chart."""
     since = datetime.utcnow() - timedelta(days=days)
@@ -90,7 +87,6 @@ def get_trends(
 def get_category_trends(
     session_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     """Return per-category compliance breakdown for a given session (or latest)."""
     if not session_id:

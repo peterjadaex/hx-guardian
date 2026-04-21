@@ -16,7 +16,6 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 import core.audit as audit
-from core.auth import verify_token
 from core.database import get_db, SessionLocal
 from core.manifest import get_all_rules, get_rules_by_category, get_rules_by_standard, get_rule
 from core.models import ScanSession, ScanResult, Exemption
@@ -183,7 +182,6 @@ async def start_scan(
     body: ScanRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     rules = _get_rule_list(body.filter)
     session = ScanSession(
@@ -206,7 +204,6 @@ async def start_scan(
 def get_session(
     session_id: int,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     session = db.query(ScanSession).filter(ScanSession.id == session_id).first()
     if not session:
@@ -236,7 +233,6 @@ def get_session_results(
     status: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     q = db.query(ScanResult).filter(ScanResult.session_id == session_id)
     if status:
@@ -269,7 +265,6 @@ def get_session_results(
 async def scan_single_rule(
     rule_name: str,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     rule = get_rule(rule_name)
     if not rule:

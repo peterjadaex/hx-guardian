@@ -3,12 +3,17 @@ Manifest loader — reads standards/scripts/manifest.json and provides
 rule lookup, filtering, and path resolution helpers.
 """
 import json
+import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-STANDARDS_BASE = Path(__file__).parent.parent.parent.parent / "standards"
-MANIFEST_PATH = STANDARDS_BASE / "scripts" / "manifest.json"
+if getattr(sys, 'frozen', False):
+    STANDARDS_BASE = Path("/Library/Application Support/hxguardian")
+    MANIFEST_PATH  = STANDARDS_BASE / "scripts" / "manifest.json"
+else:
+    STANDARDS_BASE = Path(__file__).parent.parent.parent.parent / "standards"
+    MANIFEST_PATH  = STANDARDS_BASE / "scripts" / "manifest.json"
 
 
 @lru_cache(maxsize=1)

@@ -1,9 +1,93 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Play, Wrench, ShieldOff, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Play, Wrench, ShieldOff, RotateCcw, Lock } from 'lucide-react'
 import { Layout, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
-import { getRuleDetail, scanRule, fixRule, getFixHistory, grantExemption, revokeExemption } from '../lib/api'
+import { getRuleDetail, scanRule, fixRule, getFixHistory, grantExemption, revokeExemption, get2faStatus, verify2fa } from '../lib/api'
+
+// ─── Inline OTP prompt (same pattern as Connections page) ────────────────────
+
+function OtpPrompt({
+  onVerified,
+  onCancel,
+}: {
+  onVerified: (token: string) => void
+  onCancel: () => void
+}) {
+  const [otp, setOtp] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 6)
+    setOtp(v)
+    if (v.length === 6) setTimeout(() => submit(v), 50)
+  }
+
+  const submit = async (code: string) => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await verify2fa(code)
+      if (res.valid && res.session_token) {
+        onVerified(res.session_token)
+      } else {
+        setError('Invalid code — try again')
+        setOtp('')
+        inputRef.current?.focus()
+      }
+    } catch {
+      setError('Verification failed')
+      setOtp('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="mb-4 p-4 bg-blue-950/30 border border-blue-700/40 rounded-lg flex items-start gap-3">
+      <Lock className="w-4 h-4 text-blue-400 flex-shrink-0 mt-2.5" />
+      <div className="flex-1 space-y-3">
+        <div>
+          <p className="text-blue-300 text-sm font-medium">2FA verification required</p>
+          <p className="text-slate-400 text-xs mt-0.5">Enter the 6-digit code from your authenticator app</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            value={otp}
+            onChange={handleChange}
+            disabled={loading}
+            placeholder="000000"
+            className="w-28 bg-[#0a0e1a] border border-[#1e2d4a] rounded-lg px-3 py-2 text-white text-center text-lg font-mono tracking-widest focus:outline-none focus:border-blue-500 disabled:opacity-50"
+          />
+          <button
+            onClick={() => submit(otp)}
+            disabled={otp.length !== 6 || loading}
+            className="px-3 py-2 bg-blue-600/30 border border-blue-500/40 text-blue-300 text-sm rounded-lg hover:bg-blue-600/40 transition-colors disabled:opacity-40"
+          >
+            {loading ? 'Verifying...' : 'Verify'}
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-3 py-2 text-slate-500 hover:text-slate-300 text-sm transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ───────────────────────────────────────────────────────────────
 
 export function RuleDetail() {
   const { ruleName } = useParams<{ ruleName: string }>()
@@ -19,9 +103,18 @@ export function RuleDetail() {
   const [exemptExpiry, setExemptExpiry] = useState('')
   const [showExemptForm, setShowExemptForm] = useState(false)
 
+  // 2FA state
+  const [twoFaEnabled, setTwoFaEnabled] = useState(false)
+  const [twoFaToken, setTwoFaToken] = useState('')
+  const [showOtpPrompt, setShowOtpPrompt] = useState(false)
+  const [pendingAction, setPendingAction] = useState<((token: string) => Promise<void>) | null>(null)
+
   useEffect(() => {
     if (!ruleName) return
     loadRule()
+    get2faStatus()
+      .then(d => setTwoFaEnabled(d.enabled))
+      .catch(() => {})
   }, [ruleName])
 
   const loadRule = async () => {
@@ -40,6 +133,30 @@ export function RuleDetail() {
     }
   }
 
+  const require2fa = (action: (token: string) => Promise<void>) => {
+    if (!twoFaEnabled || twoFaToken) {
+      action(twoFaToken)
+      return
+    }
+    setPendingAction(() => async () => { /* will be called after OTP */ })
+    setPendingAction(() => action)
+    setShowOtpPrompt(true)
+  }
+
+  const handleOtpVerified = (token: string) => {
+    setTwoFaToken(token)
+    setShowOtpPrompt(false)
+    if (pendingAction) {
+      pendingAction(token)
+      setPendingAction(null)
+    }
+  }
+
+  const handleOtpCancel = () => {
+    setShowOtpPrompt(false)
+    setPendingAction(null)
+  }
+
   const handleScan = async () => {
     setScanning(true)
     setScanOutput(null)
@@ -54,42 +171,51 @@ export function RuleDetail() {
     }
   }
 
-  const handleFix = async () => {
+  const handleFix = () => {
     if (!confirm('Apply fix to this rule? This will modify system settings.')) return
-    setFixing(true)
-    setFixOutput(null)
-    try {
-      const res = await fixRule(ruleName!)
-      setFixOutput(JSON.stringify(res, null, 2))
-      await loadRule()
-    } catch (e: any) {
-      setFixOutput(`Error: ${e.message}`)
-    } finally {
-      setFixing(false)
-    }
+    require2fa(async (token) => {
+      setFixing(true)
+      setFixOutput(null)
+      try {
+        const res = await fixRule(ruleName!, token || undefined)
+        setFixOutput(JSON.stringify(res, null, 2))
+        await loadRule()
+      } catch (e: any) {
+        setFixOutput(`Error: ${e.message}`)
+      } finally {
+        setFixing(false)
+      }
+    })
   }
 
-  const handleGrantExemption = async () => {
+  const handleGrantExemption = () => {
     if (!exemptReason.trim()) return
-    try {
-      await grantExemption({ rule: ruleName!, reason: exemptReason, expires_at: exemptExpiry || undefined })
-      setShowExemptForm(false)
-      setExemptReason('')
-      setExemptExpiry('')
-      await loadRule()
-    } catch (e: any) {
-      setError(e.message)
-    }
+    require2fa(async (token) => {
+      try {
+        await grantExemption(
+          { rule: ruleName!, reason: exemptReason, expires_at: exemptExpiry || undefined },
+          token || undefined,
+        )
+        setShowExemptForm(false)
+        setExemptReason('')
+        setExemptExpiry('')
+        await loadRule()
+      } catch (e: any) {
+        setError(e.message)
+      }
+    })
   }
 
-  const handleRevokeExemption = async () => {
+  const handleRevokeExemption = () => {
     if (!confirm('Revoke exemption? The rule will be evaluated normally again.')) return
-    try {
-      await revokeExemption(ruleName!)
-      await loadRule()
-    } catch (e: any) {
-      setError(e.message)
-    }
+    require2fa(async (token) => {
+      try {
+        await revokeExemption(ruleName!, token || undefined)
+        await loadRule()
+      } catch (e: any) {
+        setError(e.message)
+      }
+    })
   }
 
   if (loading) return <Layout><LoadingSpinner /></Layout>
@@ -110,6 +236,11 @@ export function RuleDetail() {
       {error && <ErrorMessage message={error} />}
 
       <div className="px-6 pb-6 space-y-4">
+        {/* 2FA OTP prompt */}
+        {showOtpPrompt && (
+          <OtpPrompt onVerified={handleOtpVerified} onCancel={handleOtpCancel} />
+        )}
+
         {/* Status + Actions */}
         <Card className="p-5">
           <div className="flex items-start justify-between gap-4">

@@ -1,0 +1,2 @@
+recovery key
+XJ77-6D6B-LKK7-86E7-CPTJ-FGKD

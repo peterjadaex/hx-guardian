@@ -132,6 +132,69 @@ async def scan_batch_stream(rules: Optional[list[str]] = None) -> AsyncGenerator
         raise RunnerError(f"Runner stream error: {e}")
 
 
+async def list_profiles() -> set[str]:
+    """List installed MDM profile identifiers via the runner (runs as root)."""
+    results = await _send_recv_lines({"action": "list_profiles"}, timeout=15.0)
+    if not results:
+        return set()
+    return set(results[0].get("profile_ids", []))
+
+
+async def install_profile(profile_path: str) -> dict:
+    """Install a single MDM profile via the runner."""
+    results = await _send_recv_lines(
+        {"action": "install_profile", "profile_path": profile_path},
+        timeout=35.0,
+    )
+    if not results:
+        return {"profile_path": profile_path, "status": "ERROR",
+                "message": "No response from runner"}
+    return results[0]
+
+
+async def install_profiles_batch(profile_paths: list[str]) -> AsyncGenerator[dict, None]:
+    """Install multiple profiles, streaming results one at a time."""
+    req_id = _new_req_id()
+    req = {"action": "install_profiles_batch", "req_id": req_id,
+           "profile_paths": profile_paths}
+    payload = (json.dumps(req) + "\n").encode()
+
+    try:
+        reader, writer = await asyncio.wait_for(
+            asyncio.open_unix_connection(HXG_SOCKET_PATH),
+            timeout=5.0,
+        )
+        writer.write(payload)
+        await writer.drain()
+
+        while True:
+            try:
+                line = await asyncio.wait_for(reader.readline(), timeout=60.0)
+            except asyncio.TimeoutError:
+                break
+            if not line:
+                break
+            try:
+                data = json.loads(line.decode().strip())
+                if data.get("done"):
+                    yield data
+                    break
+                yield data
+            except json.JSONDecodeError:
+                continue
+
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+
+    except (ConnectionRefusedError, FileNotFoundError) as e:
+        raise RunnerError(f"Cannot connect to hxg_runner: {e}")
+    except Exception as e:
+        raise RunnerError(f"Runner stream error: {e}")
+
+
 async def ping() -> bool:
     """Check if runner is alive."""
     try:

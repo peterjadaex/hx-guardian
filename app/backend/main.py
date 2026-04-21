@@ -18,7 +18,6 @@ from fastapi.staticfiles import StaticFiles
 # Ensure backend package root is on path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from core.auth import generate_token, get_token
 from core.database import init_db
 from core.scheduler import start_scheduler, stop_scheduler
 
@@ -35,6 +34,7 @@ from routers import (
     reports,
     audit_log,
     stream,
+    settings,
 )
 
 logging.basicConfig(
@@ -49,7 +49,6 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting HX-Guardian dashboard...")
     init_db()
-    generate_token()
     start_scheduler()
     yield
     # Shutdown
@@ -88,6 +87,7 @@ app.include_router(schedule.router)
 app.include_router(reports.router)
 app.include_router(audit_log.router)
 app.include_router(stream.router)
+app.include_router(settings.router)
 
 
 @app.get("/api/health")
@@ -102,15 +102,11 @@ async def health():
     }
 
 
-@app.get("/api/token/verify")
-async def verify_session(request: Request):
-    """Check if the provided token is valid (used by frontend on load)."""
-    token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
-    return {"valid": token == get_token() and bool(token)}
-
-
 # Serve React frontend static files
-FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
+if getattr(sys, 'frozen', False):
+    FRONTEND_DIST = Path(sys._MEIPASS) / "frontend" / "dist"
+else:
+    FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 if FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
 
@@ -134,3 +130,8 @@ else:
             "message": "Frontend not built. Run: cd app/frontend && npm install && npm run build",
             "api_docs": "http://127.0.0.1:8000/api/docs",
         })
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")

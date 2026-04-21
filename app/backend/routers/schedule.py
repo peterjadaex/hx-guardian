@@ -14,7 +14,6 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 import core.audit as audit
-from core.auth import verify_token
 from core.database import get_db
 from core.models import Schedule
 
@@ -56,7 +55,6 @@ def _serialize(s: Schedule) -> dict:
 @router.get("")
 def list_schedules(
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     schedules = db.query(Schedule).order_by(Schedule.created_at.desc()).all()
     return {"schedules": [_serialize(s) for s in schedules]}
@@ -66,7 +64,6 @@ def list_schedules(
 def create_schedule(
     body: ScheduleCreate,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     if not _validate_cron(body.cron_expr):
         raise HTTPException(status_code=422, detail="Invalid cron expression — must have 5 fields")
@@ -94,7 +91,6 @@ def update_schedule(
     schedule_id: int,
     body: ScheduleUpdate,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     sched = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not sched:
@@ -123,7 +119,6 @@ def update_schedule(
 def delete_schedule(
     schedule_id: int,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     sched = db.query(Schedule).filter(Schedule.id == schedule_id).first()
     if not sched:
@@ -143,7 +138,6 @@ def delete_schedule(
 async def run_schedule_now(
     schedule_id: int,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     """Trigger a scheduled scan immediately."""
     sched = db.query(Schedule).filter(Schedule.id == schedule_id).first()

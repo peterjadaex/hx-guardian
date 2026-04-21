@@ -4,10 +4,9 @@
 # Must be run as root:
 #   sudo zsh standards/scripts/setup/install_usb_watcher.sh
 #
-# What this does:
-#   1. Resolves the absolute path to usb_watcher.py in this repo
-#   2. Writes a LaunchDaemon plist to /Library/LaunchDaemons/
-#   3. Loads (or reloads) the daemon so it starts immediately
+# Requires the hxg-usb-watcher binary to be deployed at:
+#   /Library/Application Support/hxguardian/bin/hxg-usb-watcher
+# (done automatically by app/install.sh)
 
 set -euo pipefail
 
@@ -20,33 +19,33 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-WATCHER_SCRIPT="$REPO_ROOT/app/backend/usb_watcher.py"
 PLIST_SRC="$REPO_ROOT/standards/launchd/com.hxguardian.usbwatcher.plist"
 PLIST_DST="/Library/LaunchDaemons/com.hxguardian.usbwatcher.plist"
+BINARY="/Library/Application Support/hxguardian/bin/hxg-usb-watcher"
 LABEL="com.hxguardian.usbwatcher"
 LOG_FILE="/var/log/hxguardian_usb.log"
 
 # ── Validate ───────────────────────────────────────────────────────────────────
 
-if [[ ! -f "$WATCHER_SCRIPT" ]]; then
-  echo "ERROR: Watcher script not found at $WATCHER_SCRIPT"
+if [[ ! -f "$BINARY" ]]; then
+  echo "ERROR: Binary not found at $BINARY"
+  echo "  Run app/install.sh first, or app/build.sh + app/install.sh"
   exit 1
 fi
 
 if [[ ! -f "$PLIST_SRC" ]]; then
-  echo "ERROR: Plist template not found at $PLIST_SRC"
+  echo "ERROR: Plist not found at $PLIST_SRC"
   exit 1
 fi
 
 echo "Installing HX Guardian USB Watcher"
-echo "  Repo root:      $REPO_ROOT"
-echo "  Watcher script: $WATCHER_SCRIPT"
-echo "  Daemon plist:   $PLIST_DST"
-echo "  Log file:       $LOG_FILE"
+echo "  Binary:       $BINARY"
+echo "  Daemon plist: $PLIST_DST"
+echo "  Log file:     $LOG_FILE"
 
-# ── Write plist ────────────────────────────────────────────────────────────────
+# ── Deploy plist ───────────────────────────────────────────────────────────────
 
-sed "s|__WATCHER_SCRIPT__|$WATCHER_SCRIPT|g" "$PLIST_SRC" > "$PLIST_DST"
+cp "$PLIST_SRC" "$PLIST_DST"
 chown root:wheel "$PLIST_DST"
 chmod 644 "$PLIST_DST"
 
@@ -56,16 +55,12 @@ chmod 644 "$LOG_FILE"
 
 # ── Load daemon ────────────────────────────────────────────────────────────────
 
-# Unload existing instance if already loaded (ignore errors)
 launchctl unload "$PLIST_DST" 2>/dev/null || true
-
 launchctl load "$PLIST_DST"
 
-# Verify it loaded
 if launchctl list | grep -q "$LABEL"; then
   echo ""
   echo "✓ USB Watcher daemon loaded successfully"
-  echo "  Status: launchctl list $LABEL"
   launchctl list "$LABEL" 2>/dev/null || true
   echo ""
   echo "  Live log: tail -f $LOG_FILE"

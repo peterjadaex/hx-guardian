@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from core.auth import verify_token
 from core.database import get_db
 from core.models import AuditLog
 
@@ -22,7 +21,6 @@ def list_audit_log(
     offset: int = Query(0, ge=0),
     action: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     q = db.query(AuditLog)
     if action:
@@ -50,7 +48,6 @@ def list_audit_log(
 @router.get("/export/csv")
 def export_audit_csv(
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     """Export entire audit log as CSV."""
     entries = db.query(AuditLog).order_by(AuditLog.ts.asc()).all()

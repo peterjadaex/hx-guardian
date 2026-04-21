@@ -101,13 +101,16 @@ export function AuditLog() {
           </Card>
 
           {/* Pagination */}
-          {total > LIMIT && (
+          {total > 0 && (
             <div className="flex items-center justify-between mt-4">
               <button onClick={() => setOffset(Math.max(0, offset - LIMIT))} disabled={offset === 0}
                 className="px-4 py-2 text-sm text-slate-400 hover:text-white disabled:opacity-30 transition-colors">
                 ← Previous
               </button>
-              <span className="text-slate-500 text-sm">{offset + 1}–{Math.min(offset + LIMIT, total)} of {total}</span>
+              <span className="text-slate-500 text-sm">
+                {offset + 1}–{Math.min(offset + LIMIT, total)} of {total}
+                {' '}· page {Math.floor(offset / LIMIT) + 1} of {Math.ceil(total / LIMIT)}
+              </span>
               <button onClick={() => setOffset(offset + LIMIT)} disabled={offset + LIMIT >= total}
                 className="px-4 py-2 text-sm text-slate-400 hover:text-white disabled:opacity-30 transition-colors">
                 Next →

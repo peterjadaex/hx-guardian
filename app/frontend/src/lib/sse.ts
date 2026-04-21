@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { getToken } from './api'
 
 export function useSSE<T = unknown>(
   path: string | null,
@@ -12,9 +11,7 @@ export function useSSE<T = unknown>(
   useEffect(() => {
     if (!path) return
 
-    const token = getToken()
-    const url = `${path}?token=${encodeURIComponent(token)}`
-    const es = new EventSource(url)
+    const es = new EventSource(path)
     esRef.current = es
 
     es.onopen = () => {
@@ -37,7 +34,7 @@ export function useSSE<T = unknown>(
       }
     }
 
-    const eventTypes = ['result', 'complete', 'error', 'log_line', 'device_update', 'message']
+    const eventTypes = ['result', 'complete', 'error', 'log_line', 'device_update', 'message', 'profile_install']
     const listeners: Array<[string, (e: MessageEvent) => void]> = []
     for (const et of eventTypes) {
       const fn = handler(et)

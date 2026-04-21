@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 import core.audit as audit
-from core.auth import verify_token
+from core.two_factor import require_2fa
 from core.database import get_db
 from core.manifest import get_rule
 from core.models import Exemption
@@ -29,7 +29,6 @@ class ExemptionCreate(BaseModel):
 @router.get("")
 def list_exemptions(
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     exemptions = db.query(Exemption).order_by(Exemption.granted_at.desc()).all()
     now = datetime.utcnow()
@@ -55,7 +54,7 @@ def list_exemptions(
 def grant_exemption(
     body: ExemptionCreate,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
+    _: None = Depends(require_2fa),
 ):
     if not get_rule(body.rule):
         raise HTTPException(status_code=404, detail=f"Rule not found: {body.rule}")
@@ -105,7 +104,7 @@ def grant_exemption(
 def revoke_exemption(
     rule_name: str,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
+    _: None = Depends(require_2fa),
 ):
     exemption = db.query(Exemption).filter(
         Exemption.rule == rule_name,

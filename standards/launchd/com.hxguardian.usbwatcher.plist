@@ -8,11 +8,10 @@
   <key>Label</key>
   <string>com.hxguardian.usbwatcher</string>
 
-  <!-- __WATCHER_SCRIPT__ is replaced by install_usb_watcher.sh at install time -->
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/bin/python3</string>
-    <string>__WATCHER_SCRIPT__</string>
+    <string>/bin/zsh</string>
+    <string>/Library/Application Support/hxguardian/bin/run-hxg-usb-watcher</string>
   </array>
 
   <!-- Start immediately when loaded and after any crash -->

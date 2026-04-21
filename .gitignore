@@ -1,0 +1,12 @@
+# PyInstaller build outputs and SD card transfer package — built locally, not committed
+app/dist/
+transfer/
+/tmp/hxg_build/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo

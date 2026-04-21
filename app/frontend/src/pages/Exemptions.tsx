@@ -1,7 +1,91 @@
-import { useEffect, useState } from 'react'
-import { Plus, Trash2, AlertTriangle } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Plus, Trash2, AlertTriangle, Lock } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
-import { getExemptions, grantExemption, revokeExemption, getRules } from '../lib/api'
+import { getExemptions, grantExemption, revokeExemption, getRules, get2faStatus, verify2fa } from '../lib/api'
+
+// ─── Inline OTP prompt ───────────────────────────────────────────────────────
+
+function OtpPrompt({
+  onVerified,
+  onCancel,
+}: {
+  onVerified: (token: string) => void
+  onCancel: () => void
+}) {
+  const [otp, setOtp] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value.replace(/\D/g, '').slice(0, 6)
+    setOtp(v)
+    if (v.length === 6) setTimeout(() => submit(v), 50)
+  }
+
+  const submit = async (code: string) => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await verify2fa(code)
+      if (res.valid && res.session_token) {
+        onVerified(res.session_token)
+      } else {
+        setError('Invalid code — try again')
+        setOtp('')
+        inputRef.current?.focus()
+      }
+    } catch {
+      setError('Verification failed')
+      setOtp('')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="mx-6 mb-4 p-4 bg-blue-950/30 border border-blue-700/40 rounded-lg flex items-start gap-3">
+      <Lock className="w-4 h-4 text-blue-400 flex-shrink-0 mt-2.5" />
+      <div className="flex-1 space-y-3">
+        <div>
+          <p className="text-blue-300 text-sm font-medium">2FA verification required</p>
+          <p className="text-slate-400 text-xs mt-0.5">Enter the 6-digit code from your authenticator app</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            value={otp}
+            onChange={handleChange}
+            disabled={loading}
+            placeholder="000000"
+            className="w-28 bg-[#0a0e1a] border border-[#1e2d4a] rounded-lg px-3 py-2 text-white text-center text-lg font-mono tracking-widest focus:outline-none focus:border-blue-500 disabled:opacity-50"
+          />
+          <button
+            onClick={() => submit(otp)}
+            disabled={otp.length !== 6 || loading}
+            className="px-3 py-2 bg-blue-600/30 border border-blue-500/40 text-blue-300 text-sm rounded-lg hover:bg-blue-600/40 transition-colors disabled:opacity-40"
+          >
+            {loading ? 'Verifying...' : 'Verify'}
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-3 py-2 text-slate-500 hover:text-slate-300 text-sm transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ───────────────────────────────────────────────────────────────
 
 export function Exemptions() {
   const [loading, setLoading] = useState(true)
@@ -13,9 +97,18 @@ export function Exemptions() {
   const [expiresAt, setExpiresAt] = useState('')
   const [ruleOptions, setRuleOptions] = useState<any[]>([])
 
+  // 2FA state
+  const [twoFaEnabled, setTwoFaEnabled] = useState(false)
+  const [twoFaToken, setTwoFaToken] = useState('')
+  const [showOtpPrompt, setShowOtpPrompt] = useState(false)
+  const [pendingAction, setPendingAction] = useState<((token: string) => Promise<void>) | null>(null)
+
   useEffect(() => {
     load()
     getRules().then(d => setRuleOptions(d.rules || [])).catch(() => {})
+    get2faStatus()
+      .then(d => setTwoFaEnabled(d.enabled))
+      .catch(() => {})
   }, [])
 
   const load = async () => {
@@ -25,22 +118,54 @@ export function Exemptions() {
     finally { setLoading(false) }
   }
 
-  const handleGrant = async () => {
-    if (!ruleSearch || !reason) return
-    try {
-      await grantExemption({ rule: ruleSearch, reason, expires_at: expiresAt || undefined })
-      setShowForm(false)
-      setRuleSearch('')
-      setReason('')
-      setExpiresAt('')
-      await load()
-    } catch (e: any) { setError(e.message) }
+  const require2fa = (action: (token: string) => Promise<void>) => {
+    if (!twoFaEnabled || twoFaToken) {
+      action(twoFaToken)
+      return
+    }
+    setPendingAction(() => action)
+    setShowOtpPrompt(true)
   }
 
-  const handleRevoke = async (rule: string) => {
+  const handleOtpVerified = (token: string) => {
+    setTwoFaToken(token)
+    setShowOtpPrompt(false)
+    if (pendingAction) {
+      pendingAction(token)
+      setPendingAction(null)
+    }
+  }
+
+  const handleOtpCancel = () => {
+    setShowOtpPrompt(false)
+    setPendingAction(null)
+  }
+
+  const handleGrant = () => {
+    if (!ruleSearch || !reason) return
+    require2fa(async (token) => {
+      try {
+        await grantExemption(
+          { rule: ruleSearch, reason, expires_at: expiresAt || undefined },
+          token || undefined,
+        )
+        setShowForm(false)
+        setRuleSearch('')
+        setReason('')
+        setExpiresAt('')
+        await load()
+      } catch (e: any) { setError(e.message) }
+    })
+  }
+
+  const handleRevoke = (rule: string) => {
     if (!confirm(`Revoke exemption for ${rule}?`)) return
-    try { await revokeExemption(rule); await load() }
-    catch (e: any) { setError(e.message) }
+    require2fa(async (token) => {
+      try {
+        await revokeExemption(rule, token || undefined)
+        await load()
+      } catch (e: any) { setError(e.message) }
+    })
   }
 
   if (loading) return <Layout><LoadingSpinner /></Layout>
@@ -57,6 +182,11 @@ export function Exemptions() {
       </PageHeader>
 
       {error && <ErrorMessage message={error} />}
+
+      {/* 2FA OTP prompt */}
+      {showOtpPrompt && (
+        <OtpPrompt onVerified={handleOtpVerified} onCancel={handleOtpCancel} />
+      )}
 
       {showForm && (
         <div className="mx-6 mb-4">

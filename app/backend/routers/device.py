@@ -19,9 +19,9 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 import core.audit as audit
-from core.auth import verify_token
 from core.database import get_db
 from core.models import DeviceSnapshot, UsbWhitelist
+from core.two_factor import require_2fa
 
 USB_WHITELIST_ADDED = "USB_WHITELIST_ADDED"
 USB_WHITELIST_REMOVED = "USB_WHITELIST_REMOVED"
@@ -149,8 +149,12 @@ async def collect_device_status() -> dict:
 
 async def collect_connections() -> dict:
     """Collect USB devices, Bluetooth state, network interfaces, and open connections."""
+    # macOS Tahoe (16+) renamed SPUSBDataType → SPUSBHostDataType and changed
+    # JSON field names.  Try the new one first; fall back to old for older macOS.
+    usb_data_types = ["SPUSBHostDataType", "SPUSBDataType"]
+
     results = await asyncio.gather(
-        _run(["/usr/sbin/system_profiler", "SPUSBDataType", "-json"]),
+        _run(["/usr/sbin/system_profiler", usb_data_types[0], "-json"]),
         _run(["/usr/sbin/system_profiler", "SPBluetoothDataType", "-json"]),
         _run(["/sbin/ifconfig", "-a"]),
         _run(["/usr/sbin/netstat", "-an", "-p", "tcp"]),
@@ -165,22 +169,30 @@ async def collect_connections() -> dict:
     # Parse USB
     usb_devices = []
     usb_volumes = []
-    try:
-        usb_data = json.loads(usb_out)
-        def _parse_usb(items):
-            for item in items:
-                if isinstance(item, dict):
-                    name = item.get("_name", "")
+
+    def _parse_usb(items, is_host_type=False):
+        for item in items:
+            if isinstance(item, dict):
+                name = item.get("_name", "")
+                if is_host_type:
+                    vendor = item.get("USBDeviceKeyVendorName", "")
+                    product_id = item.get("USBDeviceKeyProductID", "")
+                    serial = item.get("USBDeviceKeySerialNumber", "")
+                    if serial == "Not Provided":
+                        serial = ""
+                else:
                     vendor = item.get("manufacturer", "")
                     product_id = item.get("product_id", "")
                     serial = item.get("serial_num", "")
-                    if name:
-                        usb_devices.append({
-                            "name": name,
-                            "vendor": vendor,
-                            "product_id": product_id,
-                            "serial": serial,
-                        })
+                if name:
+                    usb_devices.append({
+                        "name": name,
+                        "vendor": vendor,
+                        "product_id": product_id,
+                        "serial": serial,
+                    })
+                # Old API includes Media with volumes; new API does not
+                if not is_host_type:
                     for media in item.get("Media", []):
                         if not isinstance(media, dict):
                             continue
@@ -214,15 +226,85 @@ async def collect_connections() -> dict:
                                 "parent_product_id": product_id,
                                 "parent_serial":     serial,
                             })
-                    for key in ["_items", "hub_device"]:
-                        if key in item:
-                            sub = item[key]
-                            if isinstance(sub, list):
-                                _parse_usb(sub)
-        for entry in usb_data.get("SPUSBDataType", []):
-            _parse_usb(entry.get("_items", []))
-    except Exception:
-        pass
+                for key in ["_items", "hub_device"]:
+                    if key in item:
+                        sub = item[key]
+                        if isinstance(sub, list):
+                            _parse_usb(sub, is_host_type)
+                        elif isinstance(sub, dict):
+                            _parse_usb([sub], is_host_type)
+
+    # Try each USB data type until one returns devices
+    used_host_type = False
+    for dt in usb_data_types:
+        try:
+            is_host = dt == "SPUSBHostDataType"
+            if dt == usb_data_types[0]:
+                data = json.loads(usb_out)
+            else:
+                fallback_out, _, _ = await _run(
+                    ["/usr/sbin/system_profiler", dt, "-json"]
+                )
+                data = json.loads(fallback_out)
+            for entry in data.get(dt, []):
+                _parse_usb(entry.get("_items", []), is_host_type=is_host)
+            if usb_devices:
+                used_host_type = is_host
+                break
+        except Exception:
+            continue
+
+    # SPUSBHostDataType does not include volume/Media info — discover external
+    # volumes via diskutil and associate them with USB storage devices
+    if used_host_type and usb_devices:
+        try:
+            du_out, _, _ = await _run(
+                ["diskutil", "list", "-plist", "external", "physical"]
+            )
+            du_data = plistlib.loads(du_out.encode())
+            whole_disks = set(du_data.get("WholeDisks", []))
+            all_disks = du_data.get("AllDisks", [])
+            # Partitions only (e.g. disk4s1), skip whole-disk entries (disk4)
+            partitions = [d for d in all_disks if d not in whole_disks]
+
+            # Find the storage device to use as parent for volumes
+            storage_keywords = ("reader", "storage", "disk", "flash", "thumb", "usb")
+            parent_dev = None
+            for dev in usb_devices:
+                if any(kw in dev.get("name", "").lower() for kw in storage_keywords):
+                    parent_dev = dev
+                    break
+            if not parent_dev:
+                for dev in reversed(usb_devices):
+                    if "hub" not in dev.get("name", "").lower():
+                        parent_dev = dev
+                        break
+
+            for bsd_name in partitions:
+                try:
+                    info_out, _, _ = await _run(
+                        ["diskutil", "info", "-plist", f"/dev/{bsd_name}"]
+                    )
+                    info = plistlib.loads(info_out.encode())
+                    mount_point = info.get("MountPoint", "")
+                    if not mount_point:
+                        continue
+                    usb_volumes.append({
+                        "vol_name":          info.get("VolumeName", ""),
+                        "bsd_name":          bsd_name,
+                        "mount_point":       mount_point,
+                        "file_system":       info.get("FilesystemType", ""),
+                        "size":              info.get("TotalSize", ""),
+                        "volume_uuid":       info.get("VolumeUUID", ""),
+                        "parent_name":       parent_dev.get("name", "") if parent_dev else "",
+                        "parent_vendor":     parent_dev.get("vendor", "") if parent_dev else "",
+                        "parent_product_id": parent_dev.get("product_id", "") if parent_dev else "",
+                        "parent_serial":     parent_dev.get("serial", "") if parent_dev else "",
+                    })
+                except Exception:
+                    continue
+        except Exception:
+            pass
 
     # Parse Bluetooth
     bt_enabled = False
@@ -318,7 +400,6 @@ async def collect_connections() -> dict:
 @router.get("/api/device/status")
 async def get_device_status(
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     status = await collect_device_status()
 
@@ -346,7 +427,6 @@ async def get_device_status(
 @router.get("/api/device/connections")
 async def get_device_connections(
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     data = await collect_connections()
     whitelist = db.query(UsbWhitelist).all()
@@ -363,12 +443,30 @@ async def get_device_connections(
                 return True
         return False
 
+    def _is_volume_whitelisted(pid: str, serial: str, volume_uuid: str) -> bool:
+        # If the volume has a UUID, require the entry to explicitly specify a matching
+        # volume_uuid — prevents a serial-only entry from whitelisting all SD cards
+        # in the same reader.
+        for e in whitelist:
+            if volume_uuid and not e.volume_uuid:
+                continue
+            checks = []
+            if e.product_id:
+                checks.append(pid == e.product_id)
+            if e.serial:
+                checks.append(serial == e.serial)
+            if e.volume_uuid:
+                checks.append(volume_uuid == e.volume_uuid)
+            if checks and all(checks):
+                return True
+        return False
+
     for dev in data.get("usb_devices", []):
         dev["whitelisted"] = _is_whitelisted(
             dev.get("product_id", ""), dev.get("serial", "")
         )
     for vol in data.get("usb_volumes", []):
-        vol["whitelisted"] = _is_whitelisted(
+        vol["whitelisted"] = _is_volume_whitelisted(
             vol.get("parent_product_id", ""), vol.get("parent_serial", ""),
             vol.get("volume_uuid", "")
         )
@@ -378,7 +476,6 @@ async def get_device_connections(
 @router.get("/api/device/usb-whitelist")
 def list_usb_whitelist(
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     entries = db.query(UsbWhitelist).order_by(UsbWhitelist.added_at.desc()).all()
     return [
@@ -401,7 +498,7 @@ def list_usb_whitelist(
 def add_usb_whitelist(
     body: UsbWhitelistCreate,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
+    _: None = Depends(require_2fa),
 ):
     entry = UsbWhitelist(
         name=body.name,
@@ -436,7 +533,7 @@ def add_usb_whitelist(
 def remove_usb_whitelist(
     entry_id: int,
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
+    _: None = Depends(require_2fa),
 ):
     entry = db.query(UsbWhitelist).filter(UsbWhitelist.id == entry_id).first()
     if not entry:
@@ -451,7 +548,6 @@ def remove_usb_whitelist(
 @router.get("/api/preflight")
 async def preflight_check(
     db: Session = Depends(get_db),
-    _: str = Depends(verify_token),
 ):
     """
     Pre-flight signing readiness check.

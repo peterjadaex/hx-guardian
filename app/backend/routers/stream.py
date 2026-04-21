@@ -11,10 +11,8 @@ import subprocess
 from datetime import datetime
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-
-from core.auth import verify_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/stream", tags=["stream"])
@@ -44,7 +42,6 @@ async def _sse_generator(queue: asyncio.Queue, timeout: float = 300.0) -> AsyncG
 @router.get("/scan/{session_id}")
 async def stream_scan(
     session_id: int,
-    _: str = Depends(verify_token),
 ):
     """Stream rule results as a scan session runs."""
     # Wait up to 5s for the session to start
@@ -111,7 +108,7 @@ async def _log_line_generator() -> AsyncGenerator[str, None]:
 
 
 @router.get("/logs")
-async def stream_logs(_: str = Depends(verify_token)):
+async def stream_logs():
     """Stream live system log lines via SSE."""
     return StreamingResponse(
         _log_line_generator(),
@@ -145,7 +142,7 @@ async def _device_stream_generator() -> AsyncGenerator[str, None]:
 
 
 @router.get("/device")
-async def stream_device(_: str = Depends(verify_token)):
+async def stream_device():
     """Stream device state changes every 30s."""
     return StreamingResponse(
         _device_stream_generator(),

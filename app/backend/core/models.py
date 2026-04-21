@@ -135,6 +135,18 @@ class MdmProfile(Base):
     rules_json = Column(Text, nullable=True)   # JSON list of rule names this profile covers
 
 
+class TwoFactorConfig(Base):
+    __tablename__ = "two_factor_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    encrypted_secret = Column(Text, nullable=True)          # active Fernet/XOR-encrypted TOTP secret
+    pending_encrypted_secret = Column(Text, nullable=True)  # unconfirmed secret during setup flow
+    is_enabled = Column(Boolean, nullable=False, default=False)
+    enabled_at = Column(DateTime, nullable=True)
+    last_verified_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 class UsbWhitelist(Base):
     __tablename__ = "usb_whitelist"
 

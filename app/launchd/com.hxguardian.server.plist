@@ -5,17 +5,15 @@
     <key>Label</key>
     <string>com.hxguardian.server</string>
 
+    <!-- NOTE: This file is a reference template only.
+         install.sh generates the real plist inline with UserName substituted. -->
+    <key>UserName</key>
+    <string>_ACTUAL_USER_</string>
+
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/python3</string>
-        <string>-m</string>
-        <string>uvicorn</string>
-        <string>main:app</string>
-        <string>--host</string>
-        <string>127.0.0.1</string>
-        <string>--port</string>
-        <string>8000</string>
-        <string>--no-access-log</string>
+        <string>/bin/zsh</string>
+        <string>/Library/Application Support/hxguardian/bin/run-hxg-server</string>
     </array>
 
     <key>RunAtLoad</key>
@@ -29,16 +27,5 @@
 
     <key>StandardErrorPath</key>
     <string>/Library/Logs/hxguardian-server-error.log</string>
-
-    <key>WorkingDirectory</key>
-    <string>/Users/admin/Documents/airgap/hx-guardian/app/backend</string>
-
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PYTHONPATH</key>
-        <string>/Users/admin/Documents/airgap/hx-guardian/app/backend</string>
-        <key>PATH</key>
-        <string>/Users/admin/Library/Python/3.9/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
-    </dict>
 </dict>
 </plist>

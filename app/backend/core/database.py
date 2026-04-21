@@ -1,12 +1,17 @@
 """
 SQLAlchemy synchronous database setup.
-Database file: app/data/hxguardian.db
+Database file: app/data/hxguardian.db (dev) or
+               /Library/Application Support/hxguardian/data/hxguardian.db (frozen binary)
 """
+import sys
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DB_PATH = Path(__file__).parent.parent.parent / "data" / "hxguardian.db"
+if getattr(sys, 'frozen', False):
+    DB_PATH = Path("/Library/Application Support/hxguardian/data/hxguardian.db")
+else:
+    DB_PATH = Path(__file__).parent.parent.parent / "data" / "hxguardian.db"
 DB_URL = f"sqlite:///{DB_PATH}"
 
 engine = create_engine(
