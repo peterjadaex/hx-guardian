@@ -263,7 +263,7 @@ cat > "$PWPOLICY_FILE" << 'PWPLIST'
 <dict>
     <key>policyCategoryAuthentication</key>
     <array>
-        <!-- Max 3 failed login attempts before lockout -->
+        <!-- Max 5 failed login attempts before lockout -->
         <dict>
             <key>policyContent</key>
             <string>policyAttributeFailedAuthentications &lt; policyAttributeMaximumFailedAuthentications</string>
@@ -272,7 +272,7 @@ cat > "$PWPOLICY_FILE" << 'PWPLIST'
             <key>policyParameters</key>
             <dict>
                 <key>policyAttributeMaximumFailedAuthentications</key>
-                <integer>3</integer>
+                <integer>5</integer>
             </dict>
         </dict>
         <!-- Auto re-enable locked account after 15 minutes (900 seconds) -->
@@ -384,12 +384,19 @@ else
 fi
 rm -f "$PWPOLICY_FILE"
 
-# Force all local users to change password on next login so existing weak
+# Force local users to change password on next login so existing weak
 # passwords cannot persist after the policy is applied.
-echo "  Flagging local accounts for password reset on next login..."
+#
+# IMPORTANT: do NOT flag the currently logged-in installer user. Doing so can
+# cause immediate re-login failures on air-gapped systems after first logout.
+echo "  Flagging eligible local accounts for password reset on next login..."
 dscl /Local/Default -list /Users UniqueID 2>/dev/null \
     | awk '$2 >= 501 {print $1}' \
     | while read -r usr; do
+        if [[ "$usr" == "$ACTUAL_USER" ]]; then
+            echo "    - skipping active installer user: $usr"
+            continue
+        fi
         /usr/bin/pwpolicy -u "$usr" -setpolicy "newPasswordRequired=1" 2>/dev/null \
             && echo "    ✓ $usr — must set new password on next login" \
             || true

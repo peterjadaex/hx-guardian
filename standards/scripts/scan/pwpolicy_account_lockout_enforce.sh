@@ -18,7 +18,7 @@ arch=$(/usr/bin/arch)
 CURRENT_USER=$(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow lastUserName)
 CURR_USER_UID=$(/usr/bin/id -u $CURRENT_USER)
 
-result_value=$(/usr/bin/pwpolicy -getaccountpolicies 2> /dev/null | /usr/bin/tail +2 | /usr/bin/xmllint --xpath '//dict/key[text()="policyAttributeMaximumFailedAuthentications"]/following-sibling::integer[1]/text()' - | /usr/bin/awk '{ if ($1 <= 3) {print "pass"} else {print "fail"}}' | /usr/bin/uniq
+result_value=$(/usr/bin/pwpolicy -getaccountpolicies 2> /dev/null | /usr/bin/tail +2 | /usr/bin/xmllint --xpath '//dict/key[text()="policyAttributeMaximumFailedAuthentications"]/following-sibling::integer[1]/text()' - | /usr/bin/awk '{ if ($1 <= 5) {print "pass"} else {print "fail"}}' | /usr/bin/uniq
 )
 expected_value="pass"
 

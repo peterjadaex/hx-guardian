@@ -30,7 +30,7 @@ cat > "$PWPOLICY_FILE" << 'PWPLIST'
             <key>policyParameters</key>
             <dict>
                 <key>policyAttributeMaximumFailedAuthentications</key>
-                <integer>3</integer>
+                <integer>5</integer>
             </dict>
         </dict>
         <dict>
