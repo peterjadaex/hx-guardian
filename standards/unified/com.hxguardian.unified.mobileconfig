@@ -20,8 +20,6 @@
 			<string>e426548a-8e4b-4efb-8280-33e2f5b2e811</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
-			<key>allowAccountModification</key>
-			<false/>
 			<key>allowActivityContinuation</key>
 			<false/>
 			<key>allowAirDrop</key>
@@ -31,8 +29,6 @@
 			<key>allowApplePersonalizedAdvertising</key>
 			<false/>
 			<key>allowAssistant</key>
-			<false/>
-			<key>allowAutoUnlock</key>
 			<false/>
 			<key>allowCloudAddressBook</key>
 			<false/>
@@ -98,8 +94,6 @@
 			<false/>
 			<key>allowSafariSummary</key>
 			<false/>
-			<key>allowUIConfigurationProfileInstallation</key>
-			<false/>
 			<key>allowUSBRestrictedMode</key>
 			<true/>
 			<key>allowWritingTools</key>
@@ -110,42 +104,8 @@
 			<true/>
 		</dict>
 
-		<!-- 2. PASSWORD POLICY -->
-		<dict>
-			<key>PayloadIdentifier</key>
-			<string>com.hxguardian.unified.passwordpolicy.77799cde-09f6-4343-a68c-469307aabff7</string>
-			<key>PayloadType</key>
-			<string>com.apple.mobiledevice.passwordpolicy</string>
-			<key>PayloadUUID</key>
-			<string>77799cde-09f6-4343-a68c-469307aabff7</string>
-			<key>PayloadVersion</key>
-			<integer>1</integer>
-			<key>allowSimple</key>
-			<false/>
-			<key>requireAlphanumeric</key>
-			<true/>
-			<key>minLength</key>
-			<integer>15</integer>
-			<key>minComplexChars</key>
-			<integer>1</integer>
-			<key>maxFailedAttempts</key>
-			<integer>3</integer>
-			<key>minutesUntilFailedLoginReset</key>
-			<integer>15</integer>
-			<key>pinHistory</key>
-			<integer>5</integer>
-			<key>maxPINAgeInDays</key>
-			<integer>365</integer>
-			<key>customRegex</key>
-			<array>
-				<dict>
-					<key>passwordContentRegex</key>
-					<string>^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$</string>
-					<key>passwordContentDescription</key>
-					<string>Password must contain at least one uppercase letter, one lowercase letter, and one number.</string>
-				</dict>
-			</array>
-		</dict>
+		<!-- 2. PASSWORD POLICY — removed: com.apple.mobiledevice.passwordpolicy requires MDM/supervision.
+		          Equivalent policy is enforced via pwpolicy in install.sh. -->
 
 		<!-- 3. FIREWALL -->
 		<dict>
@@ -467,26 +427,7 @@
 			<integer>1</integer>
 		</dict>
 
-		<!-- 16. SETUP ASSISTANT -->
-		<dict>
-			<key>PayloadIdentifier</key>
-			<string>com.hxguardian.unified.setupassistant.cae5ae87-311b-4ed9-b363-518b67748a26</string>
-			<key>PayloadType</key>
-			<string>com.apple.SetupAssistant.managed</string>
-			<key>PayloadUUID</key>
-			<string>cae5ae87-311b-4ed9-b363-518b67748a26</string>
-			<key>PayloadVersion</key>
-			<integer>1</integer>
-			<key>SkipSetupItems</key>
-			<array>
-				<string>AppleID</string>
-				<string>iCloudStorage</string>
-				<string>Privacy</string>
-				<string>Siri</string>
-				<string>Intelligence</string>
-				<string>WatchMigration</string>
-			</array>
-		</dict>
+		<!-- 16. SETUP ASSISTANT — removed: requires MDM supervision -->
 
 		<!-- 17. SOFTWARE UPDATE (critical/config only) -->
 		<dict>
@@ -548,19 +489,7 @@
 			<false/>
 		</dict>
 
-		<!-- 21. iCLOUD MANAGED -->
-		<dict>
-			<key>PayloadIdentifier</key>
-			<string>com.hxguardian.unified.icloud.40773d6c-0069-4044-9877-0780c2f739ea</string>
-			<key>PayloadType</key>
-			<string>com.apple.icloud.managed</string>
-			<key>PayloadUUID</key>
-			<string>40773d6c-0069-4044-9877-0780c2f739ea</string>
-			<key>PayloadVersion</key>
-			<integer>1</integer>
-			<key>DisableFMMiCloudSetting</key>
-			<true/>
-		</dict>
+		<!-- 21. iCLOUD MANAGED — removed: requires MDM enrollment -->
 
 		<!-- 22. mDNS (Bonjour) -->
 		<dict>
@@ -772,6 +701,6 @@
 	<key>PayloadVersion</key>
 	<integer>1</integer>
 	<key>PayloadRemovalDisallowed</key>
-	<true/>
+	<false/>
 </dict>
 </plist>

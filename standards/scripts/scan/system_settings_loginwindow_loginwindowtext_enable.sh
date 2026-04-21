@@ -18,12 +18,13 @@ arch=$(/usr/bin/arch)
 CURRENT_USER=$(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow lastUserName)
 CURR_USER_UID=$(/usr/bin/id -u $CURRENT_USER)
 
-result_value=$(/usr/bin/osascript -l JavaScript << EOS | /usr/bin/base64
-$.NSUserDefaults.alloc.initWithSuiteName('com.apple.loginwindow')\
-.objectForKey('LoginwindowText').js
+result_value=$(/usr/bin/osascript -l JavaScript << EOS
+let val = ObjC.unwrap($.NSUserDefaults.alloc.initWithSuiteName('com.apple.loginwindow')\
+.objectForKey('LoginwindowText'))
+val && val.length > 0 ? "true" : "false"
 EOS
 )
-expected_value="Q2VudGVyIGZvciBJbnRlcm5ldCBTZWN1cml0eSBUZXN0IE1lc3NhZ2UK"
+expected_value="true"
 
 if [[ "$result_value" == "$expected_value" ]]; then
     printf '{"rule":"system_settings_loginwindow_loginwindowtext_enable","status":"PASS","result":"%s","expected":"%s"}\n' "$result_value" "$expected_value"

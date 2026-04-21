@@ -662,8 +662,8 @@
   "os_account_modification_disable": {
     "category": "Operating System",
     "description": "Disable AppleID and Internet Account Modifications",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/os_account_modification_disable.sh",
+    "fix_source": "cisv8",
     "rule": "os_account_modification_disable",
     "scan_script": "scripts/scan/os_account_modification_disable.sh",
     "scan_source": "800-53r5_high",
@@ -702,8 +702,8 @@
   "os_appleid_prompt_disable": {
     "category": "Operating System",
     "description": "Disable Apple ID Setup during Setup Assistant",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/os_appleid_prompt_disable.sh",
+    "fix_source": "800-53r5_high",
     "rule": "os_appleid_prompt_disable",
     "scan_script": "scripts/scan/os_appleid_prompt_disable.sh",
     "scan_source": "800-53r5_high",
@@ -818,8 +818,8 @@
   "os_config_profile_ui_install_disable": {
     "category": "Operating System",
     "description": "Disable Installation of Configuration Profiles through the User Interface",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/os_config_profile_ui_install_disable.sh",
+    "fix_source": "800-53r5_high",
     "rule": "os_config_profile_ui_install_disable",
     "scan_script": "scripts/scan/os_config_profile_ui_install_disable.sh",
     "scan_source": "800-53r5_high",
@@ -952,8 +952,8 @@
   "os_firewall_default_deny_require": {
     "category": "Operating System",
     "description": "Control Connections to Other Systems via a Deny-All and Allow-by-Exception Firewall Policy",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/os_firewall_default_deny_require.sh",
+    "fix_source": "800-53r5_high",
     "rule": "os_firewall_default_deny_require",
     "scan_script": "scripts/scan/os_firewall_default_deny_require.sh",
     "scan_source": "800-53r5_high",
@@ -1055,8 +1055,8 @@
   "os_icloud_storage_prompt_disable": {
     "category": "Operating System",
     "description": "Disable iCloud Storage Setup during Setup Assistant",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/os_icloud_storage_prompt_disable.sh",
+    "fix_source": "800-53r5_high",
     "rule": "os_icloud_storage_prompt_disable",
     "scan_script": "scripts/scan/os_icloud_storage_prompt_disable.sh",
     "scan_source": "800-53r5_high",
@@ -1556,8 +1556,8 @@
   "os_privacy_setup_prompt_disable": {
     "category": "Operating System",
     "description": "Disable Privacy Setup Services During Setup Assistant",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/os_privacy_setup_prompt_disable.sh",
+    "fix_source": "cisv8",
     "rule": "os_privacy_setup_prompt_disable",
     "scan_script": "scripts/scan/os_privacy_setup_prompt_disable.sh",
     "scan_source": "cisv8",
@@ -1647,6 +1647,19 @@
     "scan_source": null,
     "standards": {
       "800-53r5_high": true
+    }
+  },
+  "os_recover_lock_enable": {
+    "category": "Operating System",
+    "description": "Enable a Recovery Lock to Prevent Unauthorized Access to Recovery Mode",
+    "fix_script": "scripts/fix/os_recover_lock_enable.sh",
+    "fix_source": "800-53r5_high",
+    "rule": "os_recover_lock_enable",
+    "scan_script": "scripts/scan/os_recover_lock_enable.sh",
+    "scan_source": "800-53r5_high",
+    "standards": {
+      "800-53r5_high": true,
+      "cisv8": true
     }
   },
   "os_recovery_lock_enable": {
@@ -1856,8 +1869,8 @@
   "os_siri_prompt_disable": {
     "category": "Operating System",
     "description": "Disable Siri Setup during Setup Assistant",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/os_siri_prompt_disable.sh",
+    "fix_source": "800-53r5_high",
     "rule": "os_siri_prompt_disable",
     "scan_script": "scripts/scan/os_siri_prompt_disable.sh",
     "scan_source": "800-53r5_high",
@@ -1869,8 +1882,8 @@
   "os_skip_apple_intelligence_enable": {
     "category": "Operating System",
     "description": "Disable Apple Intelligence During Setup Assistant",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/os_skip_apple_intelligence_enable.sh",
+    "fix_source": "800-53r5_high",
     "rule": "os_skip_apple_intelligence_enable",
     "scan_script": "scripts/scan/os_skip_apple_intelligence_enable.sh",
     "scan_source": "800-53r5_high",
@@ -1882,8 +1895,8 @@
   "os_skip_unlock_with_watch_enable": {
     "category": "Operating System",
     "description": "Disable Unlock with Apple Watch During Setup Assistant",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/os_skip_unlock_with_watch_enable.sh",
+    "fix_source": "800-53r5_high",
     "rule": "os_skip_unlock_with_watch_enable",
     "scan_script": "scripts/scan/os_skip_unlock_with_watch_enable.sh",
     "scan_source": "800-53r5_high",
@@ -2722,8 +2735,8 @@
   "system_settings_filevault_enforce": {
     "category": "System Settings",
     "description": "Enforce FileVault",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/system_settings_filevault_enforce.sh",
+    "fix_source": "800-53r5_high",
     "rule": "system_settings_filevault_enforce",
     "scan_script": "scripts/scan/system_settings_filevault_enforce.sh",
     "scan_source": "800-53r5_high",
@@ -2736,8 +2749,8 @@
   "system_settings_find_my_disable": {
     "category": "System Settings",
     "description": "Disable Find My Service",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/system_settings_find_my_disable.sh",
+    "fix_source": "800-53r5_high",
     "rule": "system_settings_find_my_disable",
     "scan_script": "scripts/scan/system_settings_find_my_disable.sh",
     "scan_source": "800-53r5_high",
@@ -2973,8 +2986,8 @@
   "system_settings_loginwindow_loginwindowtext_enable": {
     "category": "System Settings",
     "description": "Configure Login Window to Show A Custom Message",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/system_settings_loginwindow_loginwindowtext_enable.sh",
+    "fix_source": "cisv8",
     "rule": "system_settings_loginwindow_loginwindowtext_enable",
     "scan_script": "scripts/scan/system_settings_loginwindow_loginwindowtext_enable.sh",
     "scan_source": "cisv8",
@@ -3326,8 +3339,8 @@
   "system_settings_token_removal_enforce": {
     "category": "System Settings",
     "description": "Configure User Session Lock When a Smart Token is Removed",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/system_settings_token_removal_enforce.sh",
+    "fix_source": "800-53r5_high",
     "rule": "system_settings_token_removal_enforce",
     "scan_script": "scripts/scan/system_settings_token_removal_enforce.sh",
     "scan_source": "800-53r5_high",

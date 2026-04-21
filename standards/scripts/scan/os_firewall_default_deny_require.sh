@@ -18,7 +18,7 @@ arch=$(/usr/bin/arch)
 CURRENT_USER=$(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow lastUserName)
 CURR_USER_UID=$(/usr/bin/id -u $CURRENT_USER)
 
-result_value=$(/sbin/pfctl -a '*' -sr &> /dev/null | /usr/bin/grep -c "block drop in all"
+result_value=$(/sbin/pfctl -a '*' -sr 2>/dev/null | /usr/bin/grep -c "block drop in all"
 )
 expected_value="1"
 
