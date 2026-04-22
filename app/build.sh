@@ -13,17 +13,54 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$APP_DIR/backend"
 DIST_DIR="$APP_DIR/dist"
+# Per-user workpath — macOS $TMPDIR is already user-private (/var/folders/.../T),
+# so this avoids the root-owned /tmp/hxg_build problem that occurs if the build
+# was ever run under sudo.
+WORK_DIR="${TMPDIR:-/tmp}"
+WORK_DIR="${WORK_DIR%/}/hxg_build"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " HX-Guardian — Binary Build"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
+if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+    echo "ERROR: Do not run build.sh as root / via sudo."
+    echo "  PyInstaller must run as the normal user so the workpath and"
+    echo "  dist/ stay user-writable. Re-run without sudo."
+    exit 1
+fi
+
 if [[ ! -f "$APP_DIR/install.sh" ]]; then
     echo "ERROR: Must be run from the hx-guardian repo root."
     echo "  cd /path/to/hx-guardian && zsh app/build.sh"
     exit 1
 fi
+
+# Clean any stale workpath + dist from a prior run (including ones that may have
+# been left behind with wrong permissions). If either fails, the user hit the
+# root-owned artifact case — tell them exactly how to fix it.
+clean_or_die() {
+    local path="$1"
+    if [[ ! -e "$path" ]]; then
+        return 0
+    fi
+    # Let rm's stderr through so the real errno is visible if it fails.
+    local err
+    if ! err=$(rm -rf "$path" 2>&1); then
+        echo "ERROR: Cannot remove stale build artifact: $path"
+        echo "  rm said: $err"
+        echo ""
+        echo "  If it's a permissions issue (owned by root from a prior sudo build), run:"
+        echo "    sudo rm -rf \"$path\""
+        echo "  If it's an immutable-flag issue, run:"
+        echo "    chflags -R nouchg,noschg \"$path\" && rm -rf \"$path\""
+        echo "  then re-run this script."
+        exit 1
+    fi
+}
+clean_or_die "$WORK_DIR"
+clean_or_die "$DIST_DIR"
 
 # ── 1. Ensure PyInstaller is available ───────────────────────────────────────
 echo "[1/4] Checking Python..."
@@ -73,21 +110,21 @@ cd "$BACKEND_DIR"
 echo "  Building hxg-server..."
 "$PYTHON" -m PyInstaller hxg_server.spec \
     --distpath "$DIST_DIR" \
-    --workpath /tmp/hxg_build \
+    --workpath "$WORK_DIR" \
     --noconfirm \
     --log-level WARN
 
 echo "  Building hxg-runner..."
 "$PYTHON" -m PyInstaller hxg_runner.spec \
     --distpath "$DIST_DIR" \
-    --workpath /tmp/hxg_build \
+    --workpath "$WORK_DIR" \
     --noconfirm \
     --log-level WARN
 
 echo "  Building hxg-usb-watcher..."
 "$PYTHON" -m PyInstaller hxg_usb_watcher.spec \
     --distpath "$DIST_DIR" \
-    --workpath /tmp/hxg_build \
+    --workpath "$WORK_DIR" \
     --noconfirm \
     --log-level WARN
 

@@ -1,12 +1,36 @@
-# PyInstaller build outputs and SD card transfer package — built locally, not committed
+# ─── Build outputs & SD-card bundle (produced by app/build.sh + prepare_sd_card.sh) ─
 app/dist/
 transfer/
-/tmp/hxg_build/
 
-# macOS
-.DS_Store
+# ─── Runtime data (created on first server start; never commit) ─────────────────
+# hxg.key is the 2FA encryption master key — must stay per-install.
+# hxguardian.db is runtime state (audit log, scan history, exemptions, schedules).
+app/data/hxg.key
+app/data/hxguardian.db
+app/data/*.db-journal
+app/data/*.db-wal
+app/data/*.db-shm
+app/data/reports/
 
-# Python
+# ─── Python ─────────────────────────────────────────────────────────────────────
+.venv/
+venv/
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
+.pytest_cache/
+
+# ─── Node / frontend (node_modules only — dist/ is intentionally committed) ─────
+app/frontend/node_modules/
+
+# ─── Editor / OS ────────────────────────────────────────────────────────────────
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Logs ───────────────────────────────────────────────────────────────────────
+*.log
