@@ -13,7 +13,7 @@ from core.two_factor import require_2fa
 from core.database import get_db
 from core.manifest import get_rule
 from core.models import FixResult, ScanResult, ScanSession
-from core.runner_client import fix_rule, scan_rule, RunnerError
+from core.runner_client import fix_rule, scan_rule, undo_fix_rule, RunnerError
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["fixes"])
@@ -103,6 +103,95 @@ async def apply_fix(
     return {
         "rule": rule_name,
         "fix": fix_res,
+        "scan_before": scan_before,
+        "scan_after": scan_after,
+        "scan_result": scan_res,
+        "changed": scan_before != scan_after,
+    }
+
+
+@router.post("/api/rules/{rule_name}/undo-fix")
+async def undo_fix(
+    rule_name: str,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_2fa),
+):
+    rule = get_rule(rule_name)
+    if not rule:
+        raise HTTPException(status_code=404, detail=f"Rule not found: {rule_name}")
+    if not rule.get("undo_fix_script"):
+        raise HTTPException(status_code=422, detail="No undo-fix script available for this rule")
+
+    last_scan = (
+        db.query(ScanResult)
+        .filter(ScanResult.rule == rule_name)
+        .order_by(ScanResult.scanned_at.desc())
+        .first()
+    )
+    scan_before = last_scan.status if last_scan else "UNKNOWN"
+
+    try:
+        undo_res = await undo_fix_rule(rule_name)
+    except RunnerError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    scan_after = None
+    scan_res = None
+    if rule.get("scan_script"):
+        try:
+            scan_res = await scan_rule(rule_name)
+            scan_after = scan_res.get("status")
+
+            session = ScanSession(
+                started_at=datetime.utcnow(),
+                finished_at=datetime.utcnow(),
+                triggered_by="undo_fix_rescan",
+                filter_json=f'{{"rule":"{rule_name}"}}',
+                total_rules=1,
+                pass_count=1 if scan_after == "PASS" else 0,
+                fail_count=1 if scan_after == "FAIL" else 0,
+                score_pct=100.0 if scan_after == "PASS" else 0.0,
+            )
+            db.add(session)
+            db.commit()
+            db.refresh(session)
+
+            db.add(ScanResult(
+                session_id=session.id,
+                scanned_at=datetime.utcnow(),
+                rule=rule_name,
+                category=rule.get("category", ""),
+                status=scan_after,
+                result_value=scan_res.get("result"),
+                expected_value=scan_res.get("expected"),
+            ))
+            db.commit()
+        except Exception as e:
+            logger.warning("Auto-rescan after undo-fix failed for %s: %s", rule_name, e)
+
+    # Record as a FixResult row with UNDONE action — reuses existing model.
+    fix_record = FixResult(
+        executed_at=datetime.utcnow(),
+        rule=rule_name,
+        action=f"UNDONE:{undo_res.get('action', 'ERROR')}",
+        message=undo_res.get("message"),
+        exit_code=undo_res.get("exit_code"),
+        duration_ms=undo_res.get("duration_ms"),
+        scan_before=scan_before,
+        scan_after=scan_after,
+    )
+    db.add(fix_record)
+    db.commit()
+
+    audit.log_action(db, audit.FIX_UNDONE, rule_name, {
+        "action": undo_res.get("action"),
+        "scan_before": scan_before,
+        "scan_after": scan_after,
+    })
+
+    return {
+        "rule": rule_name,
+        "undo_fix": undo_res,
         "scan_before": scan_before,
         "scan_after": scan_after,
         "scan_result": scan_res,

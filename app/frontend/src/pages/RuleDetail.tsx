@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Play, Wrench, ShieldOff, RotateCcw, Lock } from 'lucide-react'
 import { Layout, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
-import { getRuleDetail, scanRule, fixRule, getFixHistory, grantExemption, revokeExemption, get2faStatus, verify2fa } from '../lib/api'
+import { getRuleDetail, scanRule, fixRule, undoFix, getFixHistory, grantExemption, revokeExemption, get2faStatus, verify2fa } from '../lib/api'
 
 // ─── Inline OTP prompt (same pattern as Connections page) ────────────────────
 
@@ -97,6 +97,7 @@ export function RuleDetail() {
   const [fixHistory, setFixHistory] = useState<any[]>([])
   const [scanning, setScanning] = useState(false)
   const [fixing, setFixing] = useState(false)
+  const [undoing, setUndoing] = useState(false)
   const [scanOutput, setScanOutput] = useState<string | null>(null)
   const [fixOutput, setFixOutput] = useState<string | null>(null)
   const [exemptReason, setExemptReason] = useState('')
@@ -188,6 +189,23 @@ export function RuleDetail() {
     })
   }
 
+  const handleUndoFix = () => {
+    if (!confirm('Undo the most recent fix? This attempts to restore the prior system state.')) return
+    require2fa(async (token) => {
+      setUndoing(true)
+      setFixOutput(null)
+      try {
+        const res = await undoFix(ruleName!, token || undefined)
+        setFixOutput(JSON.stringify(res, null, 2))
+        await loadRule()
+      } catch (e: any) {
+        setFixOutput(`Error: ${e.response?.data?.detail || e.message}`)
+      } finally {
+        setUndoing(false)
+      }
+    })
+  }
+
   const handleGrantExemption = () => {
     if (!exemptReason.trim()) return
     require2fa(async (token) => {
@@ -268,6 +286,13 @@ export function RuleDetail() {
                   {fixing ? 'Fixing...' : 'Apply Fix'}
                 </button>
               )}
+              {rule.has_undo_fix && (
+                <button onClick={handleUndoFix} disabled={undoing}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-700/50 text-amber-400 text-sm rounded-lg transition-colors disabled:opacity-50">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  {undoing ? 'Undoing...' : 'Undo Fix'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -293,10 +318,10 @@ export function RuleDetail() {
         </Card>
 
         {/* Scan output terminal */}
-        {(scanOutput || fixing || fixOutput) && (
+        {(scanOutput || fixing || undoing || fixOutput) && (
           <Card className="p-5">
             <div className="text-slate-400 text-xs font-medium mb-3">
-              {fixOutput ? 'FIX OUTPUT' : 'SCAN OUTPUT'}
+              {fixOutput ? (undoing ? 'UNDO OUTPUT' : 'FIX OUTPUT') : 'SCAN OUTPUT'}
             </div>
             <div className="terminal">{fixOutput || scanOutput || 'Running...'}</div>
           </Card>

@@ -1,0 +1,10 @@
+# Drop the Xcode Command Line Tools installer here before running prepare_sd_card.sh.
+#
+# Download from https://developer.apple.com/download/all/ (Apple ID required).
+# Pick "Command Line Tools for Xcode" matching the airgap Mac's macOS version.
+#
+# Accepted formats: .dmg (preferred) or extracted .pkg. Do not rename.
+#
+# On the airgap device, install.sh auto-detects and installs it only if
+# /usr/bin/xmllint is a CLT shim (size < 100 KB). If CLT is already present,
+# the bundle is ignored.

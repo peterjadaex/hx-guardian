@@ -34,3 +34,8 @@ app/frontend/node_modules/
 
 # ─── Logs ───────────────────────────────────────────────────────────────────────
 *.log
+
+# ─── Vendored installers (staged locally, shipped via SD card) ──────────────────
+# The CLT .dmg is ~839 MB — never commit it.
+app/vendor/clt/*.dmg
+app/vendor/clt/*.pkg

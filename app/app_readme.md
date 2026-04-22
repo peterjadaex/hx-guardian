@@ -91,6 +91,7 @@ hx-guardian/
     ├── data/                   ← Created on install; holds DB + reports
     ├── launchd/                ← LaunchDaemon and LaunchAgent plists
     ├── install.sh              ← Production installer (runs on target)
+    ├── rules_setup.sh          ← Post-install bulk fix + exemption script
     ├── prepare_sd_card.sh      ← SD card bundle builder (runs on dev machine)
     └── start-dev.sh            ← Development start script
 ```
@@ -222,11 +223,13 @@ assembles a minimal `transfer/` directory at the repo root:
 | `transfer/app/dist/hxg-runner/` | Privileged script runner binary (onedir) |
 | `transfer/app/dist/hxg-usb-watcher/` | USB enforcement daemon binary (onedir) |
 | `transfer/app/install.sh` + `start/stop/restart/update.sh` | Management scripts |
+| `transfer/app/rules_setup.sh` | Post-install bulk fix + exemption script |
 | `transfer/app/launchd/com.hxguardian.runner.plist` | LaunchDaemon plist for the runner |
 | `transfer/standards/launchd/com.hxguardian.usbwatcher.plist` | LaunchDaemon plist for the USB watcher |
 | `transfer/standards/scripts/` | manifest.json, scan/, fix/ |
 | `transfer/standards/<baseline>/mobileconfigs/unsigned/` | MDM profiles per baseline |
 | `transfer/standards/unified/` | Merged unified MDM profile |
+| `transfer/app/vendor/bin/xmllint` | Standalone xmllint binary (~200 KB, universal) — copied from dev Mac's `/usr/bin/xmllint`. `install.sh` deploys it and sed-patches the scan scripts that need it, so airgap devices don't need Xcode CLT. |
 
 It prints a checklist at the end confirming every artifact is present.
 
@@ -258,8 +261,14 @@ cp -R transfer/ /Volumes/<SD_CARD_NAME>/hxg-install
 ```
 
 The SD card is now ready to hand off to the airgap device admin. Nothing else
-needs to be downloaded on the target. See
-[airgap_readme.md](../standards/airgap_readme.md) for the operator-side install.
+needs to be downloaded on the target.
+
+**Operator-side install order (brief):**
+1. `cp -R /Volumes/<SD_CARD>/hxg-install ~/hxg-install`
+2. `sudo zsh ~/hxg-install/app/install.sh`
+3. Install `standards/unified/com.hxguardian.unified.mobileconfig` via System Settings
+4. `zsh ~/hxg-install/app/rules_setup.sh` — applies all fixes + exemptions, triggers rescan
+5. Open `http://127.0.0.1:8000`
 
 ---
 
@@ -274,6 +283,7 @@ Before handing a build to operators, run through these:
 - [ ] `curl -s http://127.0.0.1:8000/api/health` returns `runner_connected: true`.
 - [ ] `npm run build` in `app/frontend/` completes without errors (if frontend changed).
 - [ ] [app/frontend/dist/index.html](frontend/dist/index.html) is up to date and committed.
+- [ ] Dev Mac has Xcode CLT installed (`/usr/bin/xmllint --version` works) — `prepare_sd_card.sh` copies this binary into the bundle so the airgap device doesn't need CLT.
 - [ ] `zsh app/prepare_sd_card.sh` completes and the final checklist is all green.
 - [ ] The LaunchDaemon/LaunchAgent plists in [app/launchd/](launchd/) reference the
       path where the binaries will live on the target device. Update paths if they differ.

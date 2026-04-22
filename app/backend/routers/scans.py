@@ -282,7 +282,7 @@ async def scan_single_rule(
     session = ScanSession(
         started_at=datetime.utcnow(),
         finished_at=datetime.utcnow(),
-        triggered_by="manual",
+        triggered_by="single_rule",
         filter_json=json.dumps({"rule": rule_name}),
         total_rules=1,
         pass_count=1 if res.get("status") == "PASS" else 0,

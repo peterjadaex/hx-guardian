@@ -67,6 +67,17 @@ def resolve_fix_script(rule_name: str) -> Optional[str]:
     return str(STANDARDS_BASE / rule["fix_script"])
 
 
+def resolve_undo_fix_script(rule_name: str) -> Optional[str]:
+    rule = get_rule(rule_name)
+    if not rule or not rule.get("undo_fix_script"):
+        return None
+    return str(STANDARDS_BASE / rule["undo_fix_script"])
+
+
+def get_undo_fixable_rules() -> list[dict]:
+    return [r for r in get_all_rules() if r.get("undo_fix_script")]
+
+
 def get_categories() -> list[str]:
     cats = {r.get("category", "") for r in get_all_rules()}
     return sorted(c for c in cats if c)

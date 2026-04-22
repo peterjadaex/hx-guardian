@@ -95,6 +95,7 @@ def list_rules(
             "exemption": exemption,
             "has_scan": bool(r.get("scan_script")),
             "has_fix": bool(r.get("fix_script")),
+            "has_undo_fix": bool(r.get("undo_fix_script")),
             "severity": compute_severity(r),
             "impact": compute_impact(r),
         })
@@ -156,6 +157,7 @@ def get_rule_detail(
         "scan_history": history_list,
         "has_scan": bool(rule.get("scan_script")),
         "has_fix": bool(rule.get("fix_script")),
+        "has_undo_fix": bool(rule.get("undo_fix_script")),
         "severity": compute_severity(rule),
         "impact": compute_impact(rule),
     }

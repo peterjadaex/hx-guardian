@@ -22,9 +22,10 @@ def list_history(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    total = db.query(ScanSession).count()
+    base = db.query(ScanSession).filter(ScanSession.triggered_by != "single_rule")
+    total = base.count()
     sessions = (
-        db.query(ScanSession)
+        base
         .filter(ScanSession.finished_at.isnot(None))
         .order_by(ScanSession.started_at.desc())
         .offset(offset)
@@ -64,6 +65,7 @@ def get_trends(
             ScanSession.finished_at.isnot(None),
             ScanSession.started_at >= since,
             ScanSession.score_pct.isnot(None),
+            ScanSession.triggered_by != "single_rule",
         )
         .order_by(ScanSession.started_at.asc())
         .all()
@@ -92,7 +94,10 @@ def get_category_trends(
     if not session_id:
         latest = (
             db.query(ScanSession)
-            .filter(ScanSession.finished_at.isnot(None))
+            .filter(
+                ScanSession.finished_at.isnot(None),
+                ScanSession.triggered_by != "single_rule",
+            )
             .order_by(ScanSession.started_at.desc())
             .first()
         )

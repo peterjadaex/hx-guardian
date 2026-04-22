@@ -98,6 +98,11 @@ def handle_request(req: dict):
         result["done"] = True
         yield result
 
+    elif action == "undo_fix":
+        result = _exec_undo_fix(req_id, req.get("rule", ""))
+        result["done"] = True
+        yield result
+
     elif action == "scan_batch":
         rules = req.get("rules") or list(_manifest.keys())
         count = 0
@@ -164,6 +169,28 @@ def _exec_fix(req_id: str, rule_name: str) -> dict:
     if not script_path:
         return {"req_id": req_id, "rule": rule_name, "action": "NOT_APPLICABLE",
                 "message": "No fix script available"}
+
+    data, exit_code, duration_ms = run_script(script_path)
+    return {
+        "req_id": req_id,
+        "rule": rule_name,
+        "action": data.get("action", "ERROR"),
+        "message": data.get("message"),
+        "exit_code": exit_code,
+        "duration_ms": duration_ms,
+    }
+
+
+def _exec_undo_fix(req_id: str, rule_name: str) -> dict:
+    rule = get_rule(rule_name)
+    if not rule:
+        return {"req_id": req_id, "rule": rule_name, "action": "ERROR",
+                "message": "Unknown rule — not in manifest allowlist"}
+
+    script_path = resolve_script(rule.get("undo_fix_script"))
+    if not script_path:
+        return {"req_id": req_id, "rule": rule_name, "action": "NOT_APPLICABLE",
+                "message": "No undo-fix script available for this rule"}
 
     data, exit_code, duration_ms = run_script(script_path)
     return {

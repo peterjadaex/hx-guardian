@@ -83,6 +83,14 @@ async def fix_rule(rule_name: str) -> dict:
     return results[0]
 
 
+async def undo_fix_rule(rule_name: str) -> dict:
+    """Run a single undo-fix script and return the result dict."""
+    results = await _send_recv_lines({"action": "undo_fix", "rule": rule_name}, timeout=70.0)
+    if not results:
+        return {"rule": rule_name, "action": "ERROR", "message": "No response from runner"}
+    return results[0]
+
+
 async def scan_batch_stream(rules: Optional[list[str]] = None) -> AsyncGenerator[dict, None]:
     """
     Stream scan results one at a time as the runner processes them.

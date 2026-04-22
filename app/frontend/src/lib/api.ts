@@ -26,6 +26,11 @@ export const fixRule = (rule: string, twoFaToken?: string) =>
     headers: twoFaToken ? { 'X-2FA-Token': twoFaToken } : undefined,
   }).then(r => r.data)
 
+export const undoFix = (rule: string, twoFaToken?: string) =>
+  api.post(`/rules/${rule}/undo-fix`, null, {
+    headers: twoFaToken ? { 'X-2FA-Token': twoFaToken } : undefined,
+  }).then(r => r.data)
+
 export const getFixHistory = (rule: string) =>
   api.get(`/rules/${rule}/fix-history`).then(r => r.data)
 

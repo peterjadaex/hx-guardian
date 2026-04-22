@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Play, ChevronRight, Wrench, Loader2, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react'
+import { Search, Play, ChevronRight, Wrench, Loader2, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, RotateCcw } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
 import { getRules, getRuleMeta, startScan, getSession } from '../lib/api'
@@ -242,6 +242,7 @@ export function Rules() {
                         <div className="flex gap-1.5">
                           {rule.has_scan && <span className="text-xs px-1.5 py-0.5 bg-slate-700/50 text-slate-400 rounded">Scan</span>}
                           {rule.has_fix && <span className="text-xs px-1.5 py-0.5 bg-green-900/30 text-green-500 rounded flex items-center gap-0.5"><Wrench className="w-2.5 h-2.5" />Fix</span>}
+                          {rule.has_undo_fix && <span className="text-xs px-1.5 py-0.5 bg-amber-900/30 text-amber-400 rounded flex items-center gap-0.5"><RotateCcw className="w-2.5 h-2.5" />Undo</span>}
                         </div>
                       </td>
 

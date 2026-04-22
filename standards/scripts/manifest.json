@@ -39,7 +39,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_auditd_enabled.sh"
   },
   "audit_configure_capacity_notify": {
     "category": "Auditing",
@@ -51,7 +52,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_configure_capacity_notify.sh"
   },
   "audit_control_acls_configure": {
     "category": "Auditing",
@@ -115,7 +117,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_failure_halt.sh"
   },
   "audit_files_group_configure": {
     "category": "Auditing",
@@ -171,7 +174,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_flags_aa_configure.sh"
   },
   "audit_flags_ad_configure": {
     "category": "Auditing",
@@ -185,7 +189,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_flags_ad_configure.sh"
   },
   "audit_flags_ex_configure": {
     "category": "Auditing",
@@ -199,7 +204,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_flags_ex_configure.sh"
   },
   "audit_flags_fd_configure": {
     "category": "Auditing",
@@ -211,7 +217,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_flags_fd_configure.sh"
   },
   "audit_flags_fm_failed_configure": {
     "category": "Auditing",
@@ -225,7 +232,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_flags_fm_failed_configure.sh"
   },
   "audit_flags_fr_configure": {
     "category": "Auditing",
@@ -239,7 +247,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_flags_fr_configure.sh"
   },
   "audit_flags_fw_configure": {
     "category": "Auditing",
@@ -253,7 +262,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_flags_fw_configure.sh"
   },
   "audit_flags_lo_configure": {
     "category": "Auditing",
@@ -267,7 +277,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_flags_lo_configure.sh"
   },
   "audit_folder_group_configure": {
     "category": "Auditing",
@@ -359,7 +370,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_retention_configure.sh"
   },
   "audit_settings_failure_notify": {
     "category": "Auditing",
@@ -371,7 +383,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/audit_settings_failure_notify.sh"
   },
   "auth_pam_login_smartcard_enforce": {
     "category": "Authentication",
@@ -384,7 +397,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/auth_pam_login_smartcard_enforce.sh"
   },
   "auth_pam_su_smartcard_enforce": {
     "category": "Authentication",
@@ -397,7 +411,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/auth_pam_su_smartcard_enforce.sh"
   },
   "auth_pam_sudo_smartcard_enforce": {
     "category": "Authentication",
@@ -410,7 +425,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/auth_pam_sudo_smartcard_enforce.sh"
   },
   "auth_smartcard_allow": {
     "category": "Authentication",
@@ -461,7 +477,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/auth_ssh_password_authentication_disable.sh"
   },
   "icloud_addressbook_disable": {
     "category": "iCloud",
@@ -670,7 +687,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_account_modification_disable.sh"
   },
   "os_airdrop_disable": {
     "category": "Operating System",
@@ -710,7 +728,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_appleid_prompt_disable.sh"
   },
   "os_application_sandboxing": {
     "category": "Operating System",
@@ -825,7 +844,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_config_profile_ui_install_disable.sh"
   },
   "os_continuous_monitoring": {
     "category": "Operating System",
@@ -959,7 +979,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_firewall_default_deny_require.sh"
   },
   "os_firmware_password_require": {
     "category": "Operating System",
@@ -1050,7 +1071,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_httpd_disable.sh"
   },
   "os_icloud_storage_prompt_disable": {
     "category": "Operating System",
@@ -1063,7 +1085,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_icloud_storage_prompt_disable.sh"
   },
   "os_identify_non-org_users": {
     "category": "Operating System",
@@ -1136,7 +1159,8 @@
     "standards": {
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_install_log_retention_configure.sh"
   },
   "os_iphone_mirroring_disable": {
     "category": "Operating System",
@@ -1349,7 +1373,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_nfsd_disable.sh"
   },
   "os_non_repudiation": {
     "category": "Operating System",
@@ -1490,7 +1515,8 @@
     "standards": {
       "800-53r5_high": true,
       "cis_lvl2": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_policy_banner_loginwindow_enforce.sh"
   },
   "os_policy_banner_ssh_configure": {
     "category": "Operating System",
@@ -1502,7 +1528,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_policy_banner_ssh_configure.sh"
   },
   "os_policy_banner_ssh_enforce": {
     "category": "Operating System",
@@ -1514,7 +1541,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_policy_banner_ssh_enforce.sh"
   },
   "os_power_nap_disable": {
     "category": "Operating System",
@@ -1527,7 +1555,8 @@
     "standards": {
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_power_nap_disable.sh"
   },
   "os_prevent_priv_functions": {
     "category": "Operating System",
@@ -1563,7 +1592,8 @@
     "scan_source": "cisv8",
     "standards": {
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_privacy_setup_prompt_disable.sh"
   },
   "os_prohibit_remote_activation_collab_devices": {
     "category": "Operating System",
@@ -1698,7 +1728,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_root_disable.sh"
   },
   "os_safari_advertising_privacy_protection_enable": {
     "category": "Operating System",
@@ -1877,7 +1908,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_siri_prompt_disable.sh"
   },
   "os_skip_apple_intelligence_enable": {
     "category": "Operating System",
@@ -1890,7 +1922,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_skip_apple_intelligence_enable.sh"
   },
   "os_skip_unlock_with_watch_enable": {
     "category": "Operating System",
@@ -1903,7 +1936,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_skip_unlock_with_watch_enable.sh"
   },
   "os_sleep_and_display_sleep_apple_silicon_enable": {
     "category": "Operating System",
@@ -1916,7 +1950,8 @@
     "standards": {
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_sleep_and_display_sleep_apple_silicon_enable.sh"
   },
   "os_software_update_app_update_enforce": {
     "category": "Operating System",
@@ -1953,7 +1988,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_ssh_fips_compliant.sh"
   },
   "os_ssh_server_alive_count_max_configure": {
     "category": "Operating System",
@@ -1965,7 +2001,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_ssh_server_alive_count_max_configure.sh"
   },
   "os_ssh_server_alive_interval_configure": {
     "category": "Operating System",
@@ -1977,7 +2014,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_ssh_server_alive_interval_configure.sh"
   },
   "os_sshd_channel_timeout_configure": {
     "category": "Operating System",
@@ -1989,7 +2027,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_sshd_channel_timeout_configure.sh"
   },
   "os_sshd_client_alive_count_max_configure": {
     "category": "Operating System",
@@ -2001,7 +2040,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_sshd_client_alive_count_max_configure.sh"
   },
   "os_sshd_client_alive_interval_configure": {
     "category": "Operating System",
@@ -2013,7 +2053,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_sshd_client_alive_interval_configure.sh"
   },
   "os_sshd_fips_compliant": {
     "category": "Operating System",
@@ -2025,7 +2066,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_sshd_fips_compliant.sh"
   },
   "os_sshd_per_source_penalties_configure": {
     "category": "Operating System",
@@ -2037,7 +2079,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_sshd_per_source_penalties_configure.sh"
   },
   "os_sshd_permit_root_login_configure": {
     "category": "Operating System",
@@ -2049,7 +2092,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_sshd_permit_root_login_configure.sh"
   },
   "os_sshd_unused_connection_timeout_configure": {
     "category": "Operating System",
@@ -2061,7 +2105,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_sshd_unused_connection_timeout_configure.sh"
   },
   "os_store_encrypted_passwords": {
     "category": "Operating System",
@@ -2088,7 +2133,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_sudo_log_enforce.sh"
   },
   "os_sudo_timeout_configure": {
     "category": "Operating System",
@@ -2102,7 +2148,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_sudo_timeout_configure.sh"
   },
   "os_sudoers_timestamp_type_configure": {
     "category": "Operating System",
@@ -2167,7 +2214,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_tftpd_disable.sh"
   },
   "os_time_server_enabled": {
     "category": "Operating System",
@@ -2181,7 +2229,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_time_server_enabled.sh"
   },
   "os_touchid_prompt_disable": {
     "category": "Operating System",
@@ -2221,7 +2270,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_unlock_active_user_session_disable.sh"
   },
   "os_uucp_disable": {
     "category": "Operating System",
@@ -2234,7 +2284,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/os_uucp_disable.sh"
   },
   "os_world_writable_library_folder_configure": {
     "category": "Operating System",
@@ -2286,7 +2337,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/pwpolicy_account_inactivity_enforce.sh"
   },
   "pwpolicy_account_lockout_enforce": {
     "category": "Password Policy",
@@ -2418,7 +2470,8 @@
     "scan_source": "cisv8",
     "standards": {
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/pwpolicy_minimum_lifetime_enforce.sh"
   },
   "pwpolicy_simple_sequence_disable": {
     "category": "Password Policy",
@@ -2648,7 +2701,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_bluetooth_sharing_disable.sh"
   },
   "system_settings_content_caching_disable": {
     "category": "System Settings",
@@ -2757,7 +2811,8 @@
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_find_my_disable.sh"
   },
   "system_settings_firewall_enable": {
     "category": "System Settings",
@@ -2823,7 +2878,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_guest_access_smb_disable.sh"
   },
   "system_settings_guest_account_disable": {
     "category": "System Settings",
@@ -2956,7 +3012,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_location_services_disable.sh"
   },
   "system_settings_location_services_enable": {
     "category": "System Settings",
@@ -2969,7 +3026,8 @@
     "standards": {
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_location_services_enable.sh"
   },
   "system_settings_location_services_menu_enforce": {
     "category": "System Settings",
@@ -2981,7 +3039,8 @@
     "scan_source": "cis_lvl2",
     "standards": {
       "cis_lvl2": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_location_services_menu_enforce.sh"
   },
   "system_settings_loginwindow_loginwindowtext_enable": {
     "category": "System Settings",
@@ -2994,7 +3053,8 @@
     "standards": {
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_loginwindow_loginwindowtext_enable.sh"
   },
   "system_settings_loginwindow_prompt_username_password_enforce": {
     "category": "System Settings",
@@ -3064,7 +3124,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_printer_sharing_disable.sh"
   },
   "system_settings_rae_disable": {
     "category": "System Settings",
@@ -3078,7 +3139,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_rae_disable.sh"
   },
   "system_settings_remote_management_disable": {
     "category": "System Settings",
@@ -3106,7 +3168,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_screen_sharing_disable.sh"
   },
   "system_settings_screensaver_ask_for_password_delay_enforce": {
     "category": "System Settings",
@@ -3213,7 +3276,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_smbd_disable.sh"
   },
   "system_settings_software_update_download_enforce": {
     "category": "System Settings",
@@ -3254,7 +3318,8 @@
       "800-53r5_high": true,
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_ssh_disable.sh"
   },
   "system_settings_ssh_enable": {
     "category": "System Settings",
@@ -3266,7 +3331,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_ssh_enable.sh"
   },
   "system_settings_system_wide_preferences_configure": {
     "category": "System Settings",
@@ -3346,7 +3412,8 @@
     "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_token_removal_enforce.sh"
   },
   "system_settings_touch_id_settings_disable": {
     "category": "System Settings",
@@ -3396,7 +3463,8 @@
     "standards": {
       "cis_lvl2": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_wake_network_access_disable.sh"
   },
   "system_settings_wallet_applepay_settings_disable": {
     "category": "System Settings",

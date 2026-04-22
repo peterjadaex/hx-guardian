@@ -167,6 +167,98 @@ done
 
 echo "  ✓ Scripts deployed — manifest readable, .sh files root-only, mobileconfigs world-readable"
 
+# ── 1b. Ensure Xcode Command Line Tools are present ──────────────────────────
+# CLT supplies /usr/bin/python3 (required by rules_setup.sh) and on pre-Tahoe
+# macOS also supplies /usr/bin/xmllint (used by 19 scan/fix scripts). On
+# Tahoe+, xmllint is bundled in base macOS but python3 is still a CLT shim —
+# so we always need CLT on airgap devices. We detect using `xcode-select -p`
+# (canonical signal) rather than size-checking individual binaries, since
+# that check is unreliable across macOS versions.
+echo ""
+echo "[1b/5] Verifying Xcode Command Line Tools..."
+
+clt_installed() {
+    # Canonical check: xcode-select -p returns the active developer dir and
+    # that directory actually exists on disk. Size-checking /usr/bin/xmllint
+    # is unreliable — on macOS 26 Tahoe xmllint ships in base macOS even
+    # without CLT, so the size check reports "installed" when it isn't.
+    # python3, which rules_setup.sh depends on, is still a CLT shim on Tahoe.
+    local p
+    p=$(xcode-select -p 2>/dev/null) || return 1
+    [[ -n "$p" && -d "$p" ]]
+}
+
+install_clt_from_pkg() {
+    local pkg="$1"
+    echo "  Installing $(basename "$pkg") (this takes ~2 min)..."
+    installer -pkg "$pkg" -target / >/dev/null
+}
+
+install_clt_from_dmg() {
+    local dmg="$1"
+    local mount_point pkg
+    echo "  Mounting $(basename "$dmg")..."
+    mount_point=$(hdiutil attach -nobrowse -noverify "$dmg" \
+        | awk -F'\t' '/\/Volumes\// {print $NF}' | tail -1)
+    if [[ -z "$mount_point" || ! -d "$mount_point" ]]; then
+        echo "  ERROR: Could not mount $dmg"
+        return 1
+    fi
+    pkg=$(find "$mount_point" -maxdepth 2 -name "*.pkg" | head -1)
+    if [[ -z "$pkg" ]]; then
+        echo "  ERROR: No .pkg found inside the .dmg"
+        hdiutil detach "$mount_point" -quiet 2>/dev/null || true
+        return 1
+    fi
+    install_clt_from_pkg "$pkg"
+    local rc=$?
+    hdiutil detach "$mount_point" -quiet 2>/dev/null || true
+    return $rc
+}
+
+if clt_installed; then
+    echo "  ✓ CLT already installed: $(xcode-select -p 2>/dev/null)"
+else
+    echo "  /usr/bin/xmllint is a CLT shim — looking for bundled CLT installer..."
+    CLT_DIR="$APP_DIR/vendor/clt"
+    CLT_PKG=""
+    CLT_DMG=""
+    if [[ -d "$CLT_DIR" ]]; then
+        CLT_PKG=$(find "$CLT_DIR" -maxdepth 1 -name "*.pkg" 2>/dev/null | head -1)
+        [[ -z "$CLT_PKG" ]] && CLT_DMG=$(find "$CLT_DIR" -maxdepth 1 -name "*.dmg" 2>/dev/null | head -1)
+    fi
+
+    if [[ -n "$CLT_PKG" ]]; then
+        install_clt_from_pkg "$CLT_PKG" || { echo "ERROR: CLT install failed"; exit 1; }
+    elif [[ -n "$CLT_DMG" ]]; then
+        install_clt_from_dmg "$CLT_DMG" || { echo "ERROR: CLT install failed"; exit 1; }
+    else
+        echo ""
+        echo "ERROR: Xcode Command Line Tools required but not installed, and no bundled installer found."
+        echo ""
+        echo "  HX-Guardian scan scripts need /usr/bin/xmllint (ships with CLT)."
+        echo ""
+        echo "  Option 1 — manual one-shot install:"
+        echo "    Copy 'Command Line Tools for Xcode' .dmg to the SD card, then on this Mac:"
+        echo "      hdiutil attach /Volumes/<SD_CARD>/Command_Line_Tools_for_Xcode_*.dmg"
+        echo "      sudo installer -pkg \"/Volumes/Command Line Developer Tools/Command Line Tools.pkg\" -target /"
+        echo "      hdiutil detach \"/Volumes/Command Line Developer Tools\""
+        echo "    Re-run this installer afterwards."
+        echo ""
+        echo "  Option 2 — integrated (for every future build):"
+        echo "    1. On the dev Mac, drop the CLT .dmg at: app/vendor/clt/"
+        echo "    2. Re-run: zsh app/prepare_sd_card.sh"
+        echo "    3. Re-transfer the bundle and re-run this installer."
+        exit 1
+    fi
+
+    if ! clt_installed; then
+        echo "ERROR: CLT installer ran but /usr/bin/xmllint is still a stub."
+        exit 1
+    fi
+    echo "  ✓ CLT installed: $(xcode-select -p 2>/dev/null)"
+fi
+
 # ── 2. Unix socket directory ──────────────────────────────────────────────────
 echo ""
 echo "[2/5] Creating Unix socket directory..."
@@ -383,6 +475,45 @@ else
     echo "  ⚠ pwpolicy failed — check: pwpolicy -getaccountpolicies"
 fi
 rm -f "$PWPOLICY_FILE"
+
+# Stamp passwordLastSetTime = now on every real local account so the new
+# maxLifetime policy gives a fresh 60-day window instead of treating accounts
+# with a missing or stale timestamp as already-expired (which would otherwise
+# trigger a "must reset password" prompt on every single login).
+echo "  Stamping passwordLastSetTime on local accounts..."
+NOW_EPOCH=$(/bin/date +%s)
+STAMPED=0
+USER_LIST=$(/usr/bin/dscl . list /Users UniqueID 2>/dev/null \
+            | /usr/bin/awk '$2 >= 500 && $1 !~ /^_/ {print $1}')
+for usr in ${(f)USER_LIST}; do
+    [[ -z "$usr" ]] && continue
+    TMP=$(/usr/bin/mktemp /tmp/hxg-acctpol.XXXXXX.plist)
+    # dscl prefixes each line of the inline plist with one space; strip it.
+    existing=$(/usr/bin/dscl . -read "/Users/${usr}" accountPolicyData 2>/dev/null \
+                | /usr/bin/sed -n '/<?xml/,/<\/plist>/p' \
+                | /usr/bin/sed 's/^ //')
+    if [[ -n "$existing" ]]; then
+        printf '%s\n' "$existing" > "$TMP"
+    else
+        cat > "$TMP" << 'EMPTYPLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+</dict>
+</plist>
+EMPTYPLIST
+    fi
+    if /usr/bin/plutil -replace passwordLastSetTime -float "${NOW_EPOCH}" "$TMP" 2>/dev/null \
+       || /usr/bin/plutil -insert passwordLastSetTime -float "${NOW_EPOCH}" "$TMP" 2>/dev/null; then
+        new_data=$(/bin/cat "$TMP")
+        if /usr/bin/dscl . -create "/Users/${usr}" accountPolicyData "$new_data" 2>/dev/null; then
+            STAMPED=$((STAMPED + 1))
+        fi
+    fi
+    /bin/rm -f "$TMP"
+done
+echo "  ✓ Stamped $STAMPED account(s)"
 
 # Force local users to change password on next login so existing weak
 # passwords cannot persist after the policy is applied.
