@@ -10,6 +10,11 @@
 
 set -euo pipefail
 
+# Ensure core tools (rm, cp, mkdir, codesign, chmod, du, cut, awk) resolve
+# regardless of how the caller's shell configured PATH. Prepend the standard
+# macOS system directories.
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKEND_DIR="$APP_DIR/backend"
 DIST_DIR="$APP_DIR/dist"
@@ -47,7 +52,7 @@ clean_or_die() {
     fi
     # Let rm's stderr through so the real errno is visible if it fails.
     local err
-    if ! err=$(rm -rf "$path" 2>&1); then
+    if ! err=$(/bin/rm -rf "$path" 2>&1); then
         echo "ERROR: Cannot remove stale build artifact: $path"
         echo "  rm said: $err"
         echo ""

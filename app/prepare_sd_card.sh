@@ -10,6 +10,9 @@
 
 set -euo pipefail
 
+# Ensure core tools resolve regardless of caller's PATH configuration.
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+
 APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(dirname "$APP_DIR")"
 DIST_DIR="$APP_DIR/dist"
