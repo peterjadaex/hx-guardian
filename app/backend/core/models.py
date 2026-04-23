@@ -4,7 +4,7 @@ SQLAlchemy ORM models for hxguardian.db
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import (
-    Boolean, Column, Float, ForeignKey, Integer, String, Text, DateTime
+    Boolean, Column, Float, ForeignKey, Index, Integer, String, Text, DateTime
 )
 from sqlalchemy.orm import relationship
 
@@ -89,6 +89,65 @@ class AuditLog(Base):
     detail_json = Column(Text, nullable=True)
     operator = Column(String(64), default="admin")
     source_ip = Column(String(64), default="127.0.0.1")
+
+
+class ShellExecLog(Base):
+    __tablename__ = "shell_exec_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ts = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    source = Column(String(16), nullable=False, index=True)   # 'log_stream' | 'history'
+    pid = Column(Integer, nullable=True)
+    ppid = Column(Integer, nullable=True)
+    user = Column(String(64), nullable=True)
+    process_path = Column(String(512), nullable=True)
+    command = Column(Text, nullable=True)          # populated by history rows
+    event_message = Column(Text, nullable=True)    # populated by log_stream rows
+    subsystem = Column(String(128), nullable=True)
+    raw_json = Column(Text, nullable=True)         # truncated to 2KB by writer
+
+    __table_args__ = (
+        Index("ix_shell_exec_log_source_ts", "source", "ts"),
+    )
+
+
+class ShellHistoryCursor(Base):
+    """Per-file ingest cursor for the shell history tailer. Persisting (inode,
+    offset) means a restart resumes where we left off, instead of re-seeding at
+    EOF and losing the window between daemon stop and next start. First-seen
+    files (no row here) are ingested from offset 0 so pre-install history
+    becomes visible too."""
+    __tablename__ = "shell_history_cursor"
+
+    path = Column(String(512), primary_key=True)
+    inode = Column(Integer, nullable=True)
+    offset = Column(Integer, nullable=False, default=0)
+    format = Column(String(16), nullable=False, default="plain")
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class BiometricEvent(Base):
+    """Touch ID / LocalAuthentication / passkey events captured from the macOS
+    unified log. event_class is a best-effort classification from the event
+    message; unknown shapes land in OTHER so we never silently drop data."""
+    __tablename__ = "biometric_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ts = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    event_class = Column(String(16), nullable=False, index=True)  # REQUEST|SUCCESS|FAILURE|CANCELLED|TEARDOWN|OTHER
+    subsystem = Column(String(128), nullable=True)
+    category = Column(String(128), nullable=True)
+    requesting_process = Column(String(512), nullable=True)  # processImagePath
+    requesting_pid = Column(Integer, nullable=True)
+    user_uid = Column(Integer, nullable=True)        # userID from event
+    user = Column(String(64), nullable=True)         # resolved from uid
+    console_user = Column(String(64), nullable=True) # /dev/console owner at capture time
+    event_message = Column(Text, nullable=True)
+    raw_json = Column(Text, nullable=True)           # truncated to 2KB
+
+    __table_args__ = (
+        Index("ix_biometric_events_class_ts", "event_class", "ts"),
+    )
 
 
 class Schedule(Base):

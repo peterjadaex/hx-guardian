@@ -63,7 +63,7 @@ async def collect_device_status() -> dict:
         _run(["/usr/bin/csrutil", "status"]),
         _run(["/usr/bin/fdesetup", "status"]),
         _run(["/usr/sbin/spctl", "--status"]),
-        _run(["/usr/bin/defaults", "read", "/Library/Preferences/com.apple.security.firewall", "EnableFirewall"]),
+        _run(["/usr/libexec/ApplicationFirewall/socketfilterfw", "--getglobalstate"]),
         _run(["/usr/sbin/nvram", "94b73556-2197-4702-82a8-3e1337dafbfb:AppleSecureBootPolicy"]),
         _run(["/usr/sbin/system_profiler", "SPHardwareDataType", "-json"]),
         _run(["/bin/uptime"]),
@@ -97,10 +97,16 @@ async def collect_device_status() -> dict:
     # Gatekeeper
     gk_on = "enabled" in gk_out.lower()
 
-    # Firewall
-    try:
-        fw_on = fw_out.strip() == "1"
-    except Exception:
+    # Firewall — socketfilterfw prints one of:
+    #   "Firewall is disabled. (State = 0)"
+    #   "Firewall is enabled. (State = 1)"   specific services
+    #   "Firewall is enabled. (State = 2)"   block all incoming
+    fw_lower = fw_out.lower()
+    if "enabled" in fw_lower:
+        fw_on = True
+    elif "disabled" in fw_lower:
+        fw_on = False
+    else:
         fw_on = None
 
     # Secure boot

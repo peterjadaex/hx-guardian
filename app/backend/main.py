@@ -33,6 +33,8 @@ from routers import (
     schedule,
     reports,
     audit_log,
+    shell_log,
+    biometric_log,
     stream,
     settings,
 )
@@ -86,6 +88,8 @@ app.include_router(mdm.router)
 app.include_router(schedule.router)
 app.include_router(reports.router)
 app.include_router(audit_log.router)
+app.include_router(shell_log.router)
+app.include_router(biometric_log.router)
 app.include_router(stream.router)
 app.include_router(settings.router)
 

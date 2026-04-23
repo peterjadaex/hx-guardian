@@ -46,9 +46,10 @@ mkdir -p \
     "$TRANSFER_DIR/standards/launchd"
 
 # Binary directories (onedir mode — each is a folder containing the executable + deps)
-cp -R "$DIST_DIR/hxg-server"      "$TRANSFER_DIR/app/dist/"
-cp -R "$DIST_DIR/hxg-runner"      "$TRANSFER_DIR/app/dist/"
-cp -R "$DIST_DIR/hxg-usb-watcher" "$TRANSFER_DIR/app/dist/"
+cp -R "$DIST_DIR/hxg-server"        "$TRANSFER_DIR/app/dist/"
+cp -R "$DIST_DIR/hxg-runner"        "$TRANSFER_DIR/app/dist/"
+cp -R "$DIST_DIR/hxg-usb-watcher"   "$TRANSFER_DIR/app/dist/"
+cp -R "$DIST_DIR/hxg-shell-watcher" "$TRANSFER_DIR/app/dist/"
 
 # Installer + management scripts
 cp "$APP_DIR/install.sh"                                          "$TRANSFER_DIR/app/"
@@ -58,8 +59,9 @@ cp "$APP_DIR/stop.sh"                                             "$TRANSFER_DIR
 cp "$APP_DIR/restart.sh"                                          "$TRANSFER_DIR/app/"
 cp "$APP_DIR/rules_setup.sh"                                      "$TRANSFER_DIR/app/"
 # Server plist is generated inline by install.sh (with UserName substituted) — not copied here
-cp "$APP_DIR/launchd/com.hxguardian.runner.plist"                 "$TRANSFER_DIR/app/launchd/"
-cp "$REPO_ROOT/standards/launchd/com.hxguardian.usbwatcher.plist" "$TRANSFER_DIR/standards/launchd/"
+cp "$APP_DIR/launchd/com.hxguardian.runner.plist"                   "$TRANSFER_DIR/app/launchd/"
+cp "$REPO_ROOT/standards/launchd/com.hxguardian.usbwatcher.plist"   "$TRANSFER_DIR/standards/launchd/"
+cp "$REPO_ROOT/standards/launchd/com.hxguardian.shellwatcher.plist" "$TRANSFER_DIR/standards/launchd/"
 
 # Standards scripts (scan/fix shell scripts + manifest)
 cp -R "$REPO_ROOT/standards/scripts" "$TRANSFER_DIR/standards/"
@@ -77,6 +79,15 @@ done
 if [[ -d "$REPO_ROOT/standards/unified" ]]; then
     cp -R "$REPO_ROOT/standards/unified" "$TRANSFER_DIR/standards/unified"
 fi
+
+# Admin/operator runbook (markdown source + styled, offline-viewable HTML).
+# Placed at the TOP of the transfer bundle (not under standards/) so the admin
+# sees the readme immediately when opening the SD card.
+for doc in airgap_readme.md airgap_readme.html; do
+    if [[ -f "$REPO_ROOT/standards/$doc" ]]; then
+        cp "$REPO_ROOT/standards/$doc" "$TRANSFER_DIR/$doc"
+    fi
+done
 
 # Bundle the Xcode Command Line Tools installer.
 # Airgap devices don't have CLT out of the box, and /usr/bin/xmllint is a CLT
@@ -125,11 +136,13 @@ MISSING=false
 check "app/dist/hxg-server"                          "$TRANSFER_DIR/app/dist/hxg-server/hxg-server"
 check "app/dist/hxg-runner"                          "$TRANSFER_DIR/app/dist/hxg-runner/hxg-runner"
 check "app/dist/hxg-usb-watcher"                     "$TRANSFER_DIR/app/dist/hxg-usb-watcher/hxg-usb-watcher"
+check "app/dist/hxg-shell-watcher"                   "$TRANSFER_DIR/app/dist/hxg-shell-watcher/hxg-shell-watcher"
 check "app/install.sh"                               "$TRANSFER_DIR/app/install.sh"
 check "app/update.sh"                               "$TRANSFER_DIR/app/update.sh"
 check "app/rules_setup.sh"                          "$TRANSFER_DIR/app/rules_setup.sh"
 check "app/launchd/com.hxguardian.runner.plist"     "$TRANSFER_DIR/app/launchd/com.hxguardian.runner.plist"
 check "standards/launchd/usbwatcher.plist"           "$TRANSFER_DIR/standards/launchd/com.hxguardian.usbwatcher.plist"
+check "standards/launchd/shellwatcher.plist"         "$TRANSFER_DIR/standards/launchd/com.hxguardian.shellwatcher.plist"
 check "standards/scripts/manifest.json"              "$TRANSFER_DIR/standards/scripts/manifest.json"
 check "fix/pwpolicy_account_inactivity_enforce"      "$TRANSFER_DIR/standards/scripts/fix/pwpolicy_account_inactivity_enforce.sh"
 check "fix/os_account_modification_disable"          "$TRANSFER_DIR/standards/scripts/fix/os_account_modification_disable.sh"
@@ -142,6 +155,8 @@ check "fix/system_settings_loginwindow_text"         "$TRANSFER_DIR/standards/sc
 check "fix/system_settings_token_removal_enforce"    "$TRANSFER_DIR/standards/scripts/fix/system_settings_token_removal_enforce.sh"
 check "standards/mobileconfigs (800-53r5_high)"      "$TRANSFER_DIR/standards/800-53r5_high/mobileconfigs/unsigned"
 check "standards/unified (unified profile)"          "$TRANSFER_DIR/standards/unified/com.hxguardian.unified.mobileconfig"
+check "airgap_readme.md (top level)"                 "$TRANSFER_DIR/airgap_readme.md"
+check "airgap_readme.html (top level)"               "$TRANSFER_DIR/airgap_readme.html"
 
 # CLT bundling is optional (warned above if missing) — just report status.
 if [[ -d "$TRANSFER_DIR/app/vendor/clt" ]] \

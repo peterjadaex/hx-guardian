@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+
+  <!-- Label must match the filename without .plist -->
+  <key>Label</key>
+  <string>com.hxguardian.shellwatcher</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/Library/Application Support/hxguardian/bin/run-hxg-shell-watcher</string>
+  </array>
+
+  <!-- Start immediately when loaded and after any crash -->
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Throttle restarts: wait 10 s before restarting on failure -->
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <!-- Redirect stdout/stderr to the log file -->
+  <key>StandardOutPath</key>
+  <string>/var/log/hxguardian_shell.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/hxguardian_shell.log</string>
+
+  <!-- Run as root so `log stream` can subscribe system-wide and the
+       history tailer can read per-user 0600 history files -->
+  <!-- LaunchDaemons run as root by default; no UserName key needed -->
+
+</dict>
+</plist>

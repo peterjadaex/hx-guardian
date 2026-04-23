@@ -16,10 +16,12 @@ import logging
 import re
 import os
 import socket
+import sqlite3
 import subprocess
 import sys
 import threading
 import time
+from datetime import datetime
 from typing import Optional
 from pathlib import Path
 
@@ -31,8 +33,10 @@ from runner.executor import run_script
 HXG_SOCKET_PATH = "/var/run/hxg/runner.sock"
 if getattr(sys, 'frozen', False):
     STANDARDS_BASE = Path("/Library/Application Support/hxguardian")
+    DB_PATH = Path("/Library/Application Support/hxguardian/data/hxguardian.db")
 else:
     STANDARDS_BASE = Path(__file__).parent.parent.parent / "standards"
+    DB_PATH = Path(__file__).parent.parent / "data" / "hxguardian.db"
 MANIFEST_PATH = STANDARDS_BASE / "scripts" / "manifest.json"
 
 logging.basicConfig(
@@ -64,6 +68,39 @@ def load_manifest() -> None:
 def get_rule(name: str) -> Optional[dict]:
     with _manifest_lock:
         return _manifest.get(name)
+
+
+def _log_suspicious(rule_name: str, requested_action: str) -> None:
+    """Record a manifest-allowlist rejection as a SUSPICIOUS_ACTION audit row.
+
+    Writes directly via stdlib sqlite3 — the runner intentionally avoids SQLAlchemy.
+    Failures here must never bubble up and block the runner's response.
+    """
+    try:
+        conn = sqlite3.connect(str(DB_PATH), timeout=5.0)
+        try:
+            conn.execute("PRAGMA busy_timeout=5000")
+            conn.execute(
+                "INSERT INTO audit_log (ts, action, target, detail_json, operator, source_ip) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    datetime.utcnow(),
+                    "SUSPICIOUS_ACTION",
+                    rule_name,
+                    json.dumps({
+                        "reason": "rule_not_in_manifest",
+                        "rule": rule_name,
+                        "requested_action": requested_action,
+                    }),
+                    "runner",
+                    "127.0.0.1",
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as exc:
+        logger.error("Failed to write SUSPICIOUS_ACTION audit row: %s", exc)
 
 
 def resolve_script(relative_path: Optional[str]) -> Optional[str]:
@@ -138,6 +175,7 @@ def handle_request(req: dict):
 def _exec_scan(req_id: str, rule_name: str) -> dict:
     rule = get_rule(rule_name)
     if not rule:
+        _log_suspicious(rule_name, "scan")
         return {"req_id": req_id, "rule": rule_name, "status": "ERROR",
                 "message": "Unknown rule — not in manifest allowlist"}
 
@@ -162,6 +200,7 @@ def _exec_scan(req_id: str, rule_name: str) -> dict:
 def _exec_fix(req_id: str, rule_name: str) -> dict:
     rule = get_rule(rule_name)
     if not rule:
+        _log_suspicious(rule_name, "fix")
         return {"req_id": req_id, "rule": rule_name, "action": "ERROR",
                 "message": "Unknown rule — not in manifest allowlist"}
 
@@ -184,6 +223,7 @@ def _exec_fix(req_id: str, rule_name: str) -> dict:
 def _exec_undo_fix(req_id: str, rule_name: str) -> dict:
     rule = get_rule(rule_name)
     if not rule:
+        _log_suspicious(rule_name, "undo_fix")
         return {"req_id": req_id, "rule": rule_name, "action": "ERROR",
                 "message": "Unknown rule — not in manifest allowlist"}
 

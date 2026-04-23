@@ -33,24 +33,34 @@ echo ""
 echo "[cleanup] Removing previous installation..."
 
 # 1. Unload launchd services (may already be gone — ignore errors)
-launchctl bootout system /Library/LaunchDaemons/com.hxguardian.server.plist      2>/dev/null || true
-launchctl bootout system /Library/LaunchDaemons/com.hxguardian.runner.plist      2>/dev/null || true
-launchctl bootout system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist  2>/dev/null || true
+launchctl bootout system /Library/LaunchDaemons/com.hxguardian.server.plist        2>/dev/null || true
+launchctl bootout system /Library/LaunchDaemons/com.hxguardian.runner.plist        2>/dev/null || true
+launchctl bootout system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist    2>/dev/null || true
+launchctl bootout system /Library/LaunchDaemons/com.hxguardian.shellwatcher.plist  2>/dev/null || true
 
 # 2. Kill any lingering processes (crash-looping services may leave zombies)
-pkill -f 'hxg-server'      2>/dev/null || true
-pkill -f 'hxg-runner'      2>/dev/null || true
-pkill -f 'hxg-usb-watcher' 2>/dev/null || true
+pkill -f 'hxg-server'        2>/dev/null || true
+pkill -f 'hxg-runner'        2>/dev/null || true
+pkill -f 'hxg-usb-watcher'   2>/dev/null || true
+pkill -f 'hxg-shell-watcher' 2>/dev/null || true
 sleep 1
 # Force-kill anything still hanging
-pkill -9 -f 'hxg-server'      2>/dev/null || true
-pkill -9 -f 'hxg-runner'      2>/dev/null || true
-pkill -9 -f 'hxg-usb-watcher' 2>/dev/null || true
+pkill -9 -f 'hxg-server'        2>/dev/null || true
+pkill -9 -f 'hxg-runner'        2>/dev/null || true
+pkill -9 -f 'hxg-usb-watcher'   2>/dev/null || true
+pkill -9 -f 'hxg-shell-watcher' 2>/dev/null || true
 
 # 3. Remove plist files
 rm -f /Library/LaunchDaemons/com.hxguardian.server.plist
 rm -f /Library/LaunchDaemons/com.hxguardian.runner.plist
 rm -f /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
+rm -f /Library/LaunchDaemons/com.hxguardian.shellwatcher.plist
+
+# 3b. Remove any previous hxguardian audit block from /etc/zshrc so the install
+#     step below writes a single current copy (block is fenced by sentinels).
+if [[ -f /etc/zshrc ]] && grep -q '>>> hxguardian-audit >>>' /etc/zshrc 2>/dev/null; then
+    /usr/bin/sed -i '' '/# >>> hxguardian-audit >>>/,/# <<< hxguardian-audit <<</d' /etc/zshrc
+fi
 
 # 4. Remove stale socket
 rm -f /var/run/hxg/runner.sock
@@ -64,7 +74,7 @@ rm -rf "$HXG_BIN"
 echo "  ✓ Previous install removed"
 
 # Verify binaries exist
-for binary in hxg-server hxg-runner hxg-usb-watcher; do
+for binary in hxg-server hxg-runner hxg-usb-watcher hxg-shell-watcher; do
     if [[ ! -f "$DIST_DIR/$binary/$binary" ]]; then
         echo "ERROR: Binary not found: $DIST_DIR/$binary/$binary"
         echo "  Run: zsh app/build.sh  (on an internet-connected Mac)"
@@ -78,22 +88,25 @@ echo "[0/5] Deploying binaries..."
 mkdir -p "$HXG_BIN" "$HXG_DATA"
 
 # Remove any previous install (file or directory) to allow clean copy
-rm -rf "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-usb-watcher"
+rm -rf "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-usb-watcher" "$HXG_BIN/hxg-shell-watcher"
 
-cp -R "$DIST_DIR/hxg-server"      "$HXG_BIN/"
-cp -R "$DIST_DIR/hxg-runner"      "$HXG_BIN/"
-cp -R "$DIST_DIR/hxg-usb-watcher" "$HXG_BIN/"
+cp -R "$DIST_DIR/hxg-server"        "$HXG_BIN/"
+cp -R "$DIST_DIR/hxg-runner"        "$HXG_BIN/"
+cp -R "$DIST_DIR/hxg-usb-watcher"   "$HXG_BIN/"
+cp -R "$DIST_DIR/hxg-shell-watcher" "$HXG_BIN/"
 
-chown -R root:wheel "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-usb-watcher"
-chmod -R 755 "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-usb-watcher"
+chown -R root:wheel "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-usb-watcher" "$HXG_BIN/hxg-shell-watcher"
+chmod -R 755 "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-usb-watcher" "$HXG_BIN/hxg-shell-watcher"
 
 # Remove quarantine and ad-hoc sign so Gatekeeper does not block launch
-xattr -dr com.apple.quarantine "$HXG_BIN/hxg-server"      2>/dev/null || true
-xattr -dr com.apple.quarantine "$HXG_BIN/hxg-runner"      2>/dev/null || true
-xattr -dr com.apple.quarantine "$HXG_BIN/hxg-usb-watcher" 2>/dev/null || true
-codesign --force --deep --sign - "$HXG_BIN/hxg-server"      2>/dev/null || true
-codesign --force --deep --sign - "$HXG_BIN/hxg-runner"      2>/dev/null || true
-codesign --force --deep --sign - "$HXG_BIN/hxg-usb-watcher" 2>/dev/null || true
+xattr -dr com.apple.quarantine "$HXG_BIN/hxg-server"        2>/dev/null || true
+xattr -dr com.apple.quarantine "$HXG_BIN/hxg-runner"        2>/dev/null || true
+xattr -dr com.apple.quarantine "$HXG_BIN/hxg-usb-watcher"   2>/dev/null || true
+xattr -dr com.apple.quarantine "$HXG_BIN/hxg-shell-watcher" 2>/dev/null || true
+codesign --force --deep --sign - "$HXG_BIN/hxg-server"        2>/dev/null || true
+codesign --force --deep --sign - "$HXG_BIN/hxg-runner"        2>/dev/null || true
+codesign --force --deep --sign - "$HXG_BIN/hxg-usb-watcher"   2>/dev/null || true
+codesign --force --deep --sign - "$HXG_BIN/hxg-shell-watcher" 2>/dev/null || true
 
 # Data directory owned by the operator user so the server (non-root) can write to it
 chown "$ACTUAL_USER":staff "$HXG_DATA"
@@ -127,8 +140,16 @@ cd "$HXG_BIN/hxg-usb-watcher"
 "$HXG_BIN/hxg-usb-watcher/hxg-usb-watcher"
 EOF
 
-chmod 755 "$HXG_BIN/run-hxg-server" "$HXG_BIN/run-hxg-runner" "$HXG_BIN/run-hxg-usb-watcher"
-chown root:wheel "$HXG_BIN/run-hxg-server" "$HXG_BIN/run-hxg-runner" "$HXG_BIN/run-hxg-usb-watcher"
+cat > "$HXG_BIN/run-hxg-shell-watcher" << EOF
+#!/bin/zsh
+export HOME="/var/root"
+export TMPDIR="/tmp"
+cd "$HXG_BIN/hxg-shell-watcher"
+"$HXG_BIN/hxg-shell-watcher/hxg-shell-watcher"
+EOF
+
+chmod 755 "$HXG_BIN/run-hxg-server" "$HXG_BIN/run-hxg-runner" "$HXG_BIN/run-hxg-usb-watcher" "$HXG_BIN/run-hxg-shell-watcher"
+chown root:wheel "$HXG_BIN/run-hxg-server" "$HXG_BIN/run-hxg-runner" "$HXG_BIN/run-hxg-usb-watcher" "$HXG_BIN/run-hxg-shell-watcher"
 
 echo "  ✓ Binaries: $HXG_BIN"
 
@@ -338,9 +359,48 @@ touch /var/log/hxguardian_usb.log
 chmod 644 /var/log/hxguardian_usb.log
 echo "  ✓ USB Watcher plist: $USB_PLIST"
 
+SHELL_PLIST="/Library/LaunchDaemons/com.hxguardian.shellwatcher.plist"
+cp -X "$REPO_ROOT/standards/launchd/com.hxguardian.shellwatcher.plist" "$SHELL_PLIST"
+xattr -c "$SHELL_PLIST" 2>/dev/null || true
+chown root:wheel "$SHELL_PLIST"
+chmod 644 "$SHELL_PLIST"
+touch /var/log/hxguardian_shell.log
+chmod 644 /var/log/hxguardian_shell.log
+echo "  ✓ Shell Watcher plist: $SHELL_PLIST"
+
+# ── 4b. System-wide zsh history audit config ─────────────────────────────────
+# The shell watcher tails ~/.zsh_history, but zsh's default is to flush only on
+# shell exit — so without this, commands are invisible to audit until the
+# operator closes their Terminal window. INC_APPEND_HISTORY makes zsh append
+# each command immediately; EXTENDED_HISTORY adds an epoch prefix so the
+# watcher records the real execution time rather than "when I saw it".
+#
+# Written to /etc/zshrc (sourced by all interactive zsh sessions before the
+# user's ~/.zshrc) inside a fenced block so it can be updated/removed cleanly.
+# The old block is stripped in step 3b above so re-running install.sh is
+# idempotent; this step always writes the current definition.
+echo ""
+echo "[4b/7] Enabling real-time zsh history audit..."
+
+# /etc/zshrc exists by default on macOS; create it if a fresh install ever lacks it
+touch /etc/zshrc
+cat >> /etc/zshrc << 'ZSHRC'
+# >>> hxguardian-audit >>>
+# Managed by hxguardian install.sh — edits inside this block will be overwritten.
+# Enables real-time capture of typed commands into the HX-Guardian audit log.
+if [[ -o interactive ]]; then
+    setopt INC_APPEND_HISTORY   # append each command to ~/.zsh_history immediately
+    setopt EXTENDED_HISTORY     # prefix each line with epoch timestamp
+fi
+# <<< hxguardian-audit <<<
+ZSHRC
+chown root:wheel /etc/zshrc
+chmod 644 /etc/zshrc
+echo "  ✓ /etc/zshrc updated — new zsh sessions capture commands in real time"
+
 # ── 5. Enforce password policy via pwpolicy ──────────────────────────────────
 echo ""
-echo "[5/6] Enforcing password policy..."
+echo "[5/7] Enforcing password policy..."
 # com.apple.mobiledevice.passwordpolicy requires MDM — equivalent policy set here via pwpolicy.
 # Policy: min 15 chars, must contain upper+lower+digit+special, 5 failed attempts before lockout.
 # Intentionally omitted (known-broken on macOS Tahoe local-node pwpolicy):
@@ -428,13 +488,33 @@ rm -f "$PWPOLICY_FILE"
 
 # ── 6. Start services ───────────────────────────────────────────────────────
 echo ""
-echo "[6/6] Starting services..."
+echo "[6/7] Starting services..."
 zsh "$APP_DIR/start.sh"
+
+# ── 7. Open unified configuration profile for user approval ───────────────────
+echo ""
+echo "[7/7] Opening unified configuration profile for approval..."
+PROFILE="$HXG_SUPPORT/unified/com.hxguardian.unified.mobileconfig"
+if [[ -f "$PROFILE" ]]; then
+    USER_UID=$(/usr/bin/id -u "$ACTUAL_USER" 2>/dev/null || true)
+    if [[ -n "$USER_UID" ]] && /bin/launchctl asuser "$USER_UID" /usr/bin/open "$PROFILE" 2>/dev/null; then
+        echo "  ✓ Profile opened — approve in System Settings > General > Device Management"
+    else
+        echo "  ⚠ Could not auto-open. Manually run:"
+        echo "      open \"$PROFILE\""
+    fi
+else
+    echo "  ⚠ Profile not found at $PROFILE"
+fi
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " Installation complete!"
+echo ""
+echo " Approve the HX-Guardian Unified profile in System Settings"
+echo " (General > Device Management) to satisfy the SetupAssistant"
+echo " and Account-Modification rules."
 echo ""
 echo " Manage services:"
 echo "   sudo zsh app/start.sh"

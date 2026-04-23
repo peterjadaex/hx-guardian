@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HX-Guardian — Airgap Device Admin &amp; Operator Guide</title>
+<style>
+  :root {
+    --bg: #f7f8fb;
+    --surface: #ffffff;
+    --text: #14213d;
+    --muted: #5b6b82;
+    --border: #e1e6ef;
+    --accent: #1f4c8a;
+    --accent-soft: #e8f0fb;
+    --code-bg: #0f172a;
+    --code-text: #e2e8f0;
+    --inline-code-bg: #eef2f8;
+    --inline-code-text: #1a365d;
+    --note-bg: #fff7e6;
+    --note-border: #f5b544;
+    --warn-bg: #fdecea;
+    --warn-border: #d93025;
+    --table-head: #f1f5fb;
+    --table-row-alt: #fafbfd;
+    --badge: #1f4c8a;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  header.banner {
+    background: linear-gradient(135deg, #0b2a4a 0%, #1f4c8a 60%, #2c7da0 100%);
+    color: #fff;
+    padding: 56px 40px 48px;
+    border-bottom: 4px solid #0b2a4a;
+  }
+  header.banner .wrap { max-width: 1180px; margin: 0 auto; }
+  header.banner .eyebrow {
+    font-size: 12px;
+    letter-spacing: 2.4px;
+    text-transform: uppercase;
+    color: #a9c7e8;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  header.banner h1 {
+    margin: 0 0 10px;
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.15;
+  }
+  header.banner p.lead {
+    margin: 0;
+    font-size: 17px;
+    max-width: 760px;
+    color: #dbe6f4;
+    line-height: 1.55;
+  }
+  header.banner .meta {
+    margin-top: 22px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header.banner .meta span {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.22);
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    letter-spacing: 0.3px;
+  }
+
+  .layout {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 36px 40px 80px;
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 44px;
+  }
+  nav.toc {
+    position: sticky;
+    top: 20px;
+    align-self: start;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 18px 20px;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+  }
+  nav.toc h2 {
+    font-size: 11px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 10px;
+    font-weight: 700;
+  }
+  nav.toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    counter-reset: tocitem;
+  }
+  nav.toc li { margin: 0; }
+  nav.toc a {
+    display: block;
+    padding: 6px 8px 6px 30px;
+    border-radius: 6px;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 13.5px;
+    line-height: 1.35;
+    position: relative;
+    counter-increment: tocitem;
+  }
+  nav.toc a::before {
+    content: counter(tocitem);
+    position: absolute;
+    left: 6px;
+    top: 6px;
+    width: 18px;
+    text-align: right;
+    font-size: 11.5px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  nav.toc a:hover { background: var(--accent-soft); color: var(--accent); }
+
+  main { min-width: 0; }
+  main section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 36px 28px;
+    margin-bottom: 22px;
+    box-shadow: 0 1px 2px rgba(15,23,42,0.03);
+  }
+
+  h2.section-title {
+    margin: 0 0 18px;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  h2.section-title .num {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+  h3 {
+    margin: 26px 0 12px;
+    font-size: 17.5px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.1px;
+  }
+  h4 {
+    margin: 20px 0 8px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  p { margin: 10px 0; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 700; color: #0b2a4a; }
+
+  ul, ol { padding-left: 22px; margin: 10px 0; }
+  li { margin: 4px 0; }
+  li > p { margin: 4px 0; }
+
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 13.5px;
+    background: var(--inline-code-bg);
+    color: var(--inline-code-text);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 16px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 14px 0;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  .code-wrap {
+    position: relative;
+  }
+  .code-wrap .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(226, 232, 240, 0.08);
+    color: var(--code-text);
+    border: 1px solid rgba(226, 232, 240, 0.18);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+  .code-wrap:hover .copy-btn,
+  .code-wrap .copy-btn:focus-visible {
+    opacity: 1;
+  }
+  .code-wrap .copy-btn:hover {
+    background: rgba(226, 232, 240, 0.16);
+    border-color: rgba(226, 232, 240, 0.32);
+  }
+  .code-wrap .copy-btn.copied {
+    background: rgba(74, 222, 128, 0.18);
+    border-color: rgba(74, 222, 128, 0.45);
+    color: #bbf7d0;
+    opacity: 1;
+  }
+  @media print {
+    .code-wrap .copy-btn { display: none; }
+  }
+
+  blockquote {
+    margin: 16px 0;
+    padding: 12px 16px 12px 18px;
+    background: var(--note-bg);
+    border-left: 4px solid var(--note-border);
+    border-radius: 0 8px 8px 0;
+    color: #6b4406;
+  }
+  blockquote p { margin: 6px 0; }
+  blockquote strong { color: #6b4406; }
+  blockquote.warn {
+    background: var(--warn-bg);
+    border-left-color: var(--warn-border);
+    color: #8a1e15;
+  }
+  blockquote.warn strong { color: #8a1e15; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  thead { background: var(--table-head); }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th { font-weight: 700; color: var(--text); font-size: 13px; letter-spacing: 0.2px; }
+  tbody tr:nth-child(even) { background: var(--table-row-alt); }
+  tbody tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 24px 0;
+  }
+
+  footer {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 40px 60px;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  @media (max-width: 960px) {
+    .layout { grid-template-columns: 1fr; padding: 24px 20px 60px; gap: 20px; }
+    nav.toc { position: static; max-height: none; }
+    header.banner { padding: 40px 24px 32px; }
+    header.banner h1 { font-size: 28px; }
+    main section { padding: 22px 20px; }
+  }
+
+  @media print {
+    body { background: #fff; }
+    header.banner { background: #0b2a4a !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .layout { grid-template-columns: 1fr; padding: 20px; }
+    nav.toc { display: none; }
+    main section { break-inside: avoid; border: none; box-shadow: none; padding: 0; margin-bottom: 24px; }
+    pre { white-space: pre-wrap; word-wrap: break-word; }
+    a { color: var(--text); }
+  }
+</style>
+</head>
+<body>
+
+<header class="banner">
+  <div class="wrap">
+    <div class="eyebrow">HX-Guardian · Runbook</div>
+    <h1>Airgap Device Admin &amp; Operator Guide</h1>
+    <p class="lead">End-to-end runbook for hardening a macOS device for airgapped signing operations and for day-to-day operation once the device is disconnected.</p>
+    <div class="meta">
+      <span>Audience · Admins &amp; Operators</span>
+      <span>macOS 13 Ventura+ (incl. macOS 26 Tahoe)</span>
+      <span>Baseline · NIST 800-53r5 High</span>
+      <span>Offline · No internet required</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="Table of contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#s1">Prerequisites</a></li>
+      <li><a href="#s2">Receiving the SD card bundle</a></li>
+      <li><a href="#s3">Install HX-Guardian offline</a></li>
+      <li><a href="#s4">Apply bulk fixes and exemptions</a></li>
+      <li><a href="#s5">Deploy the unified MDM profile</a></li>
+      <li><a href="#s6">Open the dashboard and enrol admin 2FA</a></li>
+      <li><a href="#s7">Enable FileVault</a></li>
+      <li><a href="#s8">Create the operator account and enrol fingerprints</a></li>
+      <li><a href="#s9">Whitelist USB devices</a></li>
+      <li><a href="#s10">Daily operations</a></li>
+      <li><a href="#s11">Recovery procedures</a></li>
+      <li><a href="#s12">Troubleshooting</a></li>
+      <li><a href="#appendix">Appendix — Script quick reference</a></li>
+      <li><a href="#uninstall">Uninstall</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="intro">
+      <blockquote>
+        <p><strong>Audience:</strong> Airgap device <strong>admins</strong> (who perform the initial setup and hardening) and <strong>operators</strong> (who use the device day-to-day). Developers who build or modify the dashboard should read <a href="../app/app_readme.md">../app/app_readme.md</a>.</p>
+      </blockquote>
+      <blockquote>
+        <p><strong>Network policy:</strong> The airgap target device <strong>never needs internet access</strong>. All software — pre-compiled binaries, the dashboard, the unified MDM profile, hardening scripts, and the Xcode Command Line Tools installer — arrives on the SD card prepared by the developer. TOTP for the dashboard's 2FA works fully offline (authenticator apps are time-based, not network-based).</p>
+      </blockquote>
+    </section>
+
+    <section id="s1">
+      <h2 class="section-title"><span class="num">1</span>Prerequisites</h2>
+
+      <h3>1.1 Target device requirements</h3>
+      <table>
+        <thead><tr><th>Requirement</th><th>Version / State</th><th>How to check</th></tr></thead>
+        <tbody>
+          <tr><td>macOS</td><td>13 Ventura or later (includes macOS 26 Tahoe)</td><td><code>sw_vers</code></td></tr>
+          <tr><td>Admin account</td><td>Must exist on target and be in the <code>admin</code> group</td><td><code>id</code></td></tr>
+          <tr><td>Apple ID</td><td>Must be <strong>signed out</strong> before hardening begins</td><td>System Settings → [Apple ID]</td></tr>
+          <tr><td>macOS updates</td><td>Latest available installed</td><td>System Settings → General → Software Update</td></tr>
+          <tr><td>An authenticator app on the <strong>admin's</strong> phone</td><td>For the single site-wide 2FA secret (Google Authenticator, 1Password, Authy, etc.). Operators do <strong>not</strong> enroll 2FA.</td><td>—</td></tr>
+        </tbody>
+      </table>
+      <blockquote>
+        <p><strong>macOS Tahoe (26) note:</strong> The <code>sudo profiles install</code> CLI no longer deploys profiles unattended. Every profile install goes through Finder + System Settings with a user-approval click — see §5.</p>
+      </blockquote>
+
+      <h3>1.2 What you need from the developer</h3>
+      <p>An SD card containing the HX-Guardian install bundle (produced by <code>prepare_sd_card.sh</code>):</p>
+<pre><code>/Volumes/&lt;SD_CARD&gt;/hxg-install/
+├── app/
+│   ├── dist/
+│   │   ├── hxg-server/          ← pre-compiled web server binary (PyInstaller onedir)
+│   │   ├── hxg-runner/          ← pre-compiled runner binary
+│   │   ├── hxg-usb-watcher/     ← pre-compiled USB watcher binary
+│   │   └── hxg-shell-watcher/   ← pre-compiled shell-audit watcher binary
+│   ├── launchd/                 ← LaunchDaemon plists
+│   ├── vendor/clt/              ← Xcode Command Line Tools installer (.dmg or .pkg)
+│   ├── install.sh               ← main installer
+│   ├── start.sh / stop.sh / restart.sh / update.sh
+│   └── rules_setup.sh           ← post-install bulk fix + exemption script
+└── standards/
+    ├── unified/
+    │   └── com.hxguardian.unified.mobileconfig   ← single file, all policies
+    ├── launchd/                 ← USB watcher + shell watcher plists
+    ├── 800-53r5_high/mobileconfigs/unsigned/
+    ├── cisv8/mobileconfigs/unsigned/
+    ├── cis_lvl2/mobileconfigs/unsigned/
+    └── scripts/                 ← manifest.json, scan/ and fix/ shell scripts
+</code></pre>
+      <p>If any of these are missing, return the card to the developer — the target device cannot reach the internet to fetch them.</p>
+
+      <h3>1.3 Baseline choice</h3>
+      <p>This runbook uses <strong>NIST 800-53r5 High</strong> throughout. To use a different baseline, substitute <code>cisv8/</code> or <code>cis_lvl2/</code> for <code>800-53r5_high/</code> in every path below.</p>
+
+      <h3>1.4 Touch ID policy</h3>
+      <p>Touch ID is intentionally kept <strong>enabled</strong> for operator convenience. Three baseline rules that would disable it are permanently exempted by <code>rules_setup.sh</code> — see §8.</p>
+    </section>
+
+    <section id="s2">
+      <h2 class="section-title"><span class="num">2</span>Receiving the SD card bundle</h2>
+      <blockquote class="warn">
+        <p><strong>Do not update macOS at this stage.</strong> The developer has already verified the app and hardening rules against the shipped macOS version. Bumping the OS here can invalidate that testing (profile keys change between releases, Tahoe's <code>profiles install</code> lockdown is a recent example). Stay on the version the device arrived with unless the developer explicitly says to upgrade.</p>
+      </blockquote>
+
+      <h3>2.1 Sign out of Apple ID and disable iCloud</h3>
+<pre><code>System Settings → [Apple ID] → Sign Out</code></pre>
+      <p>Disable iCloud Drive, Find My Mac, and all iCloud sync <strong>before</strong> continuing.</p>
+
+      <h3>2.2 Copy the bundle from SD card to local disk</h3>
+<pre><code>cp -R /Volumes/&lt;SD_CARD_NAME&gt;/hxg-install ~/hxg-install</code></pre>
+      <blockquote>
+        <p>After <code>install.sh</code> completes, everything is deployed to <code>/Library/Application Support/hxguardian/</code>. You can optionally remove <code>~/hxg-install</code> once installation and <code>rules_setup.sh</code> have finished.</p>
+      </blockquote>
+    </section>
+
+    <section id="s3">
+      <h2 class="section-title"><span class="num">3</span>Install HX-Guardian offline</h2>
+
+      <h3>3.1 Install Xcode Command Line Tools (CLT)</h3>
+      <p>HX-Guardian's scan/fix scripts use <code>/usr/bin/xmllint</code> and <code>/usr/bin/python3</code>, both of which are CLT shims on modern macOS. <code>install.sh</code> does <strong>not</strong> install CLT — it only verifies CLT is present and aborts with instructions if it is not. Install CLT manually from the bundled installer <strong>before</strong> running <code>install.sh</code>:</p>
+      <ol>
+        <li>In Finder, navigate to <code>~/hxg-install/app/vendor/clt/</code>.</li>
+        <li><strong>Double-click</strong> the <code>.pkg</code> file (or open the <code>.dmg</code> first and then double-click the <code>.pkg</code> inside it).</li>
+        <li>The standard macOS Installer opens. Click through <strong>Continue → Agree → Install</strong>, then enter the admin password when prompted.</li>
+        <li>Wait for installation to complete (a few minutes). Close the Installer when finished.</li>
+      </ol>
+      <p>Verify:</p>
+<pre><code>xcode-select -p
+# → /Library/Developer/CommandLineTools</code></pre>
+      <blockquote>
+        <p><strong>Why manual?</strong> CLT installs pop a GUI prompt and can require Apple-ID-bound consent flows on some macOS builds. Keeping the install step off the automated installer avoids mid-run interruptions and keeps the airgap device's install footprint predictable.</p>
+      </blockquote>
+
+      <h3>3.2 Run the installer</h3>
+<pre><code>sudo zsh ~/hxg-install/app/install.sh</code></pre>
+      <p>The installer performs all steps fully offline — no internet required:</p>
+      <table>
+        <thead><tr><th>Step</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>Removes any existing HX-Guardian services and binaries</td></tr>
+          <tr><td>1</td><td>Deploys pre-compiled binaries (server, runner, USB watcher, shell watcher) to <code>/Library/Application Support/hxguardian/bin/</code></td></tr>
+          <tr><td>1b</td><td>Verifies Xcode Command Line Tools are present; aborts with instructions to install from <code>app/vendor/clt/</code> if missing (see §3.1)</td></tr>
+          <tr><td>2</td><td>Copies the standards tree (scripts + manifest + profiles) to <code>/Library/Application Support/hxguardian/standards/</code></td></tr>
+          <tr><td>3</td><td>Creates <code>/var/run/hxg/</code> (Unix socket directory) and log files in <code>/Library/Logs/</code></td></tr>
+          <tr><td>4</td><td>Installs four <strong>LaunchDaemons</strong> — runner (root), server (admin user), USB watcher (root), shell watcher (root) — and starts all four</td></tr>
+          <tr><td>4b</td><td>Writes the hxguardian block into <code>/etc/zshrc</code> (enables <code>INC_APPEND_HISTORY</code> + <code>EXTENDED_HISTORY</code> so the shell watcher captures commands in real time)</td></tr>
+          <tr><td>5</td><td>Enforces password policy locally via <code>pwpolicy</code> (min 15 chars, complexity, lockout). All existing non-system local accounts are flagged to change password on next login.</td></tr>
+          <tr><td>6</td><td>Opens the unified MDM profile in System Settings for user approval — complete §5 when prompted</td></tr>
+        </tbody>
+      </table>
+
+      <h3>3.3 Admin password policy — what to expect</h3>
+      <p><code>install.sh</code> writes a site-wide <code>pwpolicy</code> covering every local account (min 15 chars, upper+lower+digit+special, 5-failures lockout).</p>
+      <p><strong>Your own admin password is not force-changed by the installer.</strong> The script explicitly skips the currently logged-in installer user so the airgap device does not lock you out on first logout. The password you used to run <code>sudo zsh app/install.sh</code> keeps working.</p>
+      <p><strong>But you still need to meet the policy on any voluntary change.</strong> Compliance scans (<code>pwpolicy_*</code>) PASS because they check that the policy is present, not each account's password hash.</p>
+      <p><strong>Strongly recommended:</strong> change your admin password voluntarily <strong>now</strong>, before airgapping:</p>
+<pre><code>passwd</code></pre>
+      <p>That confirms the policy is active (the system will reject a non-compliant new password) and prevents being surprised later with an offline device.</p>
+
+      <h3>3.4 Confirm all four services are running</h3>
+<pre><code>sudo launchctl list | grep hxguardian
+# Expected:
+#   com.hxguardian.runner
+#   com.hxguardian.server
+#   com.hxguardian.usbwatcher
+#   com.hxguardian.shellwatcher</code></pre>
+      <p>All four are LaunchDaemons under <code>/Library/LaunchDaemons/</code>. The server plist has <code>UserName</code> set to the admin user so the dashboard runs non-root; the other three run as root.</p>
+    </section>
+
+    <section id="s4">
+      <h2 class="section-title"><span class="num">4</span>Apply bulk fixes and exemptions</h2>
+      <p>This is the post-install hardening step. Wait ~10 seconds for the server to start after <code>install.sh</code> completes, then run:</p>
+<pre><code>zsh ~/hxg-install/app/rules_setup.sh</code></pre>
+      <p>If you removed <code>~/hxg-install</code>, the script is also at:</p>
+<pre><code>zsh /Library/Application\ Support/hxguardian/app/rules_setup.sh</code></pre>
+
+      <h3>What it does</h3>
+      <table>
+        <thead><tr><th>Phase</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1 — Fixes</strong></td><td>Applies fix scripts for all fixable compliance rules. Rules in the exempt list below are skipped to avoid disruptive changes (e.g. enforcing smartcard auth when no hardware is present).</td></tr>
+          <tr><td><strong>2 — Exemptions</strong></td><td>Creates permanent exemptions for the rules listed below. These appear as <strong>EXEMPT</strong> in the dashboard instead of FAIL, and are excluded from the compliance score.</td></tr>
+          <tr><td><strong>3 — Rescan</strong></td><td>Triggers a full compliance scan and waits for completion. Prints the final score, pass/fail/exempt counts.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Rules exempted (permanent)</h3>
+      <table>
+        <thead><tr><th>Group</th><th>Rules</th></tr></thead>
+        <tbody>
+          <tr><td>Smartcard</td><td><code>auth_pam_login_smartcard_enforce</code>, <code>auth_pam_su_smartcard_enforce</code>, <code>auth_pam_sudo_smartcard_enforce</code>, <code>auth_smartcard_allow</code>, <code>auth_smartcard_certificate_trust_enforce_high</code>, <code>auth_smartcard_enforce</code>, <code>supplemental_smartcard</code></td></tr>
+          <tr><td>Touch ID</td><td><code>os_touchid_prompt_disable</code>, <code>system_settings_touch_id_settings_disable</code>, <code>system_settings_touchid_unlock_disable</code></td></tr>
+          <tr><td>Policy exceptions</td><td><code>os_config_data_install_enforce</code>, <code>os_config_profile_ui_install_disable</code>, <code>os_httpd_disable</code>, <code>os_root_disable</code></td></tr>
+          <tr><td>Software updates</td><td><code>os_software_update_app_update_enforce</code>, <code>os_software_update_deferral</code>, <code>system_settings_download_software_update_enforce</code>, <code>system_settings_software_update_download_enforce</code>, <code>system_settings_softwareupdate_current</code></td></tr>
+          <tr><td>Time Machine</td><td><code>system_settings_time_machine_auto_backup_enable</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s5">
+      <h2 class="section-title"><span class="num">5</span>Deploy the unified MDM profile</h2>
+      <p>HX-Guardian ships a single unified profile that bundles every policy this runbook requires.</p>
+      <p><strong>Profile file:</strong> <code>standards/unified/com.hxguardian.unified.mobileconfig</code><br>
+      <strong>Identifier:</strong> <code>com.hxguardian.unified</code></p>
+
+      <h3>5.1 Install the profile (macOS Tahoe 26 and later)</h3>
+      <p><code>install.sh</code> opens the profile automatically in its final step. If you need to re-open it manually:</p>
+      <ol>
+        <li>In Finder, navigate to <code>/Library/Application Support/hxguardian/standards/unified/</code>.</li>
+        <li><strong>Double-click</strong> <code>com.hxguardian.unified.mobileconfig</code>. macOS copies it into the pending-profiles queue and opens System Settings.</li>
+        <li>Go to <strong>System Settings → General → Device Management</strong> (on Tahoe it may appear under <strong>Privacy &amp; Security → Profiles</strong>).</li>
+        <li>Select <strong>HX-Guardian Unified</strong> from the list → click <strong>Install</strong> → enter the admin password when prompted.</li>
+        <li>The profile is now deployed. It cannot be removed except by an admin.</li>
+      </ol>
+
+      <h3>5.2 What the unified profile enforces</h3>
+      <p>The single file applies every policy this runbook used to deploy as separate profiles:</p>
+      <table>
+        <thead><tr><th>Area</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>FileVault 2</td><td>Pre-requires FileVault (operator still enables via System Settings — §7)</td></tr>
+          <tr><td>Firewall</td><td>Enables application firewall + stealth mode</td></tr>
+          <tr><td>iCloud</td><td>Blocks Drive, Keychain, Photos, Mail, Calendar, Notes, Reminders, Bookmarks, Private Relay, and hides the Apple ID pane</td></tr>
+          <tr><td>Login window</td><td>Hides user list, disables guest, shows username+password prompt</td></tr>
+          <tr><td>Screen lock</td><td>Idle timeout + password-required</td></tr>
+          <tr><td>Software updates</td><td>Enforces automatic checks</td></tr>
+          <tr><td>Gatekeeper</td><td>Identified developers only, right-click override disallowed</td></tr>
+          <tr><td>Application access</td><td>Blocks AirDrop, Siri, dictation; enables USB Restricted Mode</td></tr>
+          <tr><td>System preferences</td><td>Locks sensitive panes</td></tr>
+          <tr><td>Setup assistant</td><td>Suppresses first-run prompts</td></tr>
+          <tr><td>Diagnostics</td><td>Disables crash-report submission to Apple</td></tr>
+        </tbody>
+      </table>
+      <p>Password policy is <strong>not</strong> applied via the profile — it is enforced locally by <code>install.sh</code> using <code>pwpolicy</code>. See §3.3.</p>
+
+      <h3>5.3 Verify the profile is installed</h3>
+      <p>From the dashboard: <strong>MDM Profiles</strong> page — <code>com.hxguardian.unified</code> shows a green installed check. Or from the terminal:</p>
+<pre><code>profiles -P | grep hxguardian
+# → HX-Guardian Unified (com.hxguardian.unified)</code></pre>
+    </section>
+
+    <section id="s6">
+      <h2 class="section-title"><span class="num">6</span>Open the dashboard and enrol admin 2FA</h2>
+
+      <h3>6.1 Go to the dashboard</h3>
+      <p>Open Safari and go to:</p>
+<pre><code>http://127.0.0.1:8000</code></pre>
+      <p>The dashboard has <strong>no startup token</strong>. It opens immediately for anyone on <code>127.0.0.1</code>. The server binds to loopback only — it is unreachable from the network.</p>
+
+      <h3>6.2 Verify the runner is connected</h3>
+<pre><code>curl -s http://127.0.0.1:8000/api/health
+# → {"status":"ok","runner_connected":true,"version":"1.0.0"}</code></pre>
+      <p>The <code>/api/health</code> endpoint is public and takes no auth. If <code>runner_connected</code> is <code>false</code>, jump to <a href="#s12">§12 Troubleshooting</a>.</p>
+
+      <h3>6.3 Authentication model</h3>
+      <ul>
+        <li>Read-only dashboard access is open on <code>127.0.0.1</code> — anyone logged into the Mac can browse scans, reports, and audit logs.</li>
+        <li>Sensitive actions (apply a fix, change the USB whitelist, grant an exemption, view the QR for an enrolled secret) require a <strong>TOTP from 2FA</strong>. The UI prompts for a 6-digit code; the backend issues a 10-minute <code>X-2FA-Token</code> that covers follow-up requests.</li>
+        <li><strong>2FA is a single site-wide secret held by the admin</strong> — not per-user. Only the admin enrolls and holds the authenticator app. Operators cannot (and should not) perform any gated action — those are admin-only.</li>
+        <li>Physical possession of the device (airgap + FileVault + firmware password) is the primary perimeter; admin 2FA prevents an unattended-but-unlocked session from silently altering the compliance state.</li>
+      </ul>
+
+      <h3>6.4 Admin enrols 2FA (singleton TOTP) — one-time</h3>
+      <p>HX-Guardian 2FA is standard TOTP (RFC 6238) — works fully offline once enrolled. The admin performs this <strong>once</strong>; there is no per-operator enrollment.</p>
+      <ol>
+        <li>Log in as the <strong>admin</strong>.</li>
+        <li>Open the dashboard at <code>http://127.0.0.1:8000</code>.</li>
+        <li>Go to <strong>Settings → Two-Factor Authentication → Set Up</strong>.</li>
+        <li>The dashboard shows a QR code. On the <strong>admin's phone</strong>, open an authenticator app (Google Authenticator, 1Password, Authy, etc.) and scan it.</li>
+        <li>Enter the current 6-digit code into the dashboard → <strong>Enable 2FA</strong>.</li>
+        <li>Test: trigger any gated action (e.g. re-scan a single rule) — the UI should prompt for a 6-digit code. Enter the current code; the action should succeed.</li>
+      </ol>
+      <blockquote>
+        <p><strong>Offline guarantee:</strong> TOTP is time-based, not network-based. Keep the admin's phone clock accurate (automatic time zone on; phones stay within a few seconds of real time for months). No network required at any step from here on.</p>
+      </blockquote>
+      <blockquote>
+        <p><strong>Operational implication:</strong> gated actions (apply fix, edit whitelist, grant exemption) can only be completed when the <strong>admin is physically present with their phone</strong>. Operators perform read-only workflows and escalate to the admin for anything that changes state. This is intentional.</p>
+      </blockquote>
+    </section>
+
+    <section id="s7">
+      <h2 class="section-title"><span class="num">7</span>Enable FileVault (full-disk encryption)</h2>
+      <blockquote>
+        <p>On macOS Tahoe, the MDM <code>ForceEnableInSetupAssistant</code> trigger is unreliable — enable FileVault <strong>directly from System Settings</strong>.</p>
+      </blockquote>
+
+      <h3>7.1 Turn on FileVault</h3>
+      <ol>
+        <li><strong>System Settings → Privacy &amp; Security → FileVault → Turn On FileVault…</strong></li>
+        <li>When asked where to store the recovery key, choose <strong>Create a local recovery key</strong> — do <strong>not</strong> use iCloud (the device is to be airgapped).</li>
+        <li>macOS generates and displays the <strong>Personal Recovery Key (PRK)</strong>. <strong>Write it down immediately</strong> — this is the only time it is shown in full.</li>
+        <li>Store the key <strong>on paper, physically secured offline</strong> (safe, tamper-evident envelope, whatever your security policy mandates).</li>
+        <li>Click <strong>Continue</strong>. FileVault begins encrypting in the background — you can keep using the device, but a reboot is required for encryption to complete.</li>
+      </ol>
+
+      <h3>7.2 Verify FileVault</h3>
+<pre><code>sudo fdesetup status
+# → FileVault is On.</code></pre>
+      <p>On the dashboard, scan both rules and confirm PASS:</p>
+<pre><code>sudo zsh standards/scripts/scan/system_settings_filevault_enforce.sh
+sudo zsh standards/scripts/scan/os_filevault_autologin_disable.sh</code></pre>
+    </section>
+
+    <section id="s8">
+      <h2 class="section-title"><span class="num">8</span>Create the operator account and enrol fingerprints</h2>
+
+      <p><strong>Role split — read first:</strong></p>
+      <table>
+        <thead><tr><th>Role</th><th>Accounts</th><th>Dashboard access</th><th>2FA</th><th>Can apply fixes / change whitelist / grant exemptions?</th></tr></thead>
+        <tbody>
+          <tr><td>Admin</td><td>1 (you)</td><td>Read + gated actions</td><td><strong>Yes — site-wide secret on admin's phone</strong></td><td>Yes</td></tr>
+          <tr><td>Operator</td><td>1 shared account, N fingerprints</td><td>Read only</td><td>No</td><td>No</td></tr>
+        </tbody>
+      </table>
+      <p>2FA is a <strong>singleton</strong> in HX-Guardian — there is one secret for the whole dashboard, not one per user. The admin holds it.</p>
+      <p>Multiple operators share a <strong>single</strong> macOS operator account. Each operator is distinguished by their Touch ID fingerprint — every fingerprint Apple records is independently identifiable in the audit log, so shared-account logins still attribute unlocks and <code>sudo</code> prompts to the right person.</p>
+
+      <h3>8.1 Create the shared operator account</h3>
+      <p>Operators share a single standard (non-admin) macOS user. Create it via System Settings while logged in as admin:</p>
+      <ol>
+        <li><strong>System Settings → Users &amp; Groups → Add Account…</strong> (admin password required).</li>
+        <li><strong>New User</strong> → <strong>Standard</strong>.</li>
+        <li>Enter a full name (e.g. "Operator"), account name (e.g. <code>operator</code>), and a strong password.</li>
+        <li>Click <strong>Create User</strong>.</li>
+      </ol>
+      <blockquote>
+        <p><code>install.sh</code> enforces the compliant password policy via <code>pwpolicy</code> automatically — the new account inherits it.</p>
+      </blockquote>
+
+      <h3>8.2 First login and password change</h3>
+      <ol>
+        <li>Log out of the admin account.</li>
+        <li>Log in as <code>operator</code> with the temporary password.</li>
+        <li>macOS will <strong>force a password change</strong> — set a password that satisfies the policy (min 15 chars, mixed case, digit, special character).</li>
+        <li>Log out and return to the admin account.</li>
+      </ol>
+
+      <h3>8.3 Touch ID enrollment — one fingerprint per operator</h3>
+      <p>Touch ID is the device's second perimeter (unlock + sudo prompt). Enrol one fingerprint per human operator in the shared account:</p>
+      <ol>
+        <li>Log in as <code>operator</code>.</li>
+        <li><strong>System Settings → Touch ID &amp; Password → Add a Fingerprint</strong>.</li>
+        <li>Have each operator enrol their own fingerprint. Label each slot with the operator's name so the admin can identify whose finger is whose later.</li>
+        <li>Repeat until every authorised operator has a slot (Apple allows up to three fingerprints per account across all accounts on the Mac).</li>
+        <li>Test: each operator locks the screen and unlocks with their own finger.</li>
+      </ol>
+      <blockquote>
+        <p>Touch ID is not required for sudo on the operator account — operators do not have sudo rights. It is used for unlock and for any per-fingerprint biometric audit logging.</p>
+      </blockquote>
+
+      <h3>8.4 Admin Touch ID (optional but recommended)</h3>
+      <p>Log in as the admin, <strong>System Settings → Touch ID &amp; Password</strong>, enrol at least one finger. Test with <code>sudo -v</code> in Terminal — the Touch ID prompt should appear.</p>
+
+      <h3>8.5 Touch ID exception — permanently exempted</h3>
+      <p>Three baseline rules are permanently <strong>EXEMPT</strong> (not FAIL) — <code>rules_setup.sh</code> creates these exemptions automatically in §4. Do <strong>not</strong> run their fix scripts.</p>
+      <table>
+        <thead><tr><th>Rule</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td><code>system_settings_touchid_unlock_disable</code></td><td>Operators use Touch ID for unlock</td></tr>
+          <tr><td><code>system_settings_touch_id_settings_disable</code></td><td>Operators manage their own fingerprints</td></tr>
+          <tr><td><code>os_touchid_prompt_disable</code></td><td>Enrollment prompt needed for new operators</td></tr>
+        </tbody>
+      </table>
+      <p>These rules show an <strong>Exempt</strong> badge in the dashboard and are excluded from the compliance score.</p>
+    </section>
+
+    <section id="s9">
+      <h2 class="section-title"><span class="num">9</span>Whitelist USB devices</h2>
+
+      <h3>9.1 Whitelist known-good USB devices</h3>
+      <p>Register every USB peripheral the airgap device will ever use (YubiKeys, CAC readers, approved keyboards/mice, encrypted drives) <strong>before</strong> physical disconnect.</p>
+      <ol>
+        <li>Connect each approved USB device one at a time.</li>
+        <li>Open the dashboard → <strong>Connections</strong> (<code>http://127.0.0.1:8000/connections</code>).</li>
+        <li>Each device appears in the <strong>USB DEVICES</strong> section. Unknown devices show a red <strong>Unauthorized</strong> badge.</li>
+        <li>Click <strong>Add to Whitelist</strong> next to each approved device. The form pre-fills with the device name, vendor, product ID, and serial.</li>
+        <li>Add a note (operator name, asset tag, purpose) and save. The backend will prompt for a 2FA TOTP code — enter the current code from the admin's authenticator app.</li>
+        <li>The device now shows a green <strong>Whitelisted</strong> badge.</li>
+      </ol>
+      <p><strong>Storage volumes (SD cards, USB drives):</strong> Volumes appear in the <strong>USB VOLUMES</strong> section below <strong>USB DEVICES</strong> and inherit whitelist status from their <strong>parent USB device</strong> (the card reader or hub port). Whitelisting the parent device permits its storage volumes.</p>
+      <p><strong>Manual add / remove:</strong> Use the <strong>USB WHITELIST</strong> card below the device list. All changes are written to the Audit Log.</p>
+      <p><strong>Match criteria:</strong> A device is considered whitelisted if <code>product_id</code> <strong>or</strong> <code>serial</code> matches any whitelist entry (whichever fields are non-empty). Prefer serial when available for strongest identity binding.</p>
+
+      <h3>9.2 The USB watcher is already installed</h3>
+      <p><code>install.sh</code> has already installed and started <code>/Library/LaunchDaemons/com.hxguardian.usbwatcher.plist</code>. It survives reboots via <code>KeepAlive</code>. What it does:</p>
+      <table>
+        <thead><tr><th>Action</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td>Polls USB bus</td><td>Every 5 seconds via <code>system_profiler SPUSBDataType</code></td></tr>
+          <tr><td>Reads whitelist</td><td>Every 30 seconds from SQLite (<code>usb_whitelist</code> table)</td></tr>
+          <tr><td>Ejects storage</td><td><code>diskutil eject</code> on any unauthorized removable volume</td></tr>
+          <tr><td>Re-ejects on replug</td><td>Tracks BSD disk names — re-ejects if a card is removed and reinserted into the same reader</td></tr>
+          <tr><td>Notifies operator</td><td>macOS notification with <code>Basso</code> sound</td></tr>
+          <tr><td>Logs to audit trail</td><td>Writes <code>USB_UNAUTHORIZED_DEVICE</code> entry</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="s10">
+      <h2 class="section-title"><span class="num">10</span>Daily operations</h2>
+
+      <h3>10.1 Open the dashboard</h3>
+<pre><code>http://127.0.0.1:8000</code></pre>
+      <p>No token, no login screen. 2FA prompts appear only when an operator attempts a gated action (apply fix, change whitelist, grant exemption).</p>
+
+      <h3>10.2 Adding a USB device to the whitelist (post-airgap)</h3>
+      <p>Whitelist changes are admin-only.</p>
+      <ol>
+        <li>Log in as the <strong>admin</strong> (operators cannot complete this flow — gated on admin 2FA).</li>
+        <li>Connect the new USB device.</li>
+        <li>Dashboard → <strong>Connections</strong> → locate the device in <strong>USB DEVICES</strong>.</li>
+        <li>Click <strong>Add to Whitelist</strong>, fill in the purpose / owner note, save.</li>
+        <li>Enter the 6-digit TOTP from the <strong>admin's</strong> authenticator app.</li>
+        <li>The USB watcher picks up the change within 30 seconds — no restart needed.</li>
+        <li>The action is recorded in the <strong>Audit Log</strong> under the admin account.</li>
+      </ol>
+
+      <h3>10.3 Scheduling recurring scans</h3>
+      <p>Dashboard → <strong>Schedule</strong> → configure a cron expression (e.g. daily 02:00: <code>0 2 * * *</code>). The runner executes the scan session as root and results appear in <strong>Scan History</strong>.</p>
+
+      <h3>10.4 Generating reports</h3>
+      <p>Dashboard → <strong>Reports</strong> → choose <strong>HTML</strong> (printable) or <strong>CSV</strong> (for archival). Reports include the compliance score, per-rule status, audit-log excerpt, and exemptions list.</p>
+
+      <h3>10.5 Granting / revoking an exemption</h3>
+      <p>Admin-only. Dashboard → <strong>Exemptions</strong> → <strong>Grant Exemption</strong> → enter rule ID, reason, and expiry date. Admin TOTP prompt appears. Exempted rules are counted as PASS in compliance reports but remain visible in the Rules list with an <strong>Exempt</strong> badge.</p>
+
+      <h3>10.6 Reviewing biometric and shell audit logs</h3>
+      <ul>
+        <li><strong>Dashboard → Biometric Log</strong> — every Touch ID unlock and <code>sudo</code> authentication, attributed to the fingerprint slot (so the admin can tell which operator acted on the shared account).</li>
+        <li><strong>Dashboard → Shell Log</strong> — every command typed into an interactive zsh session by any account (captured via <code>/etc/zshrc</code> + the shell watcher).</li>
+      </ul>
+    </section>
+
+    <section id="s11">
+      <h2 class="section-title"><span class="num">11</span>Recovery procedures</h2>
+
+      <h3>11.1 Reset an operator password (via UI)</h3>
+      <p>The admin can reset the operator account password directly from macOS:</p>
+      <ol>
+        <li>Log in as the <strong>admin</strong>.</li>
+        <li><strong>System Settings → Users &amp; Groups</strong> → click the info icon next to the operator account → <strong>Reset Password…</strong></li>
+        <li>Enter the admin password and set a new operator password. The installed pwpolicy still applies.</li>
+      </ol>
+      <p><strong>If the admin password itself is lost:</strong></p>
+      <ol>
+        <li>Reboot into Recovery Mode (<strong>hold Power</strong> / <strong>Cmd+R</strong>).</li>
+        <li>Utilities → Terminal.</li>
+        <li><code>resetpassword</code> — pick the admin user, set a new password.</li>
+        <li>Reboot normally.</li>
+      </ol>
+      <blockquote class="warn">
+        <p>If FileVault is on and <strong>both</strong> the admin password and the PRK (§7.1) are lost, the data is unrecoverable by design.</p>
+      </blockquote>
+
+      <h3>11.2 Unlock a locked-out account</h3>
+      <p>If the password-policy lockout triggers, unlock from an admin shell:</p>
+<pre><code>sudo pwpolicy -u operator -clearaccountpolicies</code></pre>
+      <p>Then re-apply the site-wide policy so the account remains compliant:</p>
+<pre><code>sudo zsh /Library/Application\ Support/hxguardian/app/install.sh</code></pre>
+      <p>(The installer is idempotent — it re-runs the pwpolicy step without disturbing existing services or data.)</p>
+
+      <h3>11.3 Re-enroll a Touch ID fingerprint</h3>
+      <p>Only someone logged into the owning account can add or remove fingerprints:</p>
+      <ol>
+        <li>Log in as the operator (or admin for the admin account).</li>
+        <li><strong>System Settings → Touch ID &amp; Password</strong>.</li>
+        <li>Remove the old fingerprint (trash icon) and add a new one.</li>
+      </ol>
+
+      <h3>11.4 Reset admin 2FA</h3>
+      <ul>
+        <li><strong>Normal rekey (admin still has their phone):</strong> Dashboard → <strong>Settings → Two-Factor Authentication → Rekey</strong>. TOTP prompt for the existing secret, then a new QR appears — rescan on the phone.</li>
+        <li><strong>Disable 2FA entirely (still has phone):</strong> Dashboard → <strong>Settings → Disable 2FA</strong> → enter current TOTP.</li>
+        <li><strong>Lost phone, cannot rekey via UI:</strong> there are no backup / scratch codes — recovery is via SQLite:
+<pre><code>sudo sqlite3 "/Library/Application Support/hxguardian/data/hxguardian.db" \
+    "DELETE FROM two_factor_config;"
+sudo launchctl kickstart -k system/com.hxguardian.server</code></pre>
+          Then immediately re-enrol via §6.4 on the replacement phone. The SQLite delete and the re-enrollment are both recorded in the Audit Log.</li>
+      </ul>
+
+      <h3>11.5 Reinstall HX-Guardian from SD card</h3>
+      <p>Bring the original SD card (or a fresh one from the developer) and run:</p>
+<pre><code>cp -R /Volumes/&lt;SD_CARD_NAME&gt;/hxg-install ~/hxg-install
+sudo zsh ~/hxg-install/app/install.sh
+zsh ~/hxg-install/app/rules_setup.sh</code></pre>
+      <p>The installer is idempotent — it upgrades binaries and standards in place and preserves <code>/Library/Application Support/hxguardian/data/</code> (DB + reports). Re-running <code>rules_setup.sh</code> after reinstall is also safe — exemptions are updated rather than duplicated.</p>
+    </section>
+
+    <section id="s12">
+      <h2 class="section-title"><span class="num">12</span>Troubleshooting</h2>
+
+      <h4>Dashboard not loading</h4>
+<pre><code>curl -s http://127.0.0.1:8000/api/health
+# Should return: {"status":"ok","runner_connected":...}</code></pre>
+
+      <h4><code>runner_connected: false</code> in health check</h4>
+<pre><code>sudo launchctl print system/com.hxguardian.runner | head
+# If not loaded, start it:
+sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.runner.plist</code></pre>
+
+      <h4>Scan returns ERROR for all rules</h4>
+      <ul>
+        <li>The runner must be running as root. Check <code>/Library/Logs/hxguardian-runner.log</code>.</li>
+        <li>Verify the socket exists: <code>ls -la /var/run/hxg/runner.sock</code>.</li>
+        <li>The <strong>Rule Detail</strong> page shows the full server error for a single-rule scan.</li>
+      </ul>
+
+      <h4>Scan results not updating after "Run Full Scan"</h4>
+      <ul>
+        <li>The frontend polls session status and reloads automatically when the scan finishes. Wait for the <strong>Scanning…</strong> button to return to normal, then reload the Rules page.</li>
+        <li>If results never update, check that the runner is connected (<code>/api/health</code>).</li>
+      </ul>
+
+      <h4>MDM rules still showing <code>MDM_REQUIRED</code> after deploying the unified profile</h4>
+      <ul>
+        <li>MDM-only rules are verified by whether the profile is installed. Deploying the profile does not automatically update past scan results — run a new full scan.</li>
+        <li>If the profile install was blocked, check <strong>System Settings → General → Device Management</strong> for an unapproved pending profile.</li>
+      </ul>
+
+      <h4><code>profiles install</code> on the CLI does nothing (Tahoe)</h4>
+      <ul><li>Expected. Use the Finder + System Settings flow in §5.1 instead.</li></ul>
+
+      <h4>USB watcher: device detected but not ejected / not re-ejected after replug</h4>
+<pre><code>tail -f /var/log/hxguardian_usb.log</code></pre>
+      <ul>
+        <li><code>Could not eject</code> → <code>diskutil eject</code> failed; inspect the log for the reason.</li>
+        <li>No log entry at all → watcher is not running; <code>sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist</code>.</li>
+        <li>Device shows <strong>Whitelisted</strong> → remove the whitelist entry to re-enable enforcement.</li>
+      </ul>
+
+      <h4>Shell watcher: commands not appearing in the Shell Log</h4>
+      <ul>
+        <li>Confirm <code>/etc/zshrc</code> still contains the <code>&gt;&gt;&gt; hxguardian-audit &gt;&gt;&gt;</code> block (re-run <code>install.sh</code> if the block was edited out).</li>
+        <li>New zsh sessions must be opened after install — commands typed in a session started before install won't be captured.</li>
+        <li>Check the daemon log: <code>tail -f /var/log/hxguardian_shell.log</code>.</li>
+      </ul>
+
+      <h4>2FA prompt appears but every code from the admin's phone is rejected</h4>
+      <ul>
+        <li>Phone clock is out of sync with the device. Re-sync the phone's time (automatic time zone on). TOTP tolerates roughly ±30 s drift.</li>
+        <li>Last-resort reset (admin's phone lost / unrecoverable): §11.4.</li>
+      </ul>
+
+      <h4>Server fails to start / binary not found</h4>
+<pre><code># Re-deploy binaries from the SD card bundle
+sudo zsh ~/hxg-install/app/install.sh</code></pre>
+
+      <h4>Permission denied on socket</h4>
+<pre><code>sudo rm -rf /var/run/hxg
+sudo mkdir -p /var/run/hxg
+sudo chown root:admin /var/run/hxg
+sudo chmod 770 /var/run/hxg
+sudo launchctl kickstart -k system/com.hxguardian.runner</code></pre>
+    </section>
+
+    <section id="appendix">
+      <h2 class="section-title"><span class="num">A</span>Appendix — Script Quick Reference</h2>
+      <p>All scripts live under <code>standards/scripts/</code> and require <code>sudo zsh &lt;script&gt;</code>.</p>
+      <table>
+        <thead><tr><th>Category</th><th>Scan count</th><th>Fix count</th></tr></thead>
+        <tbody>
+          <tr><td>Audit</td><td>25</td><td>25</td></tr>
+          <tr><td>Authentication</td><td>7</td><td>4</td></tr>
+          <tr><td>iCloud</td><td>14</td><td>0 (MDM only)</td></tr>
+          <tr><td>Operating System</td><td>91</td><td>40</td></tr>
+          <tr><td>Password Policy</td><td>11</td><td>2</td></tr>
+          <tr><td>System Settings</td><td>66</td><td>15</td></tr>
+        </tbody>
+      </table>
+      <p>Full rule index: <code>standards/scripts/manifest.json</code><br>
+      Standards comparison: <code>standards/security_standards_comparison.md</code></p>
+
+      <h3>USB enforcement</h3>
+      <table>
+        <thead><tr><th>Script / file</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>app/install.sh</code></td><td>Installs the USB watcher LaunchDaemon (among other services)</td></tr>
+          <tr><td><code>app/backend/usb_watcher.py</code></td><td>The daemon source (shipped pre-compiled as <code>hxg-usb-watcher</code>)</td></tr>
+          <tr><td><code>/Library/LaunchDaemons/com.hxguardian.usbwatcher.plist</code></td><td>Installed plist</td></tr>
+          <tr><td><code>/var/log/hxguardian_usb.log</code></td><td>Daemon runtime log</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Shell audit</h3>
+      <table>
+        <thead><tr><th>Script / file</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>app/backend/shell_watcher.py</code></td><td>Daemon source (shipped pre-compiled as <code>hxg-shell-watcher</code>); tails per-user <code>~/.zsh_history</code> and the unified log, feeds <code>shell_exec_log</code></td></tr>
+          <tr><td><code>standards/launchd/com.hxguardian.shellwatcher.plist</code></td><td>Installed plist (deployed to <code>/Library/LaunchDaemons/</code> by <code>install.sh</code>)</td></tr>
+          <tr><td><code>/etc/zshrc</code> hxguardian block</td><td>Enables <code>INC_APPEND_HISTORY</code> + <code>EXTENDED_HISTORY</code> so every command is captured in real time</td></tr>
+          <tr><td><code>/var/log/hxguardian_shell.log</code></td><td>Daemon runtime log</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Key paths after install</h3>
+      <table>
+        <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+        <tbody>
+          <tr><td><code>/Library/Application Support/hxguardian/</code></td><td>Installed app (code + data + bin)</td></tr>
+          <tr><td><code>/Library/Application Support/hxguardian/data/hxguardian.db</code></td><td>SQLite DB (scans, audit, whitelist, 2FA, shell log, biometric log)</td></tr>
+          <tr><td><code>/Library/LaunchDaemons/com.hxguardian.runner.plist</code></td><td>Runner (root)</td></tr>
+          <tr><td><code>/Library/LaunchDaemons/com.hxguardian.server.plist</code></td><td>Server (admin user)</td></tr>
+          <tr><td><code>/Library/LaunchDaemons/com.hxguardian.usbwatcher.plist</code></td><td>USB watcher (root)</td></tr>
+          <tr><td><code>/Library/LaunchDaemons/com.hxguardian.shellwatcher.plist</code></td><td>Shell watcher (root)</td></tr>
+          <tr><td><code>/Library/Logs/hxguardian-{server,runner}.log</code></td><td>Service logs</td></tr>
+          <tr><td><code>/var/log/hxguardian_usb.log</code></td><td>USB watcher log</td></tr>
+          <tr><td><code>/var/log/hxguardian_shell.log</code></td><td>Shell watcher log</td></tr>
+          <tr><td><code>/var/run/hxg/runner.sock</code></td><td>Unix socket between server and runner</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="uninstall">
+      <h2 class="section-title"><span class="num">U</span>Uninstall (rarely used)</h2>
+<pre><code># Stop and remove all four LaunchDaemons
+sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.server.plist
+sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.runner.plist
+sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
+sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.shellwatcher.plist
+sudo rm /Library/LaunchDaemons/com.hxguardian.server.plist
+sudo rm /Library/LaunchDaemons/com.hxguardian.runner.plist
+sudo rm /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
+sudo rm /Library/LaunchDaemons/com.hxguardian.shellwatcher.plist
+
+# Remove socket directory
+sudo rm -rf /var/run/hxg
+
+# Remove the hxguardian audit block from /etc/zshrc
+sudo sed -i '' '/# &gt;&gt;&gt; hxguardian-audit &gt;&gt;&gt;/,/# &lt;&lt;&lt; hxguardian-audit &lt;&lt;&lt;/d' /etc/zshrc
+
+# Remove the unified MDM profile
+# System Settings → General → Device Management → HX-Guardian Unified → Remove
+
+# Optionally remove installed app + data (scan history, audit log, 2FA secrets)
+sudo rm -rf "/Library/Application Support/hxguardian"</code></pre>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  HX-Guardian · Airgap Device Admin &amp; Operator Guide · Offline runbook
+</footer>
+
+<script>
+(function () {
+  document.querySelectorAll('pre').forEach(function (pre) {
+    if (pre.parentElement && pre.parentElement.classList.contains('code-wrap')) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'code-wrap';
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.setAttribute('aria-label', 'Copy code to clipboard');
+    wrap.appendChild(btn);
+
+    btn.addEventListener('click', function () {
+      var text = pre.innerText.replace(/\n$/, '');
+      var done = function () {
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1400);
+      };
+      var fail = function () {
+        btn.textContent = 'Failed';
+        setTimeout(function () { btn.textContent = 'Copy'; }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () {
+          fallbackCopy(text) ? done() : fail();
+        });
+      } else {
+        fallbackCopy(text) ? done() : fail();
+      }
+    });
+  });
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+})();
+</script>
+
+</body>
+</html>

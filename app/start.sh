@@ -36,6 +36,16 @@ else
     echo "  ✗ USB Watcher plist not found — run install.sh first"
 fi
 
+# Shell Watcher (LaunchDaemon — root)
+SHELL_PLIST="/Library/LaunchDaemons/com.hxguardian.shellwatcher.plist"
+if [[ -f "$SHELL_PLIST" ]]; then
+    launchctl bootout system "$SHELL_PLIST" 2>/dev/null || true
+    launchctl bootstrap system "$SHELL_PLIST"
+    echo "  ✓ Shell Watcher started"
+else
+    echo "  ✗ Shell Watcher plist not found — run install.sh first"
+fi
+
 # Print session token
 echo ""
 sleep 2

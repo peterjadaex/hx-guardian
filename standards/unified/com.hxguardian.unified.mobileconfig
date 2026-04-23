@@ -20,6 +20,8 @@
 			<string>e426548a-8e4b-4efb-8280-33e2f5b2e811</string>
 			<key>PayloadVersion</key>
 			<integer>1</integer>
+			<key>allowAccountModification</key>
+			<false/>
 			<key>allowActivityContinuation</key>
 			<false/>
 			<key>allowAirDrop</key>
@@ -29,6 +31,8 @@
 			<key>allowApplePersonalizedAdvertising</key>
 			<false/>
 			<key>allowAssistant</key>
+			<false/>
+			<key>allowAutoUnlock</key>
 			<false/>
 			<key>allowCloudAddressBook</key>
 			<false/>
@@ -68,8 +72,6 @@
 			<false/>
 			<key>allowFindMyFriends</key>
 			<false/>
-			<key>allowFingerprintForUnlock</key>
-			<false/>
 			<key>allowGameCenter</key>
 			<false/>
 			<key>allowGenmoji</key>
@@ -104,8 +106,24 @@
 			<true/>
 		</dict>
 
-		<!-- 2. PASSWORD POLICY — removed: com.apple.mobiledevice.passwordpolicy requires MDM/supervision.
-		          Equivalent policy is enforced via pwpolicy in install.sh. -->
+		<!-- 2. PASSWORD POLICY — scoped to alphanumeric + 1 special character only.
+		          Other password-policy attributes (length, history, lifetime, lockout) are
+		          enforced via local pwpolicy in install.sh to avoid the MDM/supervision
+		          requirement for the full payload. -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.passwordpolicy.5efa108a-b470-4cfd-81d7-a0409c22bbe4</string>
+			<key>PayloadType</key>
+			<string>com.apple.mobiledevice.passwordpolicy</string>
+			<key>PayloadUUID</key>
+			<string>5efa108a-b470-4cfd-81d7-a0409c22bbe4</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>requireAlphanumeric</key>
+			<true/>
+			<key>minComplexChars</key>
+			<integer>1</integer>
+		</dict>
 
 		<!-- 3. FIREWALL -->
 		<dict>
@@ -427,7 +445,54 @@
 			<integer>1</integer>
 		</dict>
 
-		<!-- 16. SETUP ASSISTANT — removed: requires MDM supervision -->
+		<!-- 15b. MCX PREF: Location Services disable -->
+		<dict>
+			<key>PayloadContent</key>
+			<dict>
+				<key>com.apple.locationd</key>
+				<dict>
+					<key>Forced</key>
+					<array>
+						<dict>
+							<key>mcx_preference_settings</key>
+							<dict>
+								<key>LocationServicesEnabled</key>
+								<false/>
+							</dict>
+						</dict>
+					</array>
+				</dict>
+			</dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.mcxpref.locationd.35ad120a-6119-45bd-acc3-56c21810bdd7</string>
+			<key>PayloadType</key>
+			<string>com.apple.ManagedClient.preferences</string>
+			<key>PayloadUUID</key>
+			<string>35ad120a-6119-45bd-acc3-56c21810bdd7</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+
+		<!-- 16. SETUP ASSISTANT (forward-looking: suppresses prompts on next Setup Assistant run; scan checks key presence in managed prefs) -->
+		<dict>
+			<key>PayloadIdentifier</key>
+			<string>com.hxguardian.unified.setupassistant.37a437f8-3e9d-4266-bf88-03a82d8eeabb</string>
+			<key>PayloadType</key>
+			<string>com.apple.SetupAssistant.managed</string>
+			<key>PayloadUUID</key>
+			<string>09ba036a-0538-4807-9aa5-86ac7c87f615</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>SkipSetupItems</key>
+			<array>
+				<string>AppleID</string>
+				<string>iCloudStorage</string>
+				<string>Privacy</string>
+				<string>Siri</string>
+				<string>Intelligence</string>
+				<string>WatchMigration</string>
+			</array>
+		</dict>
 
 		<!-- 17. SOFTWARE UPDATE (critical/config only) -->
 		<dict>

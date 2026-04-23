@@ -2758,6 +2758,19 @@
       "cisv8": true
     }
   },
+  "system_settings_ethernet_disable": {
+    "category": "System Settings",
+    "description": "Disable Ethernet Interface",
+    "fix_script": "scripts/fix/system_settings_ethernet_disable.sh",
+    "fix_source": "hxguardian",
+    "rule": "system_settings_ethernet_disable",
+    "scan_script": "scripts/scan/system_settings_ethernet_disable.sh",
+    "scan_source": "hxguardian",
+    "standards": {
+      "hxguardian": true
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_ethernet_disable.sh"
+  },
   "system_settings_external_intelligence_disable": {
     "category": "System Settings",
     "description": "Disable External Intelligence Integrations",
@@ -3482,15 +3495,16 @@
   "system_settings_wifi_disable": {
     "category": "System Settings",
     "description": "Disable Wi-Fi Interface",
-    "fix_script": null,
-    "fix_source": null,
+    "fix_script": "scripts/fix/system_settings_wifi_disable.sh",
+    "fix_source": "800-53r5_high",
     "rule": "system_settings_wifi_disable",
-    "scan_script": null,
-    "scan_source": null,
+    "scan_script": "scripts/scan/system_settings_wifi_disable.sh",
+    "scan_source": "800-53r5_high",
     "standards": {
       "800-53r5_high": true,
       "cisv8": true
-    }
+    },
+    "undo_fix_script": "scripts/undo_fix/system_settings_wifi_disable.sh"
   },
   "system_settings_wifi_disable_when_connected_to_ethernet": {
     "category": "System Settings",

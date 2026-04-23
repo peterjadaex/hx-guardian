@@ -10,9 +10,9 @@ and for day-to-day operation once the device is disconnected.
 
 > **Network policy:** The airgap target device **never needs internet access**.
 > All software — pre-compiled binaries, the dashboard, the unified MDM profile,
-> hardening scripts — arrives on the SD card prepared by the developer.
-> TOTP for the dashboard's 2FA works fully offline (authenticator apps are
-> time-based, not network-based).
+> hardening scripts, and the Xcode Command Line Tools installer — arrives on
+> the SD card prepared by the developer. TOTP for the dashboard's 2FA works
+> fully offline (authenticator apps are time-based, not network-based).
 
 ---
 
@@ -22,19 +22,15 @@ and for day-to-day operation once the device is disconnected.
 2. [Receiving the SD card bundle](#2-receiving-the-sd-card-bundle)
 3. [Install HX-Guardian offline](#3-install-hx-guardian-offline)
 4. [Apply bulk fixes and exemptions](#4-apply-bulk-fixes-and-exemptions)
-5. [Open the dashboard](#5-open-the-dashboard)
-6. [Deploy the unified MDM profile](#6-deploy-the-unified-mdm-profile)
+5. [Deploy the unified MDM profile](#5-deploy-the-unified-mdm-profile)
+6. [Open the dashboard and enrol admin 2FA](#6-open-the-dashboard-and-enrol-admin-2fa)
 7. [Enable FileVault](#7-enable-filevault-full-disk-encryption)
-8. [Create operator users and set up 2FA](#8-create-operator-users-and-set-up-2fa)
-9. [Enable and verify the firewall](#9-enable-and-verify-the-firewall)
-10. [Whitelist USB devices and start the USB watcher](#10-whitelist-usb-devices-and-start-the-usb-watcher)
-11. [Run any remaining manual hardening](#11-run-any-remaining-manual-hardening)
-12. [Final verification](#12-final-verification)
-13. [Physical disconnect — airgap the device](#13-physical-disconnect--airgap-the-device)
-14. [Daily operations](#14-daily-operations)
-15. [Recovery procedures](#15-recovery-procedures)
-16. [Troubleshooting](#16-troubleshooting)
-17. [Appendix — script quick reference](#appendix--script-quick-reference)
+8. [Create the operator account and enrol fingerprints](#8-create-the-operator-account-and-enrol-fingerprints)
+9. [Whitelist USB devices](#9-whitelist-usb-devices)
+10. [Daily operations](#10-daily-operations)
+11. [Recovery procedures](#11-recovery-procedures)
+12. [Troubleshooting](#12-troubleshooting)
+13. [Appendix — script quick reference](#appendix--script-quick-reference)
 
 ---
 
@@ -52,7 +48,7 @@ and for day-to-day operation once the device is disconnected.
 
 > **macOS Tahoe (26) note:** The `sudo profiles install` CLI no longer deploys
 > profiles unattended. Every profile install goes through Finder + System Settings
-> with a user-approval click — see §6. Plan for this before starting.
+> with a user-approval click — see §5.
 
 ### 1.2 What you need from the developer
 
@@ -64,16 +60,17 @@ An SD card containing the HX-Guardian install bundle (produced by `prepare_sd_ca
 │   ├── dist/
 │   │   ├── hxg-server/          ← pre-compiled web server binary (PyInstaller onedir)
 │   │   ├── hxg-runner/          ← pre-compiled runner binary
-│   │   └── hxg-usb-watcher/     ← pre-compiled USB watcher binary
+│   │   ├── hxg-usb-watcher/     ← pre-compiled USB watcher binary
+│   │   └── hxg-shell-watcher/   ← pre-compiled shell-audit watcher binary
 │   ├── launchd/                 ← LaunchDaemon plists
-│   ├── vendor/bin/xmllint       ← standalone XML parser (~200 KB, deployed by install.sh)
+│   ├── vendor/clt/              ← Xcode Command Line Tools installer (.dmg or .pkg)
 │   ├── install.sh               ← main installer
 │   ├── start.sh / stop.sh / restart.sh / update.sh
 │   └── rules_setup.sh           ← post-install bulk fix + exemption script
 └── standards/
     ├── unified/
     │   └── com.hxguardian.unified.mobileconfig   ← single file, all policies
-    ├── launchd/                 ← USB watcher plist
+    ├── launchd/                 ← USB watcher + shell watcher plists
     ├── 800-53r5_high/mobileconfigs/unsigned/
     ├── cisv8/mobileconfigs/unsigned/
     ├── cis_lvl2/mobileconfigs/unsigned/
@@ -92,7 +89,7 @@ substitute `cisv8/` or `cis_lvl2/` for `800-53r5_high/` in every path below.
 
 Touch ID is intentionally kept **enabled** for operator convenience. Three
 baseline rules that would disable it are permanently exempted by `rules_setup.sh` — see
-§8.5.
+§8.
 
 ---
 
@@ -127,43 +124,67 @@ cp -R /Volumes/<SD_CARD_NAME>/hxg-install ~/hxg-install
 
 ## 3. Install HX-Guardian offline
 
-### 3.1 Run the installer
+### 3.1 Install Xcode Command Line Tools (CLT)
+
+HX-Guardian's scan/fix scripts use `/usr/bin/xmllint` and `/usr/bin/python3`,
+both of which are CLT shims on modern macOS. `install.sh` does **not** install
+CLT — it only verifies CLT is present and aborts with instructions if it is
+not. Install CLT manually from the bundled installer **before** running
+`install.sh`:
+
+1. In Finder, navigate to `~/hxg-install/app/vendor/clt/`.
+2. **Double-click** the `.pkg` file (or open the `.dmg` first and then
+   double-click the `.pkg` inside it).
+3. The standard macOS Installer opens. Click through **Continue → Agree →
+   Install**, then enter the admin password when prompted.
+4. Wait for installation to complete (a few minutes). Close the Installer when
+   finished.
+
+Verify:
+
+```bash
+xcode-select -p
+# → /Library/Developer/CommandLineTools
+```
+
+> **Why manual?** CLT installs pop a GUI prompt and can require Apple-ID-bound
+> consent flows on some macOS builds. Keeping the install step off the
+> automated installer avoids mid-run interruptions and keeps the airgap
+> device's install footprint predictable.
+
+### 3.2 Run the installer
 
 ```bash
 sudo zsh ~/hxg-install/app/install.sh
 ```
 
-The installer performs all steps fully offline — no Python, pip, or internet required:
+The installer performs all steps fully offline — no internet required:
 
 | Step | What it does |
 |---|---|
 | 0 | Removes any existing HX-Guardian services and binaries |
-| 1 | Deploys pre-compiled binaries from `app/dist/` to `/Library/Application Support/hxguardian/bin/` |
+| 1 | Deploys pre-compiled binaries (server, runner, USB watcher, shell watcher) to `/Library/Application Support/hxguardian/bin/` |
+| 1b | Verifies Xcode Command Line Tools are present; aborts with instructions to install from `app/vendor/clt/` if missing (see §3.1) |
 | 2 | Copies the standards tree (scripts + manifest + profiles) to `/Library/Application Support/hxguardian/standards/` |
-| 2b | Deploys the bundled `xmllint` binary to `/Library/Application Support/hxguardian/bin/xmllint` and sed-patches the 19 scan/fix scripts that need it. This removes the dependency on Xcode Command Line Tools — airgap devices do **not** need CLT installed. |
 | 3 | Creates `/var/run/hxg/` (Unix socket directory) and log files in `/Library/Logs/` |
-| 4 | Installs three **LaunchDaemons** — runner (root), server (admin user), USB watcher (root) — and starts all three |
-| 5 | Enforces password policy locally via `pwpolicy` (min 15 chars, complexity, history, 60-day expiry, lockout). All existing non-system local accounts are flagged to change password on next login. |
+| 4 | Installs four **LaunchDaemons** — runner (root), server (admin user), USB watcher (root), shell watcher (root) — and starts all four |
+| 4b | Writes the hxguardian block into `/etc/zshrc` (enables `INC_APPEND_HISTORY` + `EXTENDED_HISTORY` so the shell watcher captures commands in real time) |
+| 5 | Enforces password policy locally via `pwpolicy` (min 15 chars, complexity, lockout). All existing non-system local accounts are flagged to change password on next login. |
+| 6 | Opens the unified MDM profile in System Settings for user approval — complete §5 when prompted |
 
-### 3.2 Admin password policy — what to expect
+### 3.3 Admin password policy — what to expect
 
-`install.sh` step 5 writes a site-wide `pwpolicy` covering every local account
-(min 15 chars, upper+lower+digit+special, no simple sequences, no reuse of the
-last 5, max age 60 days, 5-failures/15-min lockout, 35-day inactivity disable).
+`install.sh` writes a site-wide `pwpolicy` covering every local account
+(min 15 chars, upper+lower+digit+special, 5-failures lockout).
 
 **Your own admin password is not force-changed by the installer.** The script
 explicitly skips the currently logged-in installer user so the airgap device
 does not lock you out on first logout. The password you used to run
 `sudo zsh app/install.sh` keeps working.
 
-**But you still need to meet the policy:**
-
-| When | What happens |
-|---|---|
-| Right after install | Existing admin password continues to work unchanged |
-| On next expiry (≤ 60 days) | macOS forces a change; the new password **must** meet every rule above |
-| On any voluntary change | Full content rules enforced immediately |
-| Compliance scans | `pwpolicy_*` scan scripts PASS — they check that the policy is present, not each account's password hash |
+**But you still need to meet the policy on any voluntary change.** Compliance
+scans (`pwpolicy_*`) PASS because they check that the policy is present, not
+each account's password hash.
 
 **Strongly recommended:** change your admin password voluntarily **now**, before
 airgapping:
@@ -173,9 +194,9 @@ passwd
 ```
 
 That confirms the policy is active (the system will reject a non-compliant new
-password) and prevents being surprised at expiry with an offline device.
+password) and prevents being surprised later with an offline device.
 
-### 3.3 Confirm all three services are running
+### 3.4 Confirm all four services are running
 
 ```bash
 sudo launchctl list | grep hxguardian
@@ -183,11 +204,12 @@ sudo launchctl list | grep hxguardian
 #   com.hxguardian.runner
 #   com.hxguardian.server
 #   com.hxguardian.usbwatcher
+#   com.hxguardian.shellwatcher
 ```
 
-All three are LaunchDaemons under `/Library/LaunchDaemons/`. The server plist
+All four are LaunchDaemons under `/Library/LaunchDaemons/`. The server plist
 has `UserName` set to the admin user so the dashboard runs non-root; the other
-two run as root.
+three run as root.
 
 ---
 
@@ -224,93 +246,32 @@ zsh /Library/Application\ Support/hxguardian/app/rules_setup.sh
 | Software updates | `os_software_update_app_update_enforce`, `os_software_update_deferral`, `system_settings_download_software_update_enforce`, `system_settings_software_update_download_enforce`, `system_settings_softwareupdate_current` |
 | Time Machine | `system_settings_time_machine_auto_backup_enable` |
 
-### 2FA prompt
-
-If 2FA has been configured (see §8.4), the script prompts for a 6-digit TOTP
-code once at the start. It automatically re-prompts before the 10-minute
-session window expires if the run takes longer.
-
 ---
 
-## 5. Open the dashboard
-
-### 5.1 Go to the dashboard
-
-Open Safari and go to:
-
-```
-http://127.0.0.1:8000
-```
-
-The dashboard has **no startup token**. It opens immediately for anyone on
-`127.0.0.1`. The server binds to loopback only — it is unreachable from the
-network.
-
-### 5.2 Verify the runner is connected
-
-```bash
-curl -s http://127.0.0.1:8000/api/health
-# → {"status":"ok","runner_connected":true,"version":"1.0.0"}
-```
-
-The `/api/health` endpoint is public and takes no auth. If `runner_connected`
-is `false`, jump to [§16 Troubleshooting](#16-troubleshooting).
-
-### 5.3 Authentication model
-
-- Read-only dashboard access is open on `127.0.0.1` — anyone logged into the
-  Mac can browse scans, reports, and audit logs.
-- Sensitive actions (apply a fix, change the USB whitelist, grant an exemption,
-  disable 2FA, view the QR for an enrolled secret) require a **TOTP from 2FA**.
-  The UI prompts for a 6-digit code; the backend issues a 10-minute
-  `X-2FA-Token` that covers follow-up requests.
-- **2FA is a single site-wide secret held by the admin** — not per-user. Only
-  the admin enrolls and holds the authenticator app. Operators cannot (and
-  should not) perform any gated action — those are admin-only.
-- Physical possession of the device (airgap + FileVault + firmware password)
-  is the primary perimeter; admin 2FA prevents an unattended-but-unlocked
-  session from silently altering the compliance state.
-
-Admin 2FA enrollment is covered in §8.4.
-
----
-
-## 6. Deploy the unified MDM profile
+## 5. Deploy the unified MDM profile
 
 HX-Guardian ships a single unified profile that bundles every policy this
-runbook previously required as separate files.
+runbook requires.
 
 **Profile file:** `standards/unified/com.hxguardian.unified.mobileconfig`
 **Identifier:** `com.hxguardian.unified`
 
-### 6.1 Install the profile (macOS Tahoe 26 and later)
+### 5.1 Install the profile (macOS Tahoe 26 and later)
 
-`sudo profiles install -path …` is **blocked** on recent macOS — the command
-returns without deploying and requires GUI approval. Use this flow instead:
+`install.sh` opens the profile automatically in its final step. If you need to
+re-open it manually:
 
 1. In Finder, navigate to
    `/Library/Application Support/hxguardian/standards/unified/`.
 2. **Double-click** `com.hxguardian.unified.mobileconfig`. macOS copies it into
    the pending-profiles queue and opens System Settings.
-3. Go to **System Settings → General → VPN & Device Management** (on Tahoe
-   it may appear under **Privacy & Security → Profiles**).
+3. Go to **System Settings → General → Device Management** (on Tahoe it may
+   appear under **Privacy & Security → Profiles**).
 4. Select **HX-Guardian Unified** from the list → click **Install** → enter the
    admin password when prompted.
 5. The profile is now deployed. It cannot be removed except by an admin.
 
-### 6.2 Touch ID edit — before deploying
-
-Before installing, confirm the profile allows Touch ID for unlock. Open the
-unified `.mobileconfig` in a text editor and check that the
-`com.apple.applicationaccess` payload either:
-
-- does **not** contain `allowFingerprintForUnlock`, **or**
-- has `<key>allowFingerprintForUnlock</key><true/>`.
-
-If you see `<false/>`, change it to `<true/>` before Step 5.1.2. Otherwise
-operators cannot unlock with Touch ID or authenticate `sudo` with a fingerprint.
-
-### 6.3 What the unified profile enforces
+### 5.2 What the unified profile enforces
 
 The single file applies every policy this runbook used to deploy as separate
 profiles:
@@ -330,9 +291,9 @@ profiles:
 | Diagnostics | Disables crash-report submission to Apple |
 
 Password policy is **not** applied via the profile — it is enforced locally by
-`install.sh` using `pwpolicy`. See §3.1 step 5.
+`install.sh` using `pwpolicy`. See §3.3.
 
-### 6.4 Verify the profile is installed
+### 5.3 Verify the profile is installed
 
 From the dashboard: **MDM Profiles** page — `com.hxguardian.unified` shows a
 green installed check. Or from the terminal:
@@ -344,104 +305,46 @@ profiles -P | grep hxguardian
 
 ---
 
-## 7. Enable FileVault (full-disk encryption)
+## 6. Open the dashboard and enrol admin 2FA
 
-> On macOS Tahoe, the MDM `ForceEnableInSetupAssistant` trigger is unreliable —
-> enable FileVault **directly from System Settings**.
+### 6.1 Go to the dashboard
 
-### 7.1 Turn on FileVault
+Open Safari and go to:
 
-1. **System Settings → Privacy & Security → FileVault → Turn On FileVault…**
-2. When asked where to store the recovery key, choose
-   **Create a local recovery key** — do **not** use iCloud (the device is to
-   be airgapped).
-3. macOS generates and displays the **Personal Recovery Key (PRK)**.
-   **Write it down immediately** — this is the only time it is shown in full.
-4. Store the key **on paper, physically secured offline** (safe, tamper-evident
-   envelope, whatever your security policy mandates).
-5. Click **Continue**. FileVault begins encrypting in the background — you can
-   keep using the device, but a reboot is required for encryption to complete.
-
-### 7.2 Disable FileVault auto-login (already set by the unified profile)
-
-The unified profile sets `DisableFDEAutoLogin`. If the profile is not yet
-deployed, run:
-
-```bash
-sudo defaults write /Library/Preferences/com.apple.loginwindow DisableFDEAutoLogin -bool true
+```
+http://127.0.0.1:8000
 ```
 
-### 7.3 Verify FileVault
+The dashboard has **no startup token**. It opens immediately for anyone on
+`127.0.0.1`. The server binds to loopback only — it is unreachable from the
+network.
+
+### 6.2 Verify the runner is connected
 
 ```bash
-sudo fdesetup status
-# → FileVault is On.
+curl -s http://127.0.0.1:8000/api/health
+# → {"status":"ok","runner_connected":true,"version":"1.0.0"}
 ```
 
-On the dashboard, scan both rules and confirm PASS:
+The `/api/health` endpoint is public and takes no auth. If `runner_connected`
+is `false`, jump to [§12 Troubleshooting](#12-troubleshooting).
 
-```bash
-sudo zsh standards/scripts/scan/system_settings_filevault_enforce.sh
-sudo zsh standards/scripts/scan/os_filevault_autologin_disable.sh
-```
+### 6.3 Authentication model
 
-| Result | Remediation |
-|---|---|
-| `system_settings_filevault_enforce` FAIL | Re-run §7.1 in System Settings |
-| `os_filevault_autologin_disable` FAIL | Run the `defaults write` command in §7.2 |
+- Read-only dashboard access is open on `127.0.0.1` — anyone logged into the
+  Mac can browse scans, reports, and audit logs.
+- Sensitive actions (apply a fix, change the USB whitelist, grant an exemption,
+  view the QR for an enrolled secret) require a **TOTP from 2FA**.
+  The UI prompts for a 6-digit code; the backend issues a 10-minute
+  `X-2FA-Token` that covers follow-up requests.
+- **2FA is a single site-wide secret held by the admin** — not per-user. Only
+  the admin enrolls and holds the authenticator app. Operators cannot (and
+  should not) perform any gated action — those are admin-only.
+- Physical possession of the device (airgap + FileVault + firmware password)
+  is the primary perimeter; admin 2FA prevents an unattended-but-unlocked
+  session from silently altering the compliance state.
 
----
-
-## 8. Create operator users and set up 2FA
-
-**Role split — read first:**
-
-| Role | Accounts | Dashboard access | 2FA | Can apply fixes / change whitelist / grant exemptions? |
-|---|---|---|---|---|
-| Admin | 1 (you) | Read + gated actions | **Yes — site-wide secret on admin's phone** | Yes |
-| Operator | 1..n | Read only | No | No |
-
-2FA is a **singleton** in HX-Guardian — there is one secret for the whole
-dashboard, not one per user. The admin holds it. Operators never enroll 2FA
-and never hold the authenticator app.
-
-### 8.1 Create operator accounts manually
-
-Operators are standard (non-admin) macOS users. Create them via System Settings
-while still logged in as admin:
-
-1. **System Settings → Users & Groups → Add Account…** (admin password required).
-2. **New User** → **Standard**.
-3. Enter a full name (e.g. "Operator 01"), account name (e.g. `operator01`),
-   and a temporary password.
-4. Click **Create User**. Repeat for each operator.
-
-> `install.sh` already enforces the compliant password policy via `pwpolicy`
-> and flagged all existing local accounts to change password on next login.
-> New accounts inherit the same policy automatically.
-
-### 8.2 For each operator: first login and password change
-
-1. Log out of the admin account.
-2. Log in as each operator with the temporary password.
-3. macOS will **force a password change** — set a password that satisfies the
-   policy (min 15 chars, mixed case, digit, special character, not a reuse of
-   the last 5).
-4. Log out and return to the admin account.
-
-### 8.3 Touch ID enrollment (admin + each operator)
-
-Touch ID is the device's second perimeter (unlock + sudo prompt) and is
-available to every account. Enroll it once per account:
-
-1. Log in as the account (admin or operator in turn).
-2. **System Settings → Touch ID & Password → Add a Fingerprint**.
-3. Enroll at least two fingers (primary + backup).
-4. Test: lock the screen and unlock with Touch ID; run `sudo -v` in Terminal
-   (admin only, operators don't have sudo) and confirm the Touch ID prompt
-   appears.
-
-### 8.4 Admin enrolls 2FA (singleton TOTP) — one-time
+### 6.4 Admin enrols 2FA (singleton TOTP) — one-time
 
 HX-Guardian 2FA is standard TOTP (RFC 6238) — works fully offline once enrolled.
 The admin performs this **once**; there is no per-operator enrollment.
@@ -467,6 +370,104 @@ The admin performs this **once**; there is no per-operator enrollment.
 > present with their phone**. Operators perform read-only workflows and escalate
 > to the admin for anything that changes state. This is intentional.
 
+---
+
+## 7. Enable FileVault (full-disk encryption)
+
+> On macOS Tahoe, the MDM `ForceEnableInSetupAssistant` trigger is unreliable —
+> enable FileVault **directly from System Settings**.
+
+### 7.1 Turn on FileVault
+
+1. **System Settings → Privacy & Security → FileVault → Turn On FileVault…**
+2. When asked where to store the recovery key, choose
+   **Create a local recovery key** — do **not** use iCloud (the device is to
+   be airgapped).
+3. macOS generates and displays the **Personal Recovery Key (PRK)**.
+   **Write it down immediately** — this is the only time it is shown in full.
+4. Store the key **on paper, physically secured offline** (safe, tamper-evident
+   envelope, whatever your security policy mandates).
+5. Click **Continue**. FileVault begins encrypting in the background — you can
+   keep using the device, but a reboot is required for encryption to complete.
+
+### 7.2 Verify FileVault
+
+```bash
+sudo fdesetup status
+# → FileVault is On.
+```
+
+On the dashboard, scan both rules and confirm PASS:
+
+```bash
+sudo zsh standards/scripts/scan/system_settings_filevault_enforce.sh
+sudo zsh standards/scripts/scan/os_filevault_autologin_disable.sh
+```
+
+---
+
+## 8. Create the operator account and enrol fingerprints
+
+**Role split — read first:**
+
+| Role | Accounts | Dashboard access | 2FA | Can apply fixes / change whitelist / grant exemptions? |
+|---|---|---|---|---|
+| Admin | 1 (you) | Read + gated actions | **Yes — site-wide secret on admin's phone** | Yes |
+| Operator | 1 shared account, N fingerprints | Read only | No | No |
+
+2FA is a **singleton** in HX-Guardian — there is one secret for the whole
+dashboard, not one per user. The admin holds it.
+
+Multiple operators share a **single** macOS operator account. Each operator is
+distinguished by their Touch ID fingerprint — every fingerprint Apple records
+is independently identifiable in the audit log, so shared-account logins
+still attribute unlocks and `sudo` prompts to the right person.
+
+### 8.1 Create the shared operator account
+
+Operators share a single standard (non-admin) macOS user. Create it via
+System Settings while logged in as admin:
+
+1. **System Settings → Users & Groups → Add Account…** (admin password required).
+2. **New User** → **Standard**.
+3. Enter a full name (e.g. "Operator"), account name (e.g. `operator`),
+   and a strong password.
+4. Click **Create User**.
+
+> `install.sh` enforces the compliant password policy via `pwpolicy`
+> automatically — the new account inherits it.
+
+### 8.2 First login and password change
+
+1. Log out of the admin account.
+2. Log in as `operator` with the temporary password.
+3. macOS will **force a password change** — set a password that satisfies the
+   policy (min 15 chars, mixed case, digit, special character).
+4. Log out and return to the admin account.
+
+### 8.3 Touch ID enrollment — one fingerprint per operator
+
+Touch ID is the device's second perimeter (unlock + sudo prompt). Enrol one
+fingerprint per human operator in the shared account:
+
+1. Log in as `operator`.
+2. **System Settings → Touch ID & Password → Add a Fingerprint**.
+3. Have each operator enrol their own fingerprint. Label each slot with the
+   operator's name so the admin can identify whose finger is whose later.
+4. Repeat until every authorised operator has a slot (Apple allows up to three
+   fingerprints per account across all accounts on the Mac).
+5. Test: each operator locks the screen and unlocks with their own finger.
+
+> Touch ID is not required for sudo on the operator account — operators do not
+> have sudo rights. It is used for unlock and for any per-fingerprint biometric
+> audit logging.
+
+### 8.4 Admin Touch ID (optional but recommended)
+
+Log in as the admin, **System Settings → Touch ID & Password**, enrol at least
+one finger. Test with `sudo -v` in Terminal — the Touch ID prompt should
+appear.
+
 ### 8.5 Touch ID exception — permanently exempted
 
 Three baseline rules are permanently **EXEMPT** (not FAIL) — `rules_setup.sh`
@@ -479,96 +480,13 @@ creates these exemptions automatically in §4. Do **not** run their fix scripts.
 | `os_touchid_prompt_disable` | Enrollment prompt needed for new operators |
 
 These rules show an **Exempt** badge in the dashboard and are excluded from the
-compliance score — they do not drag down the percentage.
+compliance score.
 
 ---
 
-## 9. Enable and verify the firewall
+## 9. Whitelist USB devices
 
-The unified profile enables the application firewall + stealth mode. The
-default-deny pf rule must be added manually (§9.3).
-
-### 9.1 Manual fallback — application firewall via CLI
-
-Only run this if the unified profile is not yet deployed:
-
-```bash
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setstealthmode on
-# Optional — most restrictive; blocks all incoming connections
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setblockall on
-```
-
-### 9.2 Verify application firewall
-
-```bash
-profiles -P | grep -i hxguardian
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
-# → Firewall is enabled.
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getstealthmode
-# → Stealth mode enabled.
-```
-
-### 9.3 Add the default-deny pf rule
-
-`os_firewall_default_deny_require.sh` checks for a `block drop in all` rule in
-pf. There is no fix script for this — it must be added manually.
-
-> **Before adding this rule**, confirm `/etc/pf.conf` already contains
-> `pass on lo0` and `pass out all`. Without those, the HX-Guardian dashboard on
-> `127.0.0.1:8000` and local services will stop working.
-
-```bash
-# Review existing rules first
-sudo pfctl -sr
-
-# Back up and append the block rule (add before any final pass lines)
-sudo cp /etc/pf.conf /etc/pf.conf.bak
-sudo sh -c 'echo "block drop in all" >> /etc/pf.conf'
-
-# Reload and enable pf
-sudo pfctl -f /etc/pf.conf
-sudo pfctl -e
-
-# Verify
-sudo pfctl -sr | grep "block drop"
-```
-
-### 9.4 Run firewall scans
-
-```bash
-sudo zsh standards/scripts/scan/system_settings_firewall_enable.sh
-sudo zsh standards/scripts/scan/system_settings_firewall_stealth_mode_enable.sh
-sudo zsh standards/scripts/scan/os_firewall_default_deny_require.sh
-```
-
-All three should return PASS.
-
-| Result | Remediation |
-|---|---|
-| `system_settings_firewall_enable` FAIL | Re-deploy the unified profile or run §9.1 |
-| `system_settings_firewall_stealth_mode_enable` FAIL | Re-deploy the profile or run `--setstealthmode on` |
-| `os_firewall_default_deny_require` FAIL | Apply the pf rule in §9.3 |
-
----
-
-## 10. Whitelist USB devices and start the USB watcher
-
-### 10.1 USB Restricted Mode
-
-**What it does:** When enabled, macOS requires the device to be unlocked before
-a newly connected USB accessory can communicate. If the device has been locked
-for more than one hour, any new USB connection is blocked until the operator
-authenticates.
-
-**Already set by the unified profile.** Verify:
-
-```bash
-sudo zsh standards/scripts/scan/system_settings_usb_restricted_mode.sh
-# → PASS
-```
-
-### 10.2 Whitelist known-good USB devices
+### 9.1 Whitelist known-good USB devices
 
 Register every USB peripheral the airgap device will ever use (YubiKeys, CAC
 readers, approved keyboards/mice, encrypted drives) **before** physical
@@ -597,21 +515,7 @@ All changes are written to the Audit Log.
 `serial` matches any whitelist entry (whichever fields are non-empty). Prefer
 serial when available for strongest identity binding.
 
-### 10.3 Grant Full Disk Access to the USB watcher
-
-The USB watcher runs as a LaunchDaemon and reads the SQLite database under
-`/Library/Application Support/hxguardian/data/`. On macOS Tahoe the watcher
-binary needs Full Disk Access:
-
-1. **System Settings → Privacy & Security → Full Disk Access**.
-2. Click `+` → add `/Library/Application Support/hxguardian/bin/run-hxg-usbwatcher`
-   (press **Cmd+Shift+G** in the file picker to type the path directly).
-3. Toggle it on.
-
-Without this, the watcher fails with `[Errno 1] Operation not permitted` and
-nothing is ejected.
-
-### 10.4 The USB watcher is already installed
+### 9.2 The USB watcher is already installed
 
 `install.sh` has already installed and started
 `/Library/LaunchDaemons/com.hxguardian.usbwatcher.plist`. It survives reboots
@@ -626,247 +530,20 @@ via `KeepAlive`. What it does:
 | Notifies operator | macOS notification with `Basso` sound |
 | Logs to audit trail | Writes `USB_UNAUTHORIZED_DEVICE` entry |
 
-**Control the daemon (modern `launchctl` syntax):**
-
-```bash
-# Stop
-sudo launchctl bootout   system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
-# Start
-sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
-# Status
-launchctl print system/com.hxguardian.usbwatcher | head
-# Live log
-tail -f /var/log/hxguardian_usb.log
-```
-
-### 10.5 Test the watcher
-
-1. Insert an **unknown** USB stick. Within 5 seconds you should see a macOS
-   notification, and the volume should be ejected.
-2. The **Connections** page shows an entry in **UNAUTHORIZED USB EVENTS**.
-3. Insert a **whitelisted** device — no notification, no ejection, shows green.
-
 ---
 
-## 11. Run any remaining manual hardening
+## 10. Daily operations
 
-> **§4 (`rules_setup.sh`) handles the bulk of this automatically** — it applies
-> all 100 scriptable fixes and creates all policy exemptions in one pass. This
-> section covers the rules that require manual steps (pf firewall, SIP, Secure
-> Boot, firmware password) that no fix script can automate.
-
-The scan/fix pattern for any rule you want to check or re-run individually:
-
-Exit codes: `0` = PASS / SUCCESS, `1` = FAIL, `2` = NOT_APPLICABLE, `3` = ERROR.
-
-```bash
-# Scripts are in the installed location after install.sh runs
-SCRIPTS="/Library/Application Support/hxguardian/standards/scripts"
-sudo zsh "$SCRIPTS/scan/<rule>.sh"    # check — outputs JSON
-sudo zsh "$SCRIPTS/fix/<rule>.sh"     # remediate
-```
-
-The Dashboard is also available: **Rules** page → filter by FAIL → click
-**Apply Fix** on each. The admin's TOTP is required for the first fix in a
-session; the issued token covers further actions for 10 minutes.
-Operators cannot apply fixes.
-
-### 11.1 iCloud — MDM only (14 rules)
-
-All iCloud rules are scan-only. Remediation is via the unified profile already
-deployed in §6. No fix scripts exist; if a scan shows FAIL, re-deploy the
-unified profile.
-
-### 11.2 Screen lock
-
-| Script | Purpose |
-|---|---|
-| `scan/system_settings_screensaver_timeout_enforce.sh` | Idle timeout ≤ 10 min |
-| `scan/system_settings_screensaver_password_enforce.sh` | Password required to unlock |
-| `scan/system_settings_screensaver_ask_for_password_delay_enforce.sh` | No delay before lock |
-| `scan/os_screensaver_loginwindow_enforce.sh` | Loginwindow screensaver set |
-
-### 11.3 Login window & guest account
-
-| Script | Purpose |
-|---|---|
-| `scan/system_settings_guest_account_disable.sh` | Guest account off |
-| `scan/os_guest_folder_removed.sh` + `fix/…` | Remove `/Users/Guest` |
-| `scan/system_settings_guest_access_smb_disable.sh` + `fix/…` | Disable SMB guest |
-| `scan/system_settings_automatic_login_disable.sh` | Auto-login disabled |
-| `scan/system_settings_loginwindow_prompt_username_password_enforce.sh` | Show username + password fields |
-| `scan/os_loginwindow_adminhostinfo_disabled.sh` | No host info at login window |
-
-### 11.4 System Integrity Protection (SIP)
-
-| Script | Purpose |
-|---|---|
-| `scan/os_sip_enable.sh` | Verify SIP on |
-| `fix/os_sip_enable.sh` | Enable SIP |
-
-> SIP changes require Recovery Mode. If the fix fails, reboot to Recovery
-> (**hold Power** on Apple Silicon; **Cmd+R** on Intel) and run `csrutil enable`.
-
-### 11.5 Gatekeeper
-
-| Script | Purpose |
-|---|---|
-| `scan/os_gatekeeper_enable.sh` | Gatekeeper on |
-| `scan/system_settings_gatekeeper_identified_developers_allowed.sh` | Allow identified devs |
-| `scan/system_settings_gatekeeper_override_disallow.sh` | Block right-click overrides |
-
-### 11.6 Siri & Dictation
-
-`scan/system_settings_siri_disable.sh`, `scan/system_settings_siri_settings_disable.sh`,
-`scan/os_siri_prompt_disable.sh`, `scan/os_dictation_disable.sh`,
-`scan/system_settings_improve_siri_dictation_disable.sh`.
-
-### 11.7 AirDrop
-
-`scan/os_airdrop_disable.sh` (scan only — MDM via unified profile).
-
-### 11.8 Bluetooth
-
-| Script | Purpose |
-|---|---|
-| `scan/system_settings_bluetooth_disable.sh` | Bluetooth off (scan only) |
-| `scan/system_settings_bluetooth_sharing_disable.sh` + `fix/…` | Disable Bluetooth sharing |
-
-> On 800-53r5 High the unified profile leaves Bluetooth togglable; disable
-> manually: **System Settings → Bluetooth → Turn Bluetooth Off**.
-
-### 11.9 Sharing services
-
-Pairs of `scan/fix` for: Screen Sharing, SSH (Remote Login), SMB, Remote
-Management, Printer Sharing, Media Sharing.
-
-### 11.10 Secure Boot & firmware password
-
-Scan-only — remediation requires manual steps in Recovery Mode.
-
-| Script | Checks |
-|---|---|
-| `scan/os_secure_boot_verify.sh` | Secure Boot set to Full Security |
-| `scan/os_firmware_password_require.sh` | EFI / Startup Security password set |
-
-**Set firmware password manually:**
-
-1. Reboot to Recovery Mode (**hold Power** / **Cmd+R**).
-2. Utilities → Startup Security Utility.
-3. Set to **Full Security** and enable password requirement.
-4. Apple Silicon: controlled by Activation Lock and MDM enrollment.
-
-### 11.11 Password policy
-
-Already applied by `install.sh` via `pwpolicy` (§3.1 step 5). 7 scan scripts
-verify compliance (min length, lockout, history, lifetime, complexity).
-Fix scripts exist for `account_inactivity_enforce` and `minimum_lifetime_enforce`
-if they show FAIL.
-
-> **Admin password:** the installer intentionally does not force a change for
-> the logged-in installer user. See §3.2 for the implications and the
-> recommended voluntary `passwd` step before airgapping.
-
-### 11.12 Audit logging
-
-13 scan scripts + 3 fix scripts. Run all audit fixes in one pass:
-
-```bash
-for f in standards/scripts/fix/audit_*.sh; do sudo zsh "$f"; done
-```
-
----
-
-## 12. Final verification
-
-### 12.1 Option A — Dashboard (recommended)
-
-1. Open `http://127.0.0.1:8000`.
-2. Dashboard → **Run Full Scan**.
-3. Review compliance score and per-category charts.
-4. Re-scan or re-fix any individual rule from the **Rules** page (TOTP prompt
-   on fixes).
-
-### 12.2 Option B — Command line
-
-```bash
-sudo zsh standards/800-53r5_high/800-53r5_high_compliance.sh
-```
-
-### 12.3 Expected state before airgapping
-
-- All scriptable rules **PASS** (applied by `rules_setup.sh` in §4).
-- **3 Touch ID rules**: **EXEMPT** (created by `rules_setup.sh` — excluded from score).
-- **17 other policy rules** (smartcard, software updates, etc.): **EXEMPT** (created by `rules_setup.sh`).
-- iCloud rules: **PASS** (enforced via unified profile).
-- Firmware / Secure Boot: **PASS** (set manually in Recovery Mode).
-- Password policy rules: **PASS** (set by `install.sh`).
-
----
-
-## 13. Physical disconnect — airgap the device
-
-> Only proceed once §12 is green.
-
-1. Forget all saved Wi-Fi networks:
-   `System Settings → Wi-Fi → (each network) → Forget`
-2. Turn off Wi-Fi: `System Settings → Wi-Fi → off`
-3. Disable Bluetooth if not needed: `System Settings → Bluetooth → off`
-4. If Ethernet is present: **physically remove** the adapter / cable.
-5. Final check — confirm no active interfaces:
-
-```bash
-ifconfig | grep 'inet ' | grep -v 127.0.0.1
-sudo lsof -i | grep ESTABLISHED
-```
-
-Both commands should return no output.
-
-**The device is now airgapped.** Daily operations continue in §14.
-
----
-
-## 14. Daily operations
-
-### 14.1 Open the dashboard
+### 10.1 Open the dashboard
 
 ```
 http://127.0.0.1:8000
 ```
 
 No token, no login screen. 2FA prompts appear only when an operator attempts
-a gated action (apply fix, change whitelist, grant exemption, disable 2FA).
+a gated action (apply fix, change whitelist, grant exemption).
 
-### 14.2 Service management (modern `launchctl`)
-
-```bash
-# Status
-sudo launchctl print system/com.hxguardian.server  | head
-sudo launchctl print system/com.hxguardian.runner  | head
-sudo launchctl print system/com.hxguardian.usbwatcher | head
-
-# Logs
-tail -f /Library/Logs/hxguardian-server.log       # server
-tail -f /Library/Logs/hxguardian-runner.log       # runner
-tail -f /var/log/hxguardian_usb.log               # USB watcher
-
-# Restart a service (kickstart re-execs in place)
-sudo launchctl kickstart -k system/com.hxguardian.server
-sudo launchctl kickstart -k system/com.hxguardian.runner
-sudo launchctl kickstart -k system/com.hxguardian.usbwatcher
-
-# Stop
-sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.server.plist
-sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.runner.plist
-sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
-
-# Start
-sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.runner.plist
-sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.server.plist
-sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
-```
-
-### 14.3 Adding a USB device to the whitelist (post-airgap)
+### 10.2 Adding a USB device to the whitelist (post-airgap)
 
 Whitelist changes are admin-only.
 
@@ -879,39 +556,46 @@ Whitelist changes are admin-only.
 6. The USB watcher picks up the change within 30 seconds — no restart needed.
 7. The action is recorded in the **Audit Log** under the admin account.
 
-### 14.4 Scheduling recurring scans
+### 10.3 Scheduling recurring scans
 
 Dashboard → **Schedule** → configure a cron expression
 (e.g. daily 02:00: `0 2 * * *`). The runner executes the scan session as root
 and results appear in **Scan History**.
 
-### 14.5 Generating reports
+### 10.4 Generating reports
 
 Dashboard → **Reports** → choose **HTML** (printable) or **CSV** (for archival).
 Reports include the compliance score, per-rule status, audit-log excerpt, and
 exemptions list.
 
-### 14.6 Granting / revoking an exemption
+### 10.5 Granting / revoking an exemption
 
 Admin-only. Dashboard → **Exemptions** → **Grant Exemption** → enter rule ID,
 reason, and expiry date. Admin TOTP prompt appears. Exempted rules are counted
 as PASS in compliance reports but remain visible in the Rules list with an
 **Exempt** badge.
 
+### 10.6 Reviewing biometric and shell audit logs
+
+- **Dashboard → Biometric Log** — every Touch ID unlock and `sudo` authentication,
+  attributed to the fingerprint slot (so the admin can tell which operator
+  acted on the shared account).
+- **Dashboard → Shell Log** — every command typed into an interactive zsh
+  session by any account (captured via `/etc/zshrc` + the shell watcher).
+
 ---
 
-## 15. Recovery procedures
+## 11. Recovery procedures
 
-### 15.1 Reset an operator password
+### 11.1 Reset an operator password (via UI)
 
-Operators are standard users, so the admin resets from an admin shell:
+The admin can reset the operator account password directly from macOS:
 
-```bash
-sudo passwd operator01
-```
-
-The password policy installed in §3.1 still applies. If the operator is locked
-out because of failed attempts, see §15.2.
+1. Log in as the **admin**.
+2. **System Settings → Users & Groups** → click the info icon next to the
+   operator account → **Reset Password…**
+3. Enter the admin password and set a new operator password. The installed
+   pwpolicy still applies.
 
 **If the admin password itself is lost:**
 
@@ -923,57 +607,49 @@ out because of failed attempts, see §15.2.
 > If FileVault is on and **both** the admin password and the PRK (§7.1) are lost,
 > the data is unrecoverable by design.
 
-### 15.2 Unlock a locked-out account
+### 11.2 Unlock a locked-out account
 
 If the password-policy lockout triggers, unlock from an admin shell:
 
 ```bash
-sudo pwpolicy -u operator01 -clearaccountpolicies
+sudo pwpolicy -u operator -clearaccountpolicies
 ```
 
 Then re-apply the site-wide policy so the account remains compliant:
 
 ```bash
-sudo zsh app/install.sh     # idempotent — re-runs pwpolicy step
+sudo zsh /Library/Application\ Support/hxguardian/app/install.sh
 ```
 
-### 15.3 Re-enroll a Touch ID fingerprint
+(The installer is idempotent — it re-runs the pwpolicy step without disturbing
+existing services or data.)
 
-Only the owning operator can enroll or remove their own fingerprints:
+### 11.3 Re-enroll a Touch ID fingerprint
 
-1. Log in as the operator.
+Only someone logged into the owning account can add or remove fingerprints:
+
+1. Log in as the operator (or admin for the admin account).
 2. **System Settings → Touch ID & Password**.
 3. Remove the old fingerprint (trash icon) and add a new one.
 
-### 15.4 Reset admin 2FA (lost phone)
+### 11.4 Reset admin 2FA
 
-Because 2FA is a single site-wide secret held only by the admin, losing the
-admin's phone locks the whole dashboard out of gated actions (fix / whitelist /
-exemption). There are no backup / scratch codes — recovery is via SQLite.
-
-1. Log in as the admin on the Mac (macOS account password still works; the
-   lockout is dashboard-only).
-2. Wipe the singleton 2FA row — note it is **`two_factor_config`**, not plural:
+- **Normal rekey (admin still has their phone):** Dashboard → **Settings →
+  Two-Factor Authentication → Rekey**. TOTP prompt for the existing secret,
+  then a new QR appears — rescan on the phone.
+- **Disable 2FA entirely (still has phone):** Dashboard → **Settings →
+  Disable 2FA** → enter current TOTP.
+- **Lost phone, cannot rekey via UI:** there are no backup / scratch codes —
+  recovery is via SQLite:
    ```bash
    sudo sqlite3 "/Library/Application Support/hxguardian/data/hxguardian.db" \
        "DELETE FROM two_factor_config;"
    sudo launchctl kickstart -k system/com.hxguardian.server
    ```
-3. The dashboard is now in the "2FA not configured" state — gated actions are
-   temporarily unguarded. Immediately re-enroll via §8.4 on the replacement
-   phone before doing anything else.
-4. The SQLite delete and the re-enrollment are both recorded in the Audit Log.
+  Then immediately re-enrol via §6.4 on the replacement phone. The SQLite
+  delete and the re-enrollment are both recorded in the Audit Log.
 
-### 15.5 Restore the pf configuration
-
-If the dashboard becomes unreachable after §9.3:
-
-```bash
-sudo cp /etc/pf.conf.bak /etc/pf.conf
-sudo pfctl -f /etc/pf.conf
-```
-
-### 15.6 Reinstall HX-Guardian from SD card
+### 11.5 Reinstall HX-Guardian from SD card
 
 Bring the original SD card (or a fresh one from the developer) and run:
 
@@ -990,7 +666,7 @@ updated rather than duplicated.
 
 ---
 
-## 16. Troubleshooting
+## 12. Troubleshooting
 
 **Dashboard not loading**
 ```bash
@@ -1021,31 +697,32 @@ sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.runner.pli
   the profile does not automatically update past scan results — run a new
   full scan.
 - If the profile install was blocked, check
-  **System Settings → General → VPN & Device Management** for an unapproved
+  **System Settings → General → Device Management** for an unapproved
   pending profile.
 
 **`profiles install` on the CLI does nothing (Tahoe)**
-- Expected. Use the Finder + System Settings flow in §6.1 instead.
-
-**USB watcher: `[Errno 1] Operation not permitted`**
-- The watcher binary needs Full Disk Access.
-  **System Settings → Privacy & Security → Full Disk Access** → add
-  `/Library/Application Support/hxguardian/bin/run-hxg-usbwatcher` → toggle on →
-  `sudo launchctl kickstart -k system/com.hxguardian.usbwatcher`.
+- Expected. Use the Finder + System Settings flow in §5.1 instead.
 
 **USB watcher: device detected but not ejected / not re-ejected after replug**
 ```bash
 tail -f /var/log/hxguardian_usb.log
 ```
-- `Could not eject` → `diskutil eject` failed; verify Full Disk Access.
+- `Could not eject` → `diskutil eject` failed; inspect the log for the reason.
 - No log entry at all → watcher is not running; `sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist`.
 - Device shows **Whitelisted** → remove the whitelist entry to re-enable
   enforcement.
 
+**Shell watcher: commands not appearing in the Shell Log**
+- Confirm `/etc/zshrc` still contains the `>>> hxguardian-audit >>>` block (re-run
+  `install.sh` if the block was edited out).
+- New zsh sessions must be opened after install — commands typed in a session
+  started before install won't be captured.
+- Check the daemon log: `tail -f /var/log/hxguardian_shell.log`.
+
 **2FA prompt appears but every code from the admin's phone is rejected**
 - Phone clock is out of sync with the device. Re-sync the phone's time
   (automatic time zone on). TOTP tolerates roughly ±30 s drift.
-- Last-resort reset (admin's phone lost / unrecoverable): §15.4.
+- Last-resort reset (admin's phone lost / unrecoverable): §11.4.
 
 **Server fails to start / binary not found**
 ```bash
@@ -1085,21 +762,32 @@ Standards comparison: `standards/security_standards_comparison.md`
 | Script / file | Purpose |
 |---|---|
 | `app/install.sh` | Installs the USB watcher LaunchDaemon (among other services) |
-| `app/backend/usb_watcher.py` | The daemon itself (launched by the plist) |
+| `app/backend/usb_watcher.py` | The daemon source (shipped pre-compiled as `hxg-usb-watcher`) |
 | `/Library/LaunchDaemons/com.hxguardian.usbwatcher.plist` | Installed plist |
 | `/var/log/hxguardian_usb.log` | Daemon runtime log |
+
+### Shell audit
+
+| Script / file | Purpose |
+|---|---|
+| `app/backend/shell_watcher.py` | Daemon source (shipped pre-compiled as `hxg-shell-watcher`); tails per-user `~/.zsh_history` and the unified log, feeds `shell_exec_log` |
+| `standards/launchd/com.hxguardian.shellwatcher.plist` | Installed plist (deployed to `/Library/LaunchDaemons/` by `install.sh`) |
+| `/etc/zshrc` hxguardian block | Enables `INC_APPEND_HISTORY` + `EXTENDED_HISTORY` so every command is captured in real time |
+| `/var/log/hxguardian_shell.log` | Daemon runtime log |
 
 ### Key paths after install
 
 | Path | Contents |
 |---|---|
 | `/Library/Application Support/hxguardian/` | Installed app (code + data + bin) |
-| `/Library/Application Support/hxguardian/data/hxguardian.db` | SQLite DB (scans, audit, whitelist, 2FA) |
+| `/Library/Application Support/hxguardian/data/hxguardian.db` | SQLite DB (scans, audit, whitelist, 2FA, shell log, biometric log) |
 | `/Library/LaunchDaemons/com.hxguardian.runner.plist` | Runner (root) |
 | `/Library/LaunchDaemons/com.hxguardian.server.plist` | Server (admin user) |
 | `/Library/LaunchDaemons/com.hxguardian.usbwatcher.plist` | USB watcher (root) |
+| `/Library/LaunchDaemons/com.hxguardian.shellwatcher.plist` | Shell watcher (root) |
 | `/Library/Logs/hxguardian-{server,runner}.log` | Service logs |
 | `/var/log/hxguardian_usb.log` | USB watcher log |
+| `/var/log/hxguardian_shell.log` | Shell watcher log |
 | `/var/run/hxg/runner.sock` | Unix socket between server and runner |
 
 ---
@@ -1107,19 +795,24 @@ Standards comparison: `standards/security_standards_comparison.md`
 ## Uninstall (rarely used)
 
 ```bash
-# Stop and remove all three LaunchDaemons
+# Stop and remove all four LaunchDaemons
 sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.server.plist
 sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.runner.plist
 sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
+sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.shellwatcher.plist
 sudo rm /Library/LaunchDaemons/com.hxguardian.server.plist
 sudo rm /Library/LaunchDaemons/com.hxguardian.runner.plist
 sudo rm /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
+sudo rm /Library/LaunchDaemons/com.hxguardian.shellwatcher.plist
 
 # Remove socket directory
 sudo rm -rf /var/run/hxg
 
+# Remove the hxguardian audit block from /etc/zshrc
+sudo sed -i '' '/# >>> hxguardian-audit >>>/,/# <<< hxguardian-audit <<</d' /etc/zshrc
+
 # Remove the unified MDM profile
-# System Settings → General → VPN & Device Management → HX-Guardian Unified → Remove
+# System Settings → General → Device Management → HX-Guardian Unified → Remove
 
 # Optionally remove installed app + data (scan history, audit log, 2FA secrets)
 sudo rm -rf "/Library/Application Support/hxguardian"

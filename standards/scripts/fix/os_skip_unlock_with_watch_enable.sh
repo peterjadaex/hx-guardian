@@ -13,14 +13,7 @@ if [[ $EUID -ne 0 ]]; then
     exit 3
 fi
 
-mkdir -p "/Library/Managed Preferences"
-/usr/bin/defaults write "/Library/Managed Preferences/com.apple.SetupAssistant.managed" \
-    SkipSetupItems -array AppleID iCloudStorage Privacy Siri Intelligence WatchMigration
-
-if [[ $? -eq 0 ]]; then
-    printf '{"rule":"os_skip_unlock_with_watch_enable","action":"EXECUTED","message":"Fix applied"}\n'
-    exit 0
-else
-    printf '{"rule":"os_skip_unlock_with_watch_enable","action":"FAILED","message":"defaults write failed"}\n'
-    exit 1
-fi
+# Cannot be applied by script: cfprefsd/mdmclient revert direct writes to /Library/Managed Preferences.
+# Install the HX-Guardian Unified profile and approve it in System Settings to satisfy this rule.
+printf '{"rule":"os_skip_unlock_with_watch_enable","action":"NOT_APPLICABLE","message":"Install /Library/Application Support/hxguardian/unified/com.hxguardian.unified.mobileconfig and approve in System Settings > General > Device Management."}\n'
+exit 2

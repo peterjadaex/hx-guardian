@@ -146,6 +146,30 @@ EXEMPT_ENTRIES=(
 
     # ── Time Machine ──────────────────────────────────────────────────────────
     "system_settings_time_machine_auto_backup_enable|Time Machine auto-backup disabled per local policy|permanent"
+
+    # ── MDM/DDM-only scans (not satisfiable by user-approved profile) ─────────
+    "os_external_storage_access_defined|External storage restrictions require MDM-delivered DiskManagement DDM declaration|permanent"
+    "os_mdm_require|Device is intentionally unenrolled from MDM per airgap deployment model|permanent"
+    "os_recover_lock_enable|Apple Silicon Recovery Lock requires interactive SecureToken admin signing; run manually via fdesetup if desired|permanent"
+    "os_recovery_lock_enable|MDM-issued Recovery Lock unavailable; covered manually via fdesetup|permanent"
+    "system_settings_security_update_install|Automatic security-update install state requires DDM declaration (MDM-only)|permanent"
+    "system_settings_find_my_disable|Requires com.apple.icloud.managed domain which is MDM-only|permanent"
+    "system_settings_token_removal_enforce|Smartcard hardware not deployed in this environment|permanent"
+
+    # ── SSH service disabled entirely (see system_settings_ssh_disable) ──────
+    "os_ssh_server_alive_interval_configure|SSH service disabled; ServerAliveInterval not applicable|permanent"
+
+    # ── Password policy attributes that brick local auth on Tahoe if enforced ─
+    # Alphanumeric + special-character enforcement is applied via the unified
+    # mobileconfig; the rules below are intentionally left un-enforced because
+    # applying them via pwpolicy locks users out.
+    "pwpolicy_account_inactivity_enforce|Disables accounts after idle days; not enforced to avoid lockout on airgap Macs with infrequent login|permanent"
+    "pwpolicy_account_lockout_timeout_enforce|Lockout auto-recovery timer requires MDM-delivered pwpolicy; not enforced locally to avoid login trap|permanent"
+    "pwpolicy_custom_regex_enforce|Site-specific regex not defined; enforcing breaks existing passwords|permanent"
+    "pwpolicy_history_enforce|Password history breaks local auth when pwpolicy rewrites accountPolicy on Tahoe|permanent"
+    "pwpolicy_max_lifetime_enforce|Forced password expiry locks users out on airgap devices with infrequent login|permanent"
+    "pwpolicy_minimum_lifetime_enforce|Minimum-lifetime enforcement blocks password rotation during install; bricks local auth on Tahoe|permanent"
+    "pwpolicy_simple_sequence_disable|Simple-sequence check invalidates existing passwords; not enforced to avoid lockout|permanent"
 )
 
 # =============================================================================

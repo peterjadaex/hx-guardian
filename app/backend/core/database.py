@@ -5,7 +5,7 @@ Database file: app/data/hxguardian.db (dev) or
 """
 import sys
 from pathlib import Path
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 if getattr(sys, 'frozen', False):
@@ -19,6 +19,14 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     echo=False,
 )
+
+
+@event.listens_for(engine, "connect")
+def _sqlite_pragmas(dbapi_conn, _):
+    cur = dbapi_conn.cursor()
+    cur.execute("PRAGMA journal_mode=WAL")
+    cur.execute("PRAGMA busy_timeout=5000")
+    cur.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

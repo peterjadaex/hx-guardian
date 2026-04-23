@@ -9,7 +9,8 @@
 #   sudo zsh app/update.sh            # deploy all three
 #   sudo zsh app/update.sh runner     # deploy + restart runner only
 #   sudo zsh app/update.sh server     # deploy + restart server only
-#   sudo zsh app/update.sh usbwatcher # deploy + restart USB watcher only
+#   sudo zsh app/update.sh usbwatcher   # deploy + restart USB watcher only
+#   sudo zsh app/update.sh shellwatcher # deploy + restart shell watcher only
 
 set -euo pipefail
 
@@ -32,12 +33,13 @@ fi
 
 # ── Validate binaries exist ─────────────────────────────────────────────────
 case "$TARGET" in
-    runner)      BINARIES=(hxg-runner) ;;
-    server)      BINARIES=(hxg-server) ;;
-    usbwatcher)  BINARIES=(hxg-usb-watcher) ;;
-    all)         BINARIES=(hxg-server hxg-runner hxg-usb-watcher) ;;
+    runner)       BINARIES=(hxg-runner) ;;
+    server)       BINARIES=(hxg-server) ;;
+    usbwatcher)   BINARIES=(hxg-usb-watcher) ;;
+    shellwatcher) BINARIES=(hxg-shell-watcher) ;;
+    all)          BINARIES=(hxg-server hxg-runner hxg-usb-watcher hxg-shell-watcher) ;;
     *)
-        echo "ERROR: Unknown target '$TARGET'. Use: all | runner | server | usbwatcher"
+        echo "ERROR: Unknown target '$TARGET'. Use: all | runner | server | usbwatcher | shellwatcher"
         exit 1
         ;;
 esac
@@ -94,14 +96,23 @@ restart_usbwatcher() {
     echo "  ✓ USB Watcher restarted"
 }
 
+restart_shellwatcher() {
+    launchctl kickstart -k system/com.hxguardian.shellwatcher 2>/dev/null \
+        || { launchctl unload /Library/LaunchDaemons/com.hxguardian.shellwatcher.plist 2>/dev/null || true
+             launchctl load -w /Library/LaunchDaemons/com.hxguardian.shellwatcher.plist; }
+    echo "  ✓ Shell Watcher restarted"
+}
+
 case "$TARGET" in
-    runner)     restart_runner ;;
-    server)     restart_server ;;
-    usbwatcher) restart_usbwatcher ;;
+    runner)       restart_runner ;;
+    server)       restart_server ;;
+    usbwatcher)   restart_usbwatcher ;;
+    shellwatcher) restart_shellwatcher ;;
     all)
         restart_runner
         restart_server
         restart_usbwatcher
+        restart_shellwatcher
         ;;
 esac
 

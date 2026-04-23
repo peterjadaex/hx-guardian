@@ -133,13 +133,21 @@ echo "  Building hxg-usb-watcher..."
     --noconfirm \
     --log-level WARN
 
-chmod +x "$DIST_DIR/hxg-server" "$DIST_DIR/hxg-runner" "$DIST_DIR/hxg-usb-watcher"
+echo "  Building hxg-shell-watcher..."
+"$PYTHON" -m PyInstaller hxg_shell_watcher.spec \
+    --distpath "$DIST_DIR" \
+    --workpath "$WORK_DIR" \
+    --noconfirm \
+    --log-level WARN
+
+chmod +x "$DIST_DIR/hxg-server" "$DIST_DIR/hxg-runner" "$DIST_DIR/hxg-usb-watcher" "$DIST_DIR/hxg-shell-watcher"
 
 # Ad-hoc code sign — satisfies macOS AMFI/Gatekeeper for local execution
 # without requiring an Apple Developer certificate
 codesign --force --deep --sign - "$DIST_DIR/hxg-server"
 codesign --force --deep --sign - "$DIST_DIR/hxg-runner"
 codesign --force --deep --sign - "$DIST_DIR/hxg-usb-watcher"
+codesign --force --deep --sign - "$DIST_DIR/hxg-shell-watcher"
 echo "  ✓ Binaries built and signed"
 
 cd - > /dev/null
@@ -148,7 +156,7 @@ cd - > /dev/null
 echo ""
 echo "[4/4] Verifying outputs..."
 MISSING=false
-for binary in hxg-server hxg-runner hxg-usb-watcher; do
+for binary in hxg-server hxg-runner hxg-usb-watcher hxg-shell-watcher; do
     if [[ -f "$DIST_DIR/$binary/$binary" ]]; then
         size=$(du -sh "$DIST_DIR/$binary" | cut -f1)
         echo "  ✓ $binary  ($size)"

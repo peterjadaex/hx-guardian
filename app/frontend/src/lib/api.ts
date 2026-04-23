@@ -149,7 +149,72 @@ export const getReportCsv = (sessionId?: number) =>
 export const getAuditLog = (params?: object) =>
   api.get('/audit-log', { params }).then(r => r.data)
 
-export const exportAuditCsv = () => '/api/audit-log/export/csv'
+type ExportParams = { from?: string; to?: string; action?: string }
+
+const buildExportUrl = (base: string, p?: ExportParams) => {
+  const qs = new URLSearchParams()
+  if (p?.from) qs.set('from', p.from)
+  if (p?.to) qs.set('to', p.to)
+  if (p?.action) qs.set('action', p.action)
+  const s = qs.toString()
+  return s ? `${base}?${s}` : base
+}
+
+export const exportAuditCsv = (p?: ExportParams) =>
+  buildExportUrl('/api/audit-log/export/csv', p)
+
+export const exportAuditJsonl = (p?: ExportParams) =>
+  buildExportUrl('/api/audit-log/export/jsonl', p)
+
+// ─── Shell Log ────────────────────────────────────────────────────────────────
+
+export const getShellLog = (params?: object) =>
+  api.get('/shell-log', { params }).then(r => r.data)
+
+type ShellExportParams = {
+  from?: string
+  to?: string
+  source?: string
+  user?: string
+  q?: string
+}
+
+export const exportShellJsonl = (p?: ShellExportParams) => {
+  const qs = new URLSearchParams()
+  if (p?.from) qs.set('from', p.from)
+  if (p?.to) qs.set('to', p.to)
+  if (p?.source) qs.set('source', p.source)
+  if (p?.user) qs.set('user', p.user)
+  if (p?.q) qs.set('q', p.q)
+  const s = qs.toString()
+  return s ? `/api/shell-log/export/jsonl?${s}` : '/api/shell-log/export/jsonl'
+}
+
+// ─── Biometric Log ────────────────────────────────────────────────────────────
+
+export const getBiometricLog = (params?: object) =>
+  api.get('/biometric-log', { params }).then(r => r.data)
+
+type BiometricExportParams = {
+  from?: string
+  to?: string
+  event_class?: string
+  user?: string
+  q?: string
+  include_teardown?: boolean
+}
+
+export const exportBiometricJsonl = (p?: BiometricExportParams) => {
+  const qs = new URLSearchParams()
+  if (p?.from) qs.set('from', p.from)
+  if (p?.to) qs.set('to', p.to)
+  if (p?.event_class) qs.set('event_class', p.event_class)
+  if (p?.user) qs.set('user', p.user)
+  if (p?.q) qs.set('q', p.q)
+  if (p?.include_teardown) qs.set('include_teardown', 'true')
+  const s = qs.toString()
+  return s ? `/api/biometric-log/export/jsonl?${s}` : '/api/biometric-log/export/jsonl'
+}
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 
