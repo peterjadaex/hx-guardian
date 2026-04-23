@@ -539,7 +539,7 @@
       <h3>5.1 Install the profile (macOS Tahoe 26 and later)</h3>
       <p><code>install.sh</code> opens the profile automatically in its final step. If you need to re-open it manually:</p>
       <ol>
-        <li>In Finder, navigate to <code>/Library/Application Support/hxguardian/standards/unified/</code>.</li>
+        <li>In Finder, navigate to <code>~/hxg-install/standards/unified/</code> (the bundle you copied from the SD card in §2.2). If you have already removed that folder, the file is also at <code>/Library/Application Support/hxguardian/standards/unified/</code> after <code>install.sh</code> has run.</li>
         <li><strong>Double-click</strong> <code>com.hxguardian.unified.mobileconfig</code>. macOS copies it into the pending-profiles queue and opens System Settings.</li>
         <li>Go to <strong>System Settings → General → Device Management</strong> (on Tahoe it may appear under <strong>Privacy &amp; Security → Profiles</strong>).</li>
         <li>Select <strong>HX-Guardian Unified</strong> from the list → click <strong>Install</strong> → enter the admin password when prompted.</li>
@@ -568,8 +568,11 @@
 
       <h3>5.3 Verify the profile is installed</h3>
       <p>From the dashboard: <strong>MDM Profiles</strong> page — <code>com.hxguardian.unified</code> shows a green installed check. Or from the terminal:</p>
-<pre><code>profiles -P | grep hxguardian
-# → HX-Guardian Unified (com.hxguardian.unified)</code></pre>
+<pre><code>sudo profiles list | grep hxguardian
+# → com.hxguardian.unified (HX-Guardian Unified)</code></pre>
+      <blockquote>
+        <p><strong>Note:</strong> <code>profiles -P</code> (without <code>sudo</code>) returns empty on macOS Tahoe — always run with <code>sudo</code>. Alternatively check <strong>System Settings → General → Device Management</strong> for the HX-Guardian Unified entry.</p>
+      </blockquote>
     </section>
 
     <section id="s6">

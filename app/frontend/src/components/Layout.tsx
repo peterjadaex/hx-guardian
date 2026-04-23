@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
   Shield, LayoutDashboard, ListChecks, History, Monitor,
-  FileText, Usb, Settings, Cpu, Calendar,
+  FileText, Usb, Settings, Calendar,
   ClipboardList, BookOpen, SlidersHorizontal
 } from 'lucide-react'
 
@@ -13,7 +13,6 @@ const NAV_ITEMS = [
   { path: '/device',      label: 'Device Status', icon: Monitor },
   { path: '/connections', label: 'Connections',   icon: Usb },
   { path: '/logs',        label: 'Device Logs',   icon: FileText },
-  { path: '/mdm',         label: 'MDM Profiles',  icon: Cpu },
   { path: '/exemptions',  label: 'Exemptions',    icon: Settings },
   { path: '/schedule',    label: 'Schedule',      icon: Calendar },
   { path: '/reports',     label: 'Reports',       icon: ClipboardList },

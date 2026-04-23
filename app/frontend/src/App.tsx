@@ -7,7 +7,6 @@ import { History } from './pages/History'
 import { Device } from './pages/Device'
 import { Connections } from './pages/Connections'
 import { Logs } from './pages/Logs'
-import { MdmProfiles } from './pages/MdmProfiles'
 import { Exemptions } from './pages/Exemptions'
 import { Schedule } from './pages/Schedule'
 import { Reports } from './pages/Reports'
@@ -25,7 +24,6 @@ export default function App() {
         <Route path="/device" element={<Device />} />
         <Route path="/connections" element={<Connections />} />
         <Route path="/logs" element={<Logs />} />
-        <Route path="/mdm" element={<MdmProfiles />} />
         <Route path="/exemptions" element={<Exemptions />} />
         <Route path="/schedule" element={<Schedule />} />
         <Route path="/reports" element={<Reports />} />

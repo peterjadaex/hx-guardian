@@ -100,20 +100,6 @@ export const getUsbSecurityEvents = (page = 0, limit = 10) =>
 export const getPreflight = () =>
   api.get('/preflight').then(r => r.data)
 
-// ─── MDM ──────────────────────────────────────────────────────────────────────
-
-export const getMdmProfiles = () =>
-  api.get('/device/profiles').then(r => r.data)
-
-export const refreshMdmProfiles = () =>
-  api.get('/device/profiles/refresh').then(r => r.data)
-
-export const installMdmProfile = (profileId: string) =>
-  api.post(`/device/profiles/${encodeURIComponent(profileId)}/install`).then(r => r.data)
-
-export const installAllMdmProfiles = (standard?: string) =>
-  api.post('/device/profiles/install-all', standard ? { standard } : {}).then(r => r.data)
-
 // ─── Logs ─────────────────────────────────────────────────────────────────────
 
 export const getSystemLog = (params?: object) =>
