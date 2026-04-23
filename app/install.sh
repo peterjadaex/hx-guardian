@@ -342,8 +342,12 @@ echo "  ✓ USB Watcher plist: $USB_PLIST"
 echo ""
 echo "[5/6] Enforcing password policy..."
 # com.apple.mobiledevice.passwordpolicy requires MDM — equivalent policy set here via pwpolicy.
-# Policy: min 15 chars, alphanumeric, mixed case, 3 failed attempts, 15 min lockout reset,
-#         5-password history, 365-day max age.
+# Policy: min 15 chars, must contain upper+lower+digit+special, 5 failed attempts before lockout.
+# Intentionally omitted (known-broken on macOS Tahoe local-node pwpolicy):
+#   - maxLifetime: fires immediately when passwordLastSetTime is unset on fresh accounts
+#   - minimumLifetime: conflicts with any forced-reset path
+#   - PCRE lookaheads / backreferences: not evaluated reliably by the on-device regex engine
+# If age/history enforcement is required, ship them via an MDM configuration profile instead.
 # Use pwpolicy -setaccountpolicies (XML format) — the format that scan scripts
 # read via `pwpolicy -getaccountpolicies`. The old -setglobalpolicy key=value
 # format is a separate mechanism that the scan XPath queries do not read.
@@ -367,57 +371,6 @@ cat > "$PWPOLICY_FILE" << 'PWPLIST'
                 <integer>5</integer>
             </dict>
         </dict>
-        <!-- Auto re-enable locked account after 15 minutes (900 seconds) -->
-        <dict>
-            <key>policyContent</key>
-            <string>(policyAttributeCurrentTime - policyAttributeLastFailedAuthenticationTime) &gt; autoEnableInSeconds</string>
-            <key>policyIdentifier</key>
-            <string>autoEnable</string>
-            <key>policyParameters</key>
-            <dict>
-                <key>autoEnableInSeconds</key>
-                <integer>900</integer>
-            </dict>
-        </dict>
-    </array>
-    <key>policyCategoryPasswordChange</key>
-    <array>
-        <!-- Minimum password lifetime: 24 hours -->
-        <dict>
-            <key>policyContent</key>
-            <string>policyAttributeCurrentTime &gt; policyAttributeLastPasswordChangeTime + policyAttributeMinimumLifetimeHours * 3600</string>
-            <key>policyIdentifier</key>
-            <string>minimumLifetime</string>
-            <key>policyParameters</key>
-            <dict>
-                <key>policyAttributeMinimumLifetimeHours</key>
-                <integer>24</integer>
-            </dict>
-        </dict>
-        <!-- Maximum password lifetime: 60 days -->
-        <dict>
-            <key>policyContent</key>
-            <string>policyAttributeCurrentTime &lt; policyAttributeLastPasswordChangeTime + policyAttributeExpiresEveryNDays * 24 * 60 * 60</string>
-            <key>policyIdentifier</key>
-            <string>maxLifetime</string>
-            <key>policyParameters</key>
-            <dict>
-                <key>policyAttributeExpiresEveryNDays</key>
-                <integer>60</integer>
-            </dict>
-        </dict>
-        <!-- Password history: cannot reuse last 5 passwords -->
-        <dict>
-            <key>policyContent</key>
-            <string>none of policyAttributePasswordHashes in policyAttributePasswordHistory</string>
-            <key>policyIdentifier</key>
-            <string>passwordHistory</string>
-            <key>policyParameters</key>
-            <dict>
-                <key>policyAttributePasswordHistoryDepth</key>
-                <integer>5</integer>
-            </dict>
-        </dict>
     </array>
     <key>policyCategoryPasswordContent</key>
     <array>
@@ -433,38 +386,35 @@ cat > "$PWPOLICY_FILE" << 'PWPLIST'
                 <integer>15</integer>
             </dict>
         </dict>
-        <!-- Alphanumeric: at least one letter and one digit -->
+        <!-- Must contain at least one uppercase letter -->
         <dict>
             <key>policyContent</key>
-            <string>policyAttributePassword matches '.*[a-zA-Z].*' and policyAttributePassword matches '.*[0-9].*'</string>
+            <string>policyAttributePassword matches '.*[A-Z].*'</string>
             <key>policyIdentifier</key>
-            <string>requireAlphanumeric</string>
+            <string>requireUppercase</string>
         </dict>
-        <!-- Custom regex: must contain uppercase, lowercase, and digit -->
+        <!-- Must contain at least one lowercase letter -->
         <dict>
             <key>policyContent</key>
-            <string>policyAttributePassword matches '^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$'</string>
+            <string>policyAttributePassword matches '.*[a-z].*'</string>
             <key>policyIdentifier</key>
-            <string>customRegex</string>
+            <string>requireLowercase</string>
         </dict>
-        <!-- Special character: at least one non-alphanumeric character -->
+        <!-- Must contain at least one digit -->
         <dict>
             <key>policyContent</key>
-            <string>policyAttributePassword matches '(.*[^a-zA-Z0-9].*){1,}'</string>
+            <string>policyAttributePassword matches '.*[0-9].*'</string>
+            <key>policyIdentifier</key>
+            <string>requireDigit</string>
+        </dict>
+        <!-- Must contain at least one non-alphanumeric character -->
+        <dict>
+            <key>policyContent</key>
+            <string>policyAttributePassword matches '.*[^a-zA-Z0-9].*'</string>
             <key>policyIdentifier</key>
             <string>requireSpecialCharacter</string>
         </dict>
-        <!-- No simple sequences: repeating, ascending, or descending characters -->
-        <dict>
-            <key>policyContent</key>
-            <string>policyAttributePassword matches '^(?!.*(.)\1{2})(?!.*(abcde|bcdef|cdefg|defgh|efghi|fghij|ghijk|hijkl|ijklm|jklmn|klmno|lmnop|mnopq|nopqr|opqrs|pqrst|qrstu|rstuv|stuvw|tuvwx|uvwxy|vwxyz|edcba|dcbaz|01234|12345|23456|34567|45678|56789|43210|54321|65432|76543|87654|98765)).*$'</string>
-            <key>policyIdentifier</key>
-            <string>allowSimple</string>
-        </dict>
     </array>
-    <!-- Disable accounts after 35 days of inactivity -->
-    <key>policyAttributeInactiveDays</key>
-    <integer>35</integer>
 </dict>
 </plist>
 PWPLIST
@@ -475,63 +425,6 @@ else
     echo "  ⚠ pwpolicy failed — check: pwpolicy -getaccountpolicies"
 fi
 rm -f "$PWPOLICY_FILE"
-
-# Stamp passwordLastSetTime = now on every real local account so the new
-# maxLifetime policy gives a fresh 60-day window instead of treating accounts
-# with a missing or stale timestamp as already-expired (which would otherwise
-# trigger a "must reset password" prompt on every single login).
-echo "  Stamping passwordLastSetTime on local accounts..."
-NOW_EPOCH=$(/bin/date +%s)
-STAMPED=0
-USER_LIST=$(/usr/bin/dscl . list /Users UniqueID 2>/dev/null \
-            | /usr/bin/awk '$2 >= 500 && $1 !~ /^_/ {print $1}')
-for usr in ${(f)USER_LIST}; do
-    [[ -z "$usr" ]] && continue
-    TMP=$(/usr/bin/mktemp /tmp/hxg-acctpol.XXXXXX.plist)
-    # dscl prefixes each line of the inline plist with one space; strip it.
-    existing=$(/usr/bin/dscl . -read "/Users/${usr}" accountPolicyData 2>/dev/null \
-                | /usr/bin/sed -n '/<?xml/,/<\/plist>/p' \
-                | /usr/bin/sed 's/^ //')
-    if [[ -n "$existing" ]]; then
-        printf '%s\n' "$existing" > "$TMP"
-    else
-        cat > "$TMP" << 'EMPTYPLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-</dict>
-</plist>
-EMPTYPLIST
-    fi
-    if /usr/bin/plutil -replace passwordLastSetTime -float "${NOW_EPOCH}" "$TMP" 2>/dev/null \
-       || /usr/bin/plutil -insert passwordLastSetTime -float "${NOW_EPOCH}" "$TMP" 2>/dev/null; then
-        new_data=$(/bin/cat "$TMP")
-        if /usr/bin/dscl . -create "/Users/${usr}" accountPolicyData "$new_data" 2>/dev/null; then
-            STAMPED=$((STAMPED + 1))
-        fi
-    fi
-    /bin/rm -f "$TMP"
-done
-echo "  ✓ Stamped $STAMPED account(s)"
-
-# Force local users to change password on next login so existing weak
-# passwords cannot persist after the policy is applied.
-#
-# IMPORTANT: do NOT flag the currently logged-in installer user. Doing so can
-# cause immediate re-login failures on air-gapped systems after first logout.
-echo "  Flagging eligible local accounts for password reset on next login..."
-dscl /Local/Default -list /Users UniqueID 2>/dev/null \
-    | awk '$2 >= 501 {print $1}' \
-    | while read -r usr; do
-        if [[ "$usr" == "$ACTUAL_USER" ]]; then
-            echo "    - skipping active installer user: $usr"
-            continue
-        fi
-        /usr/bin/pwpolicy -u "$usr" -setpolicy "newPasswordRequired=1" 2>/dev/null \
-            && echo "    ✓ $usr — must set new password on next login" \
-            || true
-    done
 
 # ── 6. Start services ───────────────────────────────────────────────────────
 echo ""

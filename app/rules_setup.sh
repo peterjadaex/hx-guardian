@@ -109,6 +109,7 @@
 # =============================================================================
 
 readonly API="http://127.0.0.1:8000/api"
+readonly SCRIPT_DIR="${0:A:h}"
 
 # =============================================================================
 # EXEMPTIONS
@@ -148,6 +149,20 @@ EXEMPT_ENTRIES=(
 )
 
 # =============================================================================
+# FIX-ONLY SKIPS
+# Rules whose fix_script is known to brick local auth on macOS Tahoe by
+# re-applying password-policy primitives that the installer deliberately omits
+# (minimumLifetime, inactiveDays, forced reset, etc.). These rules are NOT
+# exempted — they will continue to appear as non-compliant in the dashboard
+# until the operator addresses them via an MDM profile. Phase 1 simply refuses
+# to run their fix_script.
+# =============================================================================
+SKIP_FIX_ENTRIES=(
+    "pwpolicy_minimum_lifetime_enforce"
+    "pwpolicy_account_inactivity_enforce"
+)
+
+# =============================================================================
 # INTERNALS — do not edit below this line
 # =============================================================================
 
@@ -157,6 +172,13 @@ for _e in "${EXEMPT_ENTRIES[@]}"; do
     _EXEMPT_MAP[${_e%%|*}]=1
 done
 unset _e
+
+# Build fast-lookup map of fix-only skipped rule names
+typeset -A _SKIP_FIX_MAP
+for _s in "${SKIP_FIX_ENTRIES[@]}"; do
+    _SKIP_FIX_MAP[$_s]=1
+done
+unset _s
 
 SESSION_TOKEN=""
 SESSION_START=0
@@ -248,7 +270,7 @@ _wait_for_server() {
 
 _manifest_path() {
     local frozen="/Library/Application Support/hxguardian/standards/scripts/manifest.json"
-    local dev="${0:A:h}/../standards/scripts/manifest.json"
+    local dev="$SCRIPT_DIR/../standards/scripts/manifest.json"
     if   [[ -f "$frozen" ]]; then print "$frozen"
     elif [[ -f "$dev"    ]]; then print "$dev"
     else
@@ -275,18 +297,29 @@ for rule in sorted(m):
 PYEOF
 )
 
-    # Exclude exempt rules
+    # Exclude exempt rules and fix-only skips
     local rules_to_fix=()
+    local skipped_fix=()
     while IFS= read -r rule; do
-        [[ -z "${_EXEMPT_MAP[$rule]}" ]] && rules_to_fix+=("$rule")
+        [[ -n "${_EXEMPT_MAP[$rule]}" ]] && continue
+        if [[ -n "${_SKIP_FIX_MAP[$rule]}" ]]; then
+            skipped_fix+=("$rule")
+            continue
+        fi
+        rules_to_fix+=("$rule")
     done <<< "$all_fixable"
 
     local total=${#rules_to_fix[@]}
     local ok=0 fail=0 na=0 n=0
 
     print ""
-    print "── Phase 1: Fixes ($total rules, skipping ${#EXEMPT_ENTRIES[@]} exempt) ──────────────────"
+    print "── Phase 1: Fixes ($total rules, skipping ${#EXEMPT_ENTRIES[@]} exempt, ${#skipped_fix[@]} fix-only skipped) ──────"
     print ""
+
+    for rule in "${skipped_fix[@]}"; do
+        _na "$rule  (fix skipped — known to break local auth on Tahoe)"
+    done
+    (( ${#skipped_fix[@]} > 0 )) && print ""
 
     for rule in "${rules_to_fix[@]}"; do
         (( n++ ))
