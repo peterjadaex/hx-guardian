@@ -32,11 +32,14 @@ echo "Installing for user: $ACTUAL_USER"
 echo ""
 echo "[cleanup] Removing previous installation..."
 
-# 1. Unload launchd services (may already be gone — ignore errors)
-launchctl bootout system /Library/LaunchDaemons/com.hxguardian.server.plist        2>/dev/null || true
-launchctl bootout system /Library/LaunchDaemons/com.hxguardian.runner.plist        2>/dev/null || true
-launchctl bootout system /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist    2>/dev/null || true
-launchctl bootout system /Library/LaunchDaemons/com.hxguardian.shellwatcher.plist  2>/dev/null || true
+# 1. Unload launchd services. Label-wildcard instead of a hardcoded list so any
+#    stray com.hxguardian.* registration (from an older install, a renamed
+#    service, or a hand-edited plist) is drained — not just the four we ship today.
+/bin/launchctl list 2>/dev/null \
+    | /usr/bin/awk '$3 ~ /^com\.hxguardian\./ {print $3}' \
+    | while read -r label; do
+          /bin/launchctl bootout "system/$label" 2>/dev/null || true
+      done
 
 # 2. Kill any lingering processes (crash-looping services may leave zombies)
 pkill -f 'hxg-server'        2>/dev/null || true
@@ -50,11 +53,19 @@ pkill -9 -f 'hxg-runner'        2>/dev/null || true
 pkill -9 -f 'hxg-usb-watcher'   2>/dev/null || true
 pkill -9 -f 'hxg-shell-watcher' 2>/dev/null || true
 
-# 3. Remove plist files
-rm -f /Library/LaunchDaemons/com.hxguardian.server.plist
-rm -f /Library/LaunchDaemons/com.hxguardian.runner.plist
-rm -f /Library/LaunchDaemons/com.hxguardian.usbwatcher.plist
-rm -f /Library/LaunchDaemons/com.hxguardian.shellwatcher.plist
+# 3. Remove plist files. Glob both the system LaunchDaemons dir and any
+#    LaunchAgents location — covers stray agents that an operator may have
+#    dropped manually, which the hardcoded list could not reach.
+#    `(N)` is the zsh null-glob qualifier: on a fresh install (no matches)
+#    it expands to nothing silently instead of aborting the script.
+setopt LOCAL_OPTIONS NULL_GLOB
+_hxg_stale_plists=(
+    /Library/LaunchDaemons/com.hxguardian.*.plist(N)
+    /Library/LaunchAgents/com.hxguardian.*.plist(N)
+    "/Users/$ACTUAL_USER"/Library/LaunchAgents/com.hxguardian.*.plist(N)
+)
+(( ${#_hxg_stale_plists} )) && rm -f "${_hxg_stale_plists[@]}"
+unset _hxg_stale_plists
 
 # 3b. Remove any previous hxguardian audit block from /etc/zshrc so the install
 #     step below writes a single current copy (block is fenced by sentinels).
@@ -84,7 +95,7 @@ done
 
 # ── 0. Deploy binaries ────────────────────────────────────────────────────────
 echo ""
-echo "[0/5] Deploying binaries..."
+echo "[0/7] Deploying binaries..."
 mkdir -p "$HXG_BIN" "$HXG_DATA"
 
 # Remove any previous install (file or directory) to allow clean copy
@@ -121,7 +132,7 @@ export HOME="/Users/$ACTUAL_USER"
 export TMPDIR="/tmp"
 export USER="$ACTUAL_USER"
 cd "$HXG_BIN/hxg-server"
-"$HXG_BIN/hxg-server/hxg-server"
+exec "$HXG_BIN/hxg-server/hxg-server"
 EOF
 
 cat > "$HXG_BIN/run-hxg-runner" << EOF
@@ -129,7 +140,7 @@ cat > "$HXG_BIN/run-hxg-runner" << EOF
 export HOME="/var/root"
 export TMPDIR="/tmp"
 cd "$HXG_BIN/hxg-runner"
-"$HXG_BIN/hxg-runner/hxg-runner"
+exec "$HXG_BIN/hxg-runner/hxg-runner"
 EOF
 
 cat > "$HXG_BIN/run-hxg-usb-watcher" << EOF
@@ -137,7 +148,7 @@ cat > "$HXG_BIN/run-hxg-usb-watcher" << EOF
 export HOME="/var/root"
 export TMPDIR="/tmp"
 cd "$HXG_BIN/hxg-usb-watcher"
-"$HXG_BIN/hxg-usb-watcher/hxg-usb-watcher"
+exec "$HXG_BIN/hxg-usb-watcher/hxg-usb-watcher"
 EOF
 
 cat > "$HXG_BIN/run-hxg-shell-watcher" << EOF
@@ -145,7 +156,7 @@ cat > "$HXG_BIN/run-hxg-shell-watcher" << EOF
 export HOME="/var/root"
 export TMPDIR="/tmp"
 cd "$HXG_BIN/hxg-shell-watcher"
-"$HXG_BIN/hxg-shell-watcher/hxg-shell-watcher"
+exec "$HXG_BIN/hxg-shell-watcher/hxg-shell-watcher"
 EOF
 
 chmod 755 "$HXG_BIN/run-hxg-server" "$HXG_BIN/run-hxg-runner" "$HXG_BIN/run-hxg-usb-watcher" "$HXG_BIN/run-hxg-shell-watcher"
@@ -155,7 +166,7 @@ echo "  ✓ Binaries: $HXG_BIN"
 
 # ── 1. Deploy standards (scripts) with root-only permissions ──────────────────
 echo ""
-echo "[1/5] Deploying standards scripts (root-only)..."
+echo "[1/7] Deploying standards scripts (root-only)..."
 
 # Copy the standards/ directory tree into HXG_SUPPORT
 cp -R "$REPO_ROOT/standards/." "$HXG_SCRIPTS/"
@@ -188,6 +199,20 @@ done
 
 echo "  ✓ Scripts deployed — manifest readable, .sh files root-only, mobileconfigs world-readable"
 
+# Deploy management scripts (start/stop/restart/rules_setup) into the support
+# tree so the airgap operator can run them after removing ~/hxg-install. We do
+# NOT deploy update.sh here — it needs the dist/ binary tree adjacent to it,
+# which only exists in the SD-card bundle. update.sh stays bundle-local.
+HXG_APP="$HXG_SUPPORT/app"
+mkdir -p "$HXG_APP"
+for f in start.sh stop.sh restart.sh rules_setup.sh; do
+    cp "$APP_DIR/$f" "$HXG_APP/$f"
+done
+chown -R root:wheel "$HXG_APP"
+chmod 755 "$HXG_APP"
+chmod 755 "$HXG_APP"/*.sh
+echo "  ✓ Management scripts: $HXG_APP/{start,stop,restart,rules_setup}.sh"
+
 # ── 1b. Ensure Xcode Command Line Tools are present ──────────────────────────
 # CLT supplies /usr/bin/python3 (required by rules_setup.sh) and on pre-Tahoe
 # macOS also supplies /usr/bin/xmllint (used by 19 scan/fix scripts). On
@@ -196,7 +221,7 @@ echo "  ✓ Scripts deployed — manifest readable, .sh files root-only, mobilec
 # (canonical signal) rather than size-checking individual binaries, since
 # that check is unreliable across macOS versions.
 echo ""
-echo "[1b/5] Verifying Xcode Command Line Tools..."
+echo "[1b/7] Verifying Xcode Command Line Tools..."
 
 clt_installed() {
     # Canonical check: xcode-select -p returns the active developer dir and
@@ -282,7 +307,7 @@ fi
 
 # ── 2. Unix socket directory ──────────────────────────────────────────────────
 echo ""
-echo "[2/5] Creating Unix socket directory..."
+echo "[2/7] Creating Unix socket directory..."
 mkdir -p /var/run/hxg
 chown root:admin /var/run/hxg 2>/dev/null || chown root:staff /var/run/hxg
 chmod 770 /var/run/hxg
@@ -290,7 +315,7 @@ echo "  ✓ Socket directory: /var/run/hxg"
 
 # ── 3. Pre-create log files ──────────────────────────────────────────────────
 echo ""
-echo "[3/5] Creating log files..."
+echo "[3/7] Creating log files..."
 # Runner/USB logs: root-owned (LaunchDaemons run as root, can create their own)
 touch /Library/Logs/hxguardian-runner.log /Library/Logs/hxguardian-runner-error.log
 chown root:wheel /Library/Logs/hxguardian-runner.log /Library/Logs/hxguardian-runner-error.log
@@ -304,7 +329,7 @@ echo "  ✓ Log files created in /Library/Logs/"
 
 # ── 4. Install launchd plists ────────────────────────────────────────────────
 echo ""
-echo "[4/5] Installing launchd plists..."
+echo "[4/7] Installing launchd plists..."
 
 RUNNER_PLIST="/Library/LaunchDaemons/com.hxguardian.runner.plist"
 cp -X "$APP_DIR/launchd/com.hxguardian.runner.plist" "$RUNNER_PLIST"
@@ -335,7 +360,18 @@ cat > "$SERVER_PLIST" << PLIST
     <true/>
 
     <key>KeepAlive</key>
-    <true/>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>ExitTimeOut</key>
+    <integer>15</integer>
 
     <key>StandardOutPath</key>
     <string>/Library/Logs/hxguardian-server.log</string>

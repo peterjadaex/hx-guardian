@@ -116,10 +116,6 @@ Disable iCloud Drive, Find My Mac, and all iCloud sync **before** continuing.
 cp -R /Volumes/<SD_CARD_NAME>/hxg-install ~/hxg-install
 ```
 
-> After `install.sh` completes, everything is deployed to
-> `/Library/Application Support/hxguardian/`. You can optionally remove
-> `~/hxg-install` once installation and `rules_setup.sh` have finished.
-
 ---
 
 ## 3. Install HX-Guardian offline
@@ -167,15 +163,24 @@ The installer performs all steps fully offline — no internet required:
 | 1b | Verifies Xcode Command Line Tools are present; aborts with instructions to install from `app/vendor/clt/` if missing (see §3.1) |
 | 2 | Copies the standards tree (scripts + manifest + profiles) to `/Library/Application Support/hxguardian/standards/` |
 | 3 | Creates `/var/run/hxg/` (Unix socket directory) and log files in `/Library/Logs/` |
-| 4 | Installs four **LaunchDaemons** — runner (root), server (admin user), USB watcher (root), shell watcher (root) — and starts all four |
+| 4 | Installs four **LaunchDaemons** — runner (root), server (admin user), USB watcher (root), shell watcher (root) |
 | 4b | Writes the hxguardian block into `/etc/zshrc` (enables `INC_APPEND_HISTORY` + `EXTENDED_HISTORY` so the shell watcher captures commands in real time) |
 | 5 | Enforces password policy locally via `pwpolicy` (min 15 chars, complexity, lockout). All existing non-system local accounts are flagged to change password on next login. |
-| 6 | Opens the unified MDM profile in System Settings for user approval — complete §5 when prompted |
+| 6 | Starts all four services (`start.sh`) and pings `/api/health` |
+| 7 | Opens the unified MDM profile in System Settings for user approval — complete §5 when prompted |
 
 ### 3.3 Admin password policy — what to expect
 
-`install.sh` writes a site-wide `pwpolicy` covering every local account
-(min 15 chars, upper+lower+digit+special, 5-failures lockout).
+Two layers enforce password policy on the airgap device:
+
+1. **Profile layer (minimal floor).** The unified MDM profile ships a small
+   `com.apple.mobiledevice.passwordpolicy` payload — `requireAlphanumeric=true`,
+   `minComplexChars=1`. This gives the OS a baseline passcode check the moment
+   the profile lands.
+2. **Local layer (full enforcement).** `install.sh` writes a site-wide
+   `pwpolicy` covering every local account — min 15 chars,
+   upper+lower+digit+special, 5-failures lockout. This is where the real
+   enforcement lives.
 
 **Your own admin password is not force-changed by the installer.** The script
 explicitly skips the currently logged-in installer user so the airgap device
@@ -269,6 +274,14 @@ re-open it manually:
    appear under **Privacy & Security → Profiles**).
 4. Select **HX-Guardian Unified** from the list → click **Install** → enter the
    admin password when prompted.
+
+   > **Expect a second prompt for the FileVault user.** Because the profile
+   > carries a FileVault payload, macOS also asks for the password of the
+   > current FileVault-enabled user before it can apply that payload. Enter the
+   > admin login password — **not** the Personal Recovery Key. If FileVault has
+   > not been turned on yet (§7), the profile installs without this second
+   > prompt and the FileVault payload activates the next time FileVault is
+   > enabled.
 5. The profile is now deployed. It cannot be removed except by an admin.
 
 ### 5.2 What the unified profile enforces
@@ -289,9 +302,11 @@ profiles:
 | System preferences | Locks sensitive panes |
 | Setup assistant | Suppresses first-run prompts |
 | Diagnostics | Disables crash-report submission to Apple |
+| Password policy (minimal floor) | `requireAlphanumeric=true`, `minComplexChars=1` — baseline only |
 
-Password policy is **not** applied via the profile — it is enforced locally by
-`install.sh` using `pwpolicy`. See §3.3.
+The profile's password payload is a **minimal floor only**. The full policy
+(length, history, lockout) is layered on locally by `install.sh` using
+`pwpolicy`. See §3.3.
 
 ### 5.3 Verify the profile is installed
 
@@ -299,9 +314,15 @@ From the dashboard: **MDM Profiles** page — `com.hxguardian.unified` shows a
 green installed check. Or from the terminal:
 
 ```bash
-profiles -P | grep hxguardian
-# → HX-Guardian Unified (com.hxguardian.unified)
+sudo profiles list | grep hxguardian
+# → attribute: name: HX-Guardian Unified
+# → attribute: identifier: com.hxguardian.unified
 ```
+
+> On macOS Tahoe, `profiles -P` without `sudo` silently returns empty. Use
+> `sudo profiles list` as shown above, or check
+> **System Settings → General → Device Management** for the HX-Guardian
+> Unified entry.
 
 ---
 
@@ -418,10 +439,12 @@ sudo zsh standards/scripts/scan/os_filevault_autologin_disable.sh
 2FA is a **singleton** in HX-Guardian — there is one secret for the whole
 dashboard, not one per user. The admin holds it.
 
-Multiple operators share a **single** macOS operator account. Each operator is
-distinguished by their Touch ID fingerprint — every fingerprint Apple records
-is independently identifiable in the audit log, so shared-account logins
-still attribute unlocks and `sudo` prompts to the right person.
+Multiple operators can share a single macOS operator account. Touch ID events
+are attributed to the **macOS account** that authenticated. macOS does **not**
+expose the enrolled fingerprint slot in its audit log, so on a shared operator
+account the biometric audit trail tells you *that* an operator unlocked, not
+*which* operator. If per-operator attribution is required, give each operator
+their own standard account instead of sharing one.
 
 ### 8.1 Create the shared operator account
 
@@ -452,8 +475,7 @@ fingerprint per human operator in the shared account:
 
 1. Log in as `operator`.
 2. **System Settings → Touch ID & Password → Add a Fingerprint**.
-3. Have each operator enrol their own fingerprint. Label each slot with the
-   operator's name so the admin can identify whose finger is whose later.
+3. Have each operator enrol their own fingerprint.
 4. Repeat until every authorised operator has a slot (Apple allows up to three
    fingerprints per account across all accounts on the Mac).
 5. Test: each operator locks the screen and unlocks with their own finger.
@@ -575,13 +597,90 @@ reason, and expiry date. Admin TOTP prompt appears. Exempted rules are counted
 as PASS in compliance reports but remain visible in the Rules list with an
 **Exempt** badge.
 
-### 10.6 Reviewing biometric and shell audit logs
+### 10.6 Service management scripts
 
-- **Dashboard → Biometric Log** — every Touch ID unlock and `sudo` authentication,
-  attributed to the fingerprint slot (so the admin can tell which operator
-  acted on the shared account).
-- **Dashboard → Shell Log** — every command typed into an interactive zsh
-  session by any account (captured via `/etc/zshrc` + the shell watcher).
+`install.sh` deploys four LaunchDaemons that auto-start at boot, so day-to-day
+the services run unattended. The bundle ships four small management scripts for
+the times you do need to intervene (binary update, plist edit, troubleshooting).
+All four require `sudo`.
+
+| Script | Purpose | Run from | Notes |
+|---|---|---|---|
+| `start.sh` | Bootstraps all four LaunchDaemons (runner, server, USB watcher, shell watcher). Re-bootstraps any that are already loaded. | `/Library/Application Support/hxguardian/app/` (or `~/hxg-install/app/` if still present) | Also invoked at the end of `install.sh`. After it runs, it pings `/api/health` and prints the dashboard URL. |
+| `stop.sh` | `bootout`s all four daemons, kills any lingering processes (TERM then KILL), removes the stale Unix socket. | Same as `start.sh` | Use before manual binary swaps or before re-running `install.sh`. |
+| `restart.sh` | Calls `stop.sh` then `start.sh`. | Same as `start.sh` | Convenience only — equivalent to running both back-to-back. |
+| `update.sh [target]` | Re-deploys pre-built binaries from a transfer bundle's `app/dist/`, then restarts the matching LaunchDaemons. `target` is one of `runner`, `server`, `usbwatcher`, `shellwatcher`, or `all` (default). | **Bundle directory only** — `~/hxg-install/app/` or `/Volumes/<SD>/hxg-install/app/`. Requires `dist/` to sit alongside the script, which is only true in the SD-card bundle. | The fast path for shipping a new build. Skips pwpolicy, the `/etc/zshrc` edit, and the MDM profile open — those only need to happen once at first install. |
+
+Examples:
+
+```bash
+# Restart everything after editing a plist
+sudo zsh /Library/Application\ Support/hxguardian/app/restart.sh
+
+# Push a freshly-built server binary (from the SD-card bundle)
+sudo zsh ~/hxg-install/app/update.sh server
+
+# Push all four watchers / runner / server in one shot
+sudo zsh ~/hxg-install/app/update.sh
+```
+
+> `update.sh` is the only one of the four scripts that is **not** copied into
+> `/Library/Application Support/hxguardian/app/` by `install.sh` — it depends
+> on the bundled `dist/` tree and would fail in isolation. Keep the SD-card
+> bundle (or a copy of it) accessible whenever you plan to deploy new binaries.
+
+### 10.7 Reviewing the audit logs
+
+The **Audit Log** page is the single pane for every auditable event the device
+records. The **Action** dropdown at the top of the page switches between three
+underlying data sources — each backed by its own SQLite table and its own
+REST + SSE endpoint:
+
+| View | Contents | Source table |
+|---|---|---|
+| **All Actions** (default) | Dashboard-initiated events: `SCAN_RUN`, `SCAN_COMPLETE`, `FIX_APPLIED`, `EXEMPTION_GRANTED`/`REVOKED`, `SCHEDULE_*`, `REPORT_GENERATED`, `PREFLIGHT_RUN`, `USB_UNAUTHORIZED_DEVICE`, `SUSPICIOUS_ACTION` | `audit_log` |
+| **SHELL_EXEC** | Every command typed into an interactive zsh session by any account (captured via `/etc/zshrc` + the shell watcher) | `shell_exec_log` |
+| **BIOMETRIC_AUTH** | Every Touch ID unlock and `sudo` authentication, attributed to the macOS account. Per-fingerprint (which slot) attribution is **not** captured — macOS does not expose it. | `biometric_events` |
+
+**Filters available in every view:** a date range (From → To) and per-view
+filters (search box for SHELL_EXEC/BIOMETRIC_AUTH, `Include teardown noise`
+checkbox for BIOMETRIC_AUTH, action dropdown for the general audit log).
+Pagination is 100 rows per page.
+
+**Exports:**
+
+- **Export CSV** — visible only in the general audit log view.
+- **Export JSONL** — available in all three views. Writes a newline-delimited
+  JSON file suitable for SIEM or offline archival. Filters apply to the export.
+
+#### Go Live (real-time tail)
+
+Next to the **Refresh** button, each view has a **Go Live** toggle. When on:
+
+- The page opens an SSE (Server-Sent Events) connection to the matching
+  `/api/stream/…` endpoint.
+- New rows appear at the top as they are written to SQLite, with a ~2 s blue
+  flash so they are easy to spot.
+- Pagination is hidden; filters still apply and the stream re-connects
+  automatically when you change them.
+- **Pause** freezes the visible list without dropping the connection.
+  **Resume** re-opens the flow.
+- End-to-end latency is ~2–4 s (the shell watcher batches to SQLite every 2 s
+  and the stream polls every 2 s).
+
+Use cases:
+
+- **Troubleshooting missing events** — watch the pipeline end-to-end.
+  If a shell command shows up in `~/.zsh_history` but never streams into the
+  dashboard, the shell watcher or its cursor is stuck (see §12).
+- **Monitoring an active operator session** — leave the page open on
+  `SHELL_EXEC` or `BIOMETRIC_AUTH` while work is happening.
+- **Live ops view during a scan** — stream the general audit log to see
+  `SCAN_RUN` → per-rule activity → `SCAN_COMPLETE` as it happens.
+
+> **Status indicator:** below the table while Live is on, `● Streaming live`
+> means the SSE connection is healthy. `○ Reconnecting...` means the backend
+> dropped (service restart, etc.) — the browser will auto-retry.
 
 ---
 
@@ -615,14 +714,20 @@ If the password-policy lockout triggers, unlock from an admin shell:
 sudo pwpolicy -u operator -clearaccountpolicies
 ```
 
-Then re-apply the site-wide policy so the account remains compliant:
+Then re-apply the site-wide policy so the account remains compliant by
+re-running `install.sh` from the SD-card bundle (or `~/hxg-install/` if you
+kept it):
 
 ```bash
-sudo zsh /Library/Application\ Support/hxguardian/app/install.sh
+sudo zsh ~/hxg-install/app/install.sh
+# or, if you removed it: re-mount the SD card and run from there
 ```
 
 (The installer is idempotent — it re-runs the pwpolicy step without disturbing
-existing services or data.)
+existing services or data. `install.sh` is intentionally not deployed under
+`/Library/Application Support/hxguardian/` because it depends on the bundled
+`dist/` tree; only `start.sh`, `stop.sh`, `restart.sh`, and `rules_setup.sh`
+live there post-install.)
 
 ### 11.3 Re-enroll a Touch ID fingerprint
 

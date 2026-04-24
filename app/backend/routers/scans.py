@@ -261,11 +261,19 @@ def get_session_results(
     }
 
 
-@router.post("/api/rules/{rule_name}/scan")
-async def scan_single_rule(
+async def scan_and_persist_single_rule(
     rule_name: str,
-    db: Session = Depends(get_db),
-):
+    db: Session,
+    triggered_by: str = "single_rule",
+) -> dict:
+    """
+    Run a single-rule scan via the runner and persist the result as a
+    one-row ScanSession + ScanResult. Returns the raw runner response.
+
+    Used by the /rules/{rule}/scan endpoint and by background tasks
+    (e.g. after an exemption is revoked) that need the rule's status to
+    refresh without a full scan.
+    """
     rule = get_rule(rule_name)
     if not rule:
         raise HTTPException(status_code=404, detail=f"Rule not found: {rule_name}")
@@ -278,11 +286,10 @@ async def scan_single_rule(
     except RunnerError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    # Store result in a new single-rule session
     session = ScanSession(
         started_at=datetime.utcnow(),
         finished_at=datetime.utcnow(),
-        triggered_by="single_rule",
+        triggered_by=triggered_by,
         filter_json=json.dumps({"rule": rule_name}),
         total_rules=1,
         pass_count=1 if res.get("status") == "PASS" else 0,
@@ -311,3 +318,24 @@ async def scan_single_rule(
     db.commit()
 
     return res
+
+
+async def rescan_rule_background(rule_name: str) -> None:
+    """Background-task wrapper: open a fresh DB session and rescan one rule."""
+    db = SessionLocal()
+    try:
+        await scan_and_persist_single_rule(rule_name, db, triggered_by="post_exemption")
+    except HTTPException:
+        # Rule not found or runner down — swallow; the audit log already
+        # reflects the exemption change.
+        pass
+    finally:
+        db.close()
+
+
+@router.post("/api/rules/{rule_name}/scan")
+async def scan_single_rule(
+    rule_name: str,
+    db: Session = Depends(get_db),
+):
+    return await scan_and_persist_single_rule(rule_name, db)

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Plus, Trash2, AlertTriangle, Lock } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { getExemptions, grantExemption, revokeExemption, getRules, get2faStatus, verify2fa } from '../lib/api'
+import { parseServerTime } from '../lib/time'
 
 // ─── Inline OTP prompt ───────────────────────────────────────────────────────
 
@@ -183,6 +184,22 @@ export function Exemptions() {
 
       {error && <ErrorMessage message={error} />}
 
+      {/* 2FA not enrolled — gated actions run unprotected */}
+      {!twoFaEnabled && (
+        <div className="mx-6 mb-4 p-3 bg-yellow-950/30 border border-yellow-700/40 rounded-lg flex items-start gap-3">
+          <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="text-yellow-300 font-medium">2FA is not enrolled</p>
+            <p className="text-slate-400 text-xs mt-0.5">
+              Grant and revoke run without a TOTP prompt, and every gated
+              action is recorded in the Audit Log as
+              <span className="font-mono"> GATED_ACTION_UNPROTECTED</span>.
+              Enrol 2FA in <span className="font-mono">Settings → Two-Factor Authentication</span> to protect admin actions.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 2FA OTP prompt */}
       {showOtpPrompt && (
         <OtpPrompt onVerified={handleOtpVerified} onCancel={handleOtpCancel} />
@@ -249,17 +266,18 @@ export function Exemptions() {
             </thead>
             <tbody>
               {exemptions.map((e: any) => {
-                const expired = e.expires_at && new Date(e.expires_at) < now
+                const expiresAt = parseServerTime(e.expires_at)
+                const expired = expiresAt && expiresAt < now
                 return (
                   <tr key={e.id} className={`border-b border-[#1e2d4a]/50 hover:bg-white/[0.02] ${!e.is_active ? 'opacity-50' : ''}`}>
                     <td className="px-4 py-3 font-mono text-white text-xs">{e.rule}</td>
                     <td className="px-4 py-3 text-slate-400 max-w-xs truncate" title={e.reason}>{e.reason}</td>
-                    <td className="px-4 py-3 text-slate-500 text-xs">{new Date(e.granted_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">{parseServerTime(e.granted_at)?.toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-xs">
                       {e.expires_at ? (
                         <span className={expired ? 'text-red-400' : 'text-slate-400'}>
                           {expired && <AlertTriangle className="w-3 h-3 inline mr-1" />}
-                          {new Date(e.expires_at).toLocaleDateString()}
+                          {expiresAt?.toLocaleDateString()}
                         </span>
                       ) : <span className="text-slate-600">Permanent</span>}
                     </td>

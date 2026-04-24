@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FileText, Download, ExternalLink } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { getHistory, getReportHtml, getReportCsv } from '../lib/api'
+import { parseServerTime } from '../lib/time'
 
 export function Reports() {
   const [loading, setLoading] = useState(true)
@@ -39,7 +40,7 @@ export function Reports() {
             <option value="">Latest Session</option>
             {sessions.map(s => (
               <option key={s.id} value={s.id}>
-                Session #{s.id} — {new Date(s.started_at).toLocaleString()} ({s.score_pct?.toFixed(1)}% compliant)
+                Session #{s.id} — {parseServerTime(s.started_at)?.toLocaleString()} ({s.score_pct?.toFixed(1)}% compliant)
               </option>
             ))}
           </select>

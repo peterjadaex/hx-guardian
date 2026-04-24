@@ -146,15 +146,19 @@ def _attach_bsd_names(devices: list[dict]) -> None:
     if not external_bsds:
         return
 
-    storage_keywords = ("reader", "storage", "disk", "flash", "thumb", "usb")
-    for dev in devices:
+    # Only consider real devices (those with a product_id) — buses and
+    # controllers have no product_id and would otherwise match names like
+    # "USB30Bus" on the broad "usb" keyword.
+    storage_keywords = ("reader", "storage", "disk", "flash", "thumb")
+    real_devices = [d for d in devices if d.get("product_id")]
+    for dev in real_devices:
         name_lower = dev.get("name", "").lower()
         if any(kw in name_lower for kw in storage_keywords):
             dev["bsd_names"] = external_bsds
             return
 
-    # No storage-named device found; attach to last non-hub device
-    for dev in reversed(devices):
+    # No storage-named device found; attach to last non-hub real device
+    for dev in reversed(real_devices):
         if "hub" not in dev.get("name", "").lower():
             dev["bsd_names"] = external_bsds
             return

@@ -62,7 +62,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
   <div class="summary-card"><div class="number" style="color:#721c24">{fail_count}</div><div>FAIL</div></div>
   <div class="summary-card"><div class="number" style="color:#856404">{exempt_count}</div><div>EXEMPT</div></div>
   <div class="summary-card"><div class="number" style="color:#383d41">{na_count}</div><div>N/A</div></div>
-  <div class="summary-card"><div class="number" style="color:#004085">{mdm_count}</div><div>MDM Required</div></div>
+  <div class="summary-card"><div class="number" style="color:#004085">{mdm_count}</div><div>Not Scannable</div></div>
   <div class="summary-card"><div class="number">{total_rules}</div><div>Total Rules</div></div>
 </div>
 
@@ -147,7 +147,7 @@ def generate_html_report(
         for cat, d in sorted(cat_map.items())
     )
     category_table = (
-        "<table><tr><th>Category</th><th>PASS</th><th>FAIL</th><th>N/A</th><th>EXEMPT</th><th>MDM</th></tr>"
+        "<table><tr><th>Category</th><th>PASS</th><th>FAIL</th><th>N/A</th><th>EXEMPT</th><th>Not Scannable</th></tr>"
         + category_rows + "</table>"
     )
 

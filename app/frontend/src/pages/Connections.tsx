@@ -5,6 +5,7 @@ import {
   getConnections, getUsbWhitelist, addUsbWhitelist, removeUsbWhitelist,
   getUsbSecurityEvents, get2faStatus, verify2fa,
 } from '../lib/api'
+import { parseServerTime } from '../lib/time'
 
 const INPUT_CLS = "w-full bg-[#0a0e1a] border border-[#1e2d4a] rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
 
@@ -623,7 +624,7 @@ export function Connections() {
                   </div>
                   <div className="flex items-center gap-3 ml-4 flex-shrink-0">
                     <div className="text-slate-600 text-xs font-mono whitespace-nowrap">
-                      {e.ts ? new Date(e.ts).toLocaleString() : '—'}
+                      {e.ts ? parseServerTime(e.ts)?.toLocaleString() : '—'}
                     </div>
                     {isEventWhitelisted(e) ? (
                       <span className="text-xs px-1.5 py-0.5 bg-green-900/30 text-green-400 rounded">Whitelisted</span>

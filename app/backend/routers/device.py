@@ -273,15 +273,19 @@ async def collect_connections() -> dict:
             # Partitions only (e.g. disk4s1), skip whole-disk entries (disk4)
             partitions = [d for d in all_disks if d not in whole_disks]
 
-            # Find the storage device to use as parent for volumes
-            storage_keywords = ("reader", "storage", "disk", "flash", "thumb", "usb")
+            # Find the storage device to use as parent for volumes. Only
+            # consider real devices (those with a product_id) — buses and
+            # controllers have no product_id and would otherwise win the
+            # match on names like "USB30Bus".
+            storage_keywords = ("reader", "storage", "disk", "flash", "thumb")
+            real_devices = [d for d in usb_devices if d.get("product_id")]
             parent_dev = None
-            for dev in usb_devices:
+            for dev in real_devices:
                 if any(kw in dev.get("name", "").lower() for kw in storage_keywords):
                     parent_dev = dev
                     break
             if not parent_dev:
-                for dev in reversed(usb_devices):
+                for dev in reversed(real_devices):
                     if "hub" not in dev.get("name", "").lower():
                         parent_dev = dev
                         break

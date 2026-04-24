@@ -6,6 +6,7 @@ import {
   get2faStatus, init2faSetup, confirm2faSetup,
   view2faQr, disable2fa,
 } from '../lib/api'
+import { parseServerTime } from '../lib/time'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -334,7 +335,7 @@ export function Settings() {
             <div className="space-y-4">
               {statusData?.last_verified_at && (
                 <p className="text-slate-500 text-xs">
-                  Last verified: {new Date(statusData.last_verified_at).toLocaleString()}
+                  Last verified: {parseServerTime(statusData.last_verified_at)?.toLocaleString()}
                 </p>
               )}
               <div className="flex flex-wrap gap-2">

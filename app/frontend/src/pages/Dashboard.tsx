@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
 import { getHistory, getTrends, getCategoryBreakdown, startScan, getPreflight, getDeviceStatus } from '../lib/api'
+import { parseServerTime } from '../lib/time'
 
 const STATUS_COLORS: Record<string, string> = {
   PASS: '#22c55e',
@@ -82,7 +83,7 @@ export function Dashboard() {
     { name: 'PASS', value: latestSession.pass_count },
     { name: 'FAIL', value: latestSession.fail_count },
     { name: 'N/A', value: latestSession.na_count },
-    { name: 'MDM', value: latestSession.mdm_count },
+    { name: 'Not Scannable', value: latestSession.mdm_count },
     { name: 'Exempt', value: latestSession.exempt_count },
   ].filter(d => d.value > 0) : []
 
@@ -185,7 +186,7 @@ export function Dashboard() {
                 </div>
                 {latestSession.started_at && (
                   <div className="text-slate-600 text-xs mt-3">
-                    Last scan: {new Date(latestSession.started_at).toLocaleString()}
+                    Last scan: {parseServerTime(latestSession.started_at)?.toLocaleString()}
                   </div>
                 )}
               </>

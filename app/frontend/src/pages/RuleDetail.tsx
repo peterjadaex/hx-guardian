@@ -4,6 +4,7 @@ import { ArrowLeft, Play, Wrench, ShieldOff, RotateCcw, Lock } from 'lucide-reac
 import { Layout, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
 import { getRuleDetail, scanRule, fixRule, undoFix, getFixHistory, grantExemption, revokeExemption, get2faStatus, verify2fa } from '../lib/api'
+import { parseServerTime } from '../lib/time'
 
 // ─── Inline OTP prompt (same pattern as Connections page) ────────────────────
 
@@ -267,7 +268,7 @@ export function RuleDetail() {
               <div className="text-slate-400 text-sm">
                 <span className="text-slate-300">Category:</span> {rule.category}
                 {rule.last_scan?.scanned_at && (
-                  <span className="ml-4"><span className="text-slate-300">Last scanned:</span> {new Date(rule.last_scan.scanned_at).toLocaleString()}</span>
+                  <span className="ml-4"><span className="text-slate-300">Last scanned:</span> {parseServerTime(rule.last_scan.scanned_at)?.toLocaleString()}</span>
                 )}
               </div>
             </div>
@@ -312,7 +313,7 @@ export function RuleDetail() {
               <div className="text-xs font-mono text-slate-500">Fix: <span className="text-slate-400">{rule.fix_script}</span></div>
             )}
             {!rule.scan_script && (
-              <div className="text-xs text-blue-400 mt-2">⚡ MDM Required — Deploy via configuration profile</div>
+              <div className="text-xs text-blue-400 mt-2">⚡ Not Scannable — no local check; may require MDM profile</div>
             )}
           </div>
         </Card>
@@ -333,7 +334,7 @@ export function RuleDetail() {
             <div className="text-slate-400 text-xs font-medium mb-3">SCAN HISTORY (LAST 30)</div>
             <div className="flex gap-1 flex-wrap">
               {rule.scan_history.map((h: any, i: number) => (
-                <div key={i} title={`${h.status} — ${new Date(h.scanned_at).toLocaleString()}`}
+                <div key={i} title={`${h.status} — ${parseServerTime(h.scanned_at)?.toLocaleString()}`}
                   className={`w-4 h-4 rounded-sm cursor-default ${
                     h.status === 'PASS' ? 'bg-green-500/70' :
                     h.status === 'FAIL' ? 'bg-red-500/70' :
@@ -365,7 +366,7 @@ export function RuleDetail() {
               </div>
               {rule.exemption.expires_at && (
                 <div className="text-sm text-slate-400">
-                  <span className="text-slate-500">Expires:</span> {new Date(rule.exemption.expires_at).toLocaleDateString()}
+                  <span className="text-slate-500">Expires:</span> {parseServerTime(rule.exemption.expires_at)?.toLocaleDateString()}
                 </div>
               )}
               <button onClick={handleRevokeExemption}
@@ -422,7 +423,7 @@ export function RuleDetail() {
                       <span className="text-slate-500 ml-2 text-xs">{h.scan_before} → {h.scan_after}</span>
                     )}
                   </div>
-                  <span className="text-slate-600 text-xs">{new Date(h.executed_at).toLocaleString()}</span>
+                  <span className="text-slate-600 text-xs">{parseServerTime(h.executed_at)?.toLocaleString()}</span>
                 </div>
               ))}
             </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Trash2, Play, Power } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { getSchedules, createSchedule, deleteSchedule, updateSchedule, runScheduleNow } from '../lib/api'
+import { parseServerTime } from '../lib/time'
 
 const CRON_PRESETS = [
   { label: 'Daily at 6 AM', value: '0 6 * * *' },
@@ -135,7 +136,7 @@ export function Schedule() {
                   <td className="px-4 py-3 font-mono text-slate-400 text-xs">{s.cron_expr}</td>
                   <td className="px-4 py-3 text-slate-400 text-xs">{s.filter?.category || s.filter?.standard || 'All Rules'}</td>
                   <td className="px-4 py-3 text-slate-500 text-xs">
-                    {s.last_run ? new Date(s.last_run).toLocaleString() : 'Never'}
+                    {s.last_run ? parseServerTime(s.last_run)?.toLocaleString() : 'Never'}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs font-medium ${s.enabled ? 'text-green-400' : 'text-slate-500'}`}>

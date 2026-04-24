@@ -108,8 +108,12 @@ def list_rules(
 
 @router.get("/meta")
 def get_meta():
-    """Return available categories and standards for filter dropdowns."""
-    return {"categories": get_categories(), "standards": get_standards()}
+    """Return available categories, standards, and the total rule count for the UI."""
+    return {
+        "categories": get_categories(),
+        "standards": get_standards(),
+        "total": len(get_all_rules()),
+    }
 
 
 @router.get("/{rule_name}")

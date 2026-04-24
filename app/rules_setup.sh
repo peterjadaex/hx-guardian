@@ -147,6 +147,10 @@ EXEMPT_ENTRIES=(
     # ── Time Machine ──────────────────────────────────────────────────────────
     "system_settings_time_machine_auto_backup_enable|Time Machine auto-backup disabled per local policy|permanent"
 
+    # ── Location Services (not useful on stationary airgap device) ────────────
+    "system_settings_location_services_enable|Airgap device has no network path to Apple location/time services; timezone set manually. Conflicts with 800-53r5 which requires it disabled|permanent"
+    "system_settings_location_services_menu_enforce|Location services not enabled on airgap device; menu icon enforcement not applicable|permanent"
+
     # ── MDM/DDM-only scans (not satisfiable by user-approved profile) ─────────
     "os_external_storage_access_defined|External storage restrictions require MDM-delivered DiskManagement DDM declaration|permanent"
     "os_mdm_require|Device is intentionally unenrolled from MDM per airgap deployment model|permanent"

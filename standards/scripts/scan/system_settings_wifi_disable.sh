@@ -14,8 +14,11 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qx "Wi-Fi"; then
-    printf '{"rule":"system_settings_wifi_disable","status":"NOT_APPLICABLE","message":"No Wi-Fi service present"}\n'
-    exit 2
+    # No Wi-Fi service listed. This is the desired end-state — either the MDM
+    # profile has removed the service or the hardware has none. The rule's
+    # goal (Wi-Fi disabled) is satisfied either way.
+    printf '{"rule":"system_settings_wifi_disable","status":"PASS","result":"Wi-Fi service absent","expected":"Disabled or absent"}\n'
+    exit 0
 fi
 
 state=$(/usr/sbin/networksetup -getnetworkserviceenabled "Wi-Fi" 2>/dev/null)

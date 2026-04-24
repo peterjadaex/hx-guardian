@@ -34,7 +34,7 @@ export function useSSE<T = unknown>(
       }
     }
 
-    const eventTypes = ['result', 'complete', 'error', 'log_line', 'device_update', 'message', 'profile_install']
+    const eventTypes = ['result', 'complete', 'error', 'log_line', 'device_update', 'message', 'profile_install', 'row', 'ready']
     const listeners: Array<[string, (e: MessageEvent) => void]> = []
     for (const et of eventTypes) {
       const fn = handler(et)

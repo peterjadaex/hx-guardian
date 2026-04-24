@@ -7,7 +7,7 @@ DELETE /api/exemptions/{rule}  → revoke exemption
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,7 @@ from core.two_factor import require_2fa
 from core.database import get_db
 from core.manifest import get_rule
 from core.models import Exemption
+from routers.scans import rescan_rule_background
 
 router = APIRouter(prefix="/api/exemptions", tags=["exemptions"])
 
@@ -53,6 +54,7 @@ def list_exemptions(
 @router.post("")
 def grant_exemption(
     body: ExemptionCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _: None = Depends(require_2fa),
 ):
@@ -91,6 +93,10 @@ def grant_exemption(
         "expires_at": body.expires_at,
     })
 
+    # Trigger a rescan so the Rules page picks up the EXEMPT status without
+    # waiting for the next full scan session.
+    background_tasks.add_task(rescan_rule_background, body.rule)
+
     return {
         "id": exemption.id,
         "rule": exemption.rule,
@@ -103,6 +109,7 @@ def grant_exemption(
 @router.delete("/{rule_name}")
 def revoke_exemption(
     rule_name: str,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _: None = Depends(require_2fa),
 ):
@@ -118,5 +125,8 @@ def revoke_exemption(
     db.commit()
 
     audit.log_action(db, audit.EXEMPTION_REVOKED, rule_name)
+
+    # Rescan the rule so its status updates from EXEMPT to its real result.
+    background_tasks.add_task(rescan_rule_background, rule_name)
 
     return {"rule": rule_name, "revoked": True}

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { RefreshCw, Download, Search } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { RefreshCw, Download, Search, Pause, Play } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import {
   getAuditLog,
@@ -9,7 +9,12 @@ import {
   exportAuditJsonl,
   exportShellJsonl,
   exportBiometricJsonl,
+  streamAuditLogUrl,
+  streamShellLogUrl,
+  streamBiometricLogUrl,
 } from '../lib/api'
+import { parseServerTime } from '../lib/time'
+import { useSSE } from '../lib/sse'
 
 const ACTION_COLORS: Record<string, string> = {
   SCAN_RUN: 'text-blue-400',
@@ -50,10 +55,21 @@ export function AuditLog() {
   const [searchQApplied, setSearchQApplied] = useState('')
   const [bioClass, setBioClass] = useState('')          // BIOMETRIC_AUTH only
   const [includeTeardown, setIncludeTeardown] = useState(false)
+  const [streaming, setStreaming] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [newIds, setNewIds] = useState<Set<number>>(new Set())
+  const newIdTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map())
   const LIMIT = 100
 
   const isShellView = actionFilter === 'SHELL_EXEC'
   const isBioView = actionFilter === 'BIOMETRIC_AUTH'
+
+  useEffect(() => {
+    return () => {
+      newIdTimers.current.forEach(t => clearTimeout(t))
+      newIdTimers.current.clear()
+    }
+  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => setSearchQApplied(searchQ), 250)
@@ -103,6 +119,45 @@ export function AuditLog() {
     finally { setLoading(false) }
   }
 
+  const markNew = (id: number) => {
+    setNewIds(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+    const existing = newIdTimers.current.get(id)
+    if (existing) clearTimeout(existing)
+    const t = setTimeout(() => {
+      setNewIds(prev => {
+        if (!prev.has(id)) return prev
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+      newIdTimers.current.delete(id)
+    }, 2500)
+    newIdTimers.current.set(id, t)
+  }
+
+  const streamPath = !streaming ? null
+    : isShellView ? streamShellLogUrl({ source: 'history', q: searchQApplied || undefined })
+    : isBioView   ? streamBiometricLogUrl({
+        event_class: bioClass || undefined,
+        q: searchQApplied || undefined,
+        include_teardown: includeTeardown,
+      })
+    :               streamAuditLogUrl({ action: actionFilter || undefined })
+
+  const { connected: sseConnected } = useSSE<any>(streamPath, (evt, data) => {
+    if (evt !== 'row' || paused) return
+    setEntries(prev => {
+      if (prev.some((e: any) => e.id === data.id)) return prev
+      return [data, ...prev].slice(0, 500)
+    })
+    setTotal(prev => prev + 1)
+    if (typeof data.id === 'number') markNew(data.id)
+  })
+
   const csvUrl = exportAuditCsv({ action: actionFilter || undefined, from: fromDate || undefined, to: toDate || undefined })
   const jsonlUrl = isShellView
     ? exportShellJsonl({ source: 'history', q: searchQApplied || undefined, from: fromDate || undefined, to: toDate || undefined })
@@ -124,6 +179,20 @@ export function AuditLog() {
   return (
     <Layout>
       <PageHeader title="Audit Log" subtitle={`${total} total entries`}>
+        {streaming && (
+          <button onClick={() => setPaused(p => !p)}
+            className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${paused
+              ? 'bg-green-600/20 border-green-700/50 text-green-400 hover:bg-green-600/30'
+              : 'bg-yellow-600/20 border-yellow-700/50 text-yellow-400 hover:bg-yellow-600/30'}`}>
+            {paused ? <><Play className="w-3.5 h-3.5" />Resume</> : <><Pause className="w-3.5 h-3.5" />Pause</>}
+          </button>
+        )}
+        <button onClick={() => { setStreaming(s => !s); setPaused(false) }}
+          className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${streaming
+            ? 'bg-blue-600/20 border-blue-700/50 text-blue-400'
+            : 'bg-slate-700/30 border-slate-600/50 text-slate-400 hover:text-white'}`}>
+          {streaming ? '● Live' : 'Go Live'}
+        </button>
         {!isShellView && !isBioView && (
           <a href={csvUrl} download
             className="flex items-center gap-2 px-3 py-2 bg-slate-700/30 border border-slate-600/50 text-slate-300 text-sm rounded-lg transition-colors hover:bg-slate-700/50">
@@ -218,9 +287,9 @@ export function AuditLog() {
               </thead>
               <tbody>
                 {entries.map((e: any) => (
-                  <tr key={e.id} className="border-b border-[#1e2d4a]/50 hover:bg-white/[0.02]">
+                  <tr key={e.id} className={`border-b border-[#1e2d4a]/50 hover:bg-white/[0.02] transition-colors duration-[2000ms] ${newIds.has(e.id) ? 'bg-blue-500/10' : ''}`}>
                     <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                      {new Date(e.ts).toLocaleString()}
+                      {parseServerTime(e.ts)?.toLocaleString()}
                     </td>
                     {isShellView ? (
                       <>
@@ -279,7 +348,7 @@ export function AuditLog() {
           </Card>
 
           {/* Pagination */}
-          {total > 0 && (
+          {total > 0 && !streaming && (
             <div className="flex items-center justify-between mt-4">
               <button onClick={() => setOffset(Math.max(0, offset - LIMIT))} disabled={offset === 0}
                 className="px-4 py-2 text-sm text-slate-400 hover:text-white disabled:opacity-30 transition-colors">
@@ -293,6 +362,15 @@ export function AuditLog() {
                 className="px-4 py-2 text-sm text-slate-400 hover:text-white disabled:opacity-30 transition-colors">
                 Next →
               </button>
+            </div>
+          )}
+
+          {streaming && (
+            <div className="flex items-center justify-end mt-4 text-xs">
+              <span className={sseConnected ? 'text-green-500' : 'text-red-400'}>
+                {sseConnected ? '● Streaming live' : '○ Reconnecting...'}
+                {paused && sseConnected && ' · paused'}
+              </span>
             </div>
           )}
         </div>

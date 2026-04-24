@@ -202,6 +202,39 @@ export const exportBiometricJsonl = (p?: BiometricExportParams) => {
   return s ? `/api/biometric-log/export/jsonl?${s}` : '/api/biometric-log/export/jsonl'
 }
 
+// ─── Live-tail SSE URLs ───────────────────────────────────────────────────────
+
+export const streamAuditLogUrl = (p?: { action?: string }) => {
+  const qs = new URLSearchParams()
+  if (p?.action) qs.set('action', p.action)
+  const s = qs.toString()
+  return s ? `/api/stream/audit-log?${s}` : '/api/stream/audit-log'
+}
+
+export const streamShellLogUrl = (p?: { source?: string; user?: string; q?: string }) => {
+  const qs = new URLSearchParams()
+  if (p?.source) qs.set('source', p.source)
+  if (p?.user) qs.set('user', p.user)
+  if (p?.q) qs.set('q', p.q)
+  const s = qs.toString()
+  return s ? `/api/stream/shell-log?${s}` : '/api/stream/shell-log'
+}
+
+export const streamBiometricLogUrl = (p?: {
+  event_class?: string
+  user?: string
+  q?: string
+  include_teardown?: boolean
+}) => {
+  const qs = new URLSearchParams()
+  if (p?.event_class) qs.set('event_class', p.event_class)
+  if (p?.user) qs.set('user', p.user)
+  if (p?.q) qs.set('q', p.q)
+  if (p?.include_teardown) qs.set('include_teardown', 'true')
+  const s = qs.toString()
+  return s ? `/api/stream/biometric-log?${s}` : '/api/stream/biometric-log'
+}
+
 // ─── Health ───────────────────────────────────────────────────────────────────
 
 export const getHealth = () =>

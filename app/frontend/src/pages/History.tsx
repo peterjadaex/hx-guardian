@@ -4,6 +4,7 @@ import { RefreshCw, ChevronRight, Download } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { getHistory, getTrends, getReportCsv } from '../lib/api'
+import { parseServerTime } from '../lib/time'
 
 export function History() {
   const [loading, setLoading] = useState(true)
@@ -87,7 +88,7 @@ export function History() {
                 <tr key={s.id}
                   className={`border-b border-[#1e2d4a]/50 hover:bg-white/[0.02] ${s.id === highlightSession ? 'bg-blue-900/10' : ''}`}>
                   <td className="px-4 py-3 text-white">
-                    {new Date(s.started_at).toLocaleString()}
+                    {parseServerTime(s.started_at)?.toLocaleString()}
                     {s.id === highlightSession && (
                       <span className="ml-2 text-xs text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded">Latest</span>
                     )}

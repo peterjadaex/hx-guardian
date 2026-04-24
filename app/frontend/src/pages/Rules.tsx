@@ -4,6 +4,7 @@ import { Search, Play, ChevronRight, Wrench, Loader2, ArrowUpDown, ArrowUp, Arro
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
 import { getRules, getRuleMeta, startScan, getSession } from '../lib/api'
+import { parseServerTime } from '../lib/time'
 
 const STATUSES = ['ALL', 'FAIL', 'PASS', 'NOT_APPLICABLE', 'MDM_REQUIRED', 'EXEMPT', 'ERROR', 'NEVER_SCANNED']
 
@@ -17,7 +18,7 @@ export function Rules() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [rules, setRules] = useState<any[]>([])
-  const [meta, setMeta] = useState<{ categories: string[]; standards: string[] }>({ categories: [], standards: [] })
+  const [meta, setMeta] = useState<{ categories: string[]; standards: string[]; total: number }>({ categories: [], standards: [], total: 0 })
   const [q, setQ] = useState('')
   const [category, setCategory] = useState('')
   const [status, setStatus] = useState('')
@@ -111,7 +112,7 @@ export function Rules() {
 
   return (
     <Layout>
-      <PageHeader title="Security Rules" subtitle={`${sortedRules.length} of 266 rules`}>
+      <PageHeader title="Security Rules" subtitle={`${sortedRules.length} of ${meta.total || sortedRules.length} rules`}>
         <button
           onClick={handleScanCategory}
           disabled={scanning}
@@ -233,7 +234,7 @@ export function Rules() {
                       {/* Last Scanned */}
                       <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
                         {rule.last_scan?.scanned_at
-                          ? new Date(rule.last_scan.scanned_at).toLocaleDateString()
+                          ? parseServerTime(rule.last_scan.scanned_at)?.toLocaleDateString()
                           : <span className="text-slate-700">—</span>}
                       </td>
 

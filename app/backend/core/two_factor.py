@@ -196,7 +196,10 @@ def require_2fa(x_2fa_token: Optional[str] = Header(None)) -> None:
         @router.post("/sensitive")
         def sensitive_action(_: None = Depends(require_2fa)): ...
 
-    If 2FA is not configured, this guard is a no-op.
+    If 2FA is not configured, this guard is a no-op — but writes a
+    ``GATED_ACTION_UNPROTECTED`` audit entry so the admin can see that a gated
+    action ran without TOTP protection. This surfaces the "admin hasn't
+    enrolled 2FA yet" state in the dashboard instead of hiding it.
     """
     try:
         from core.database import SessionLocal
@@ -208,8 +211,28 @@ def require_2fa(x_2fa_token: Optional[str] = Header(None)) -> None:
             db.close()
     except Exception:
         return  # DB not ready yet — pass through
-    if cfg and cfg.is_enabled and not check_2fa_session(x_2fa_token):
-        raise HTTPException(
-            status_code=403,
-            detail="2FA verification required. POST /api/settings/2fa/verify first.",
-        )
+    if cfg and cfg.is_enabled:
+        if not check_2fa_session(x_2fa_token):
+            raise HTTPException(
+                status_code=403,
+                detail="2FA verification required. POST /api/settings/2fa/verify first.",
+            )
+        return
+
+    # 2FA not enrolled / disabled. Allow the action (current design is opt-in
+    # per §6.3 of the airgap runbook) but record it so the admin knows.
+    try:
+        from core.database import SessionLocal
+        import core.audit as audit
+        db = SessionLocal()
+        try:
+            audit.log_action(
+                db,
+                audit.GATED_ACTION_UNPROTECTED,
+                target=None,
+                detail={"reason": "2FA not enrolled — gated action ran without TOTP"},
+            )
+        finally:
+            db.close()
+    except Exception:
+        logger.exception("Failed to log GATED_ACTION_UNPROTECTED audit entry")
