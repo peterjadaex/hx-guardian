@@ -11,6 +11,8 @@ Security model:
 - Script paths are resolved from manifest (no user-supplied paths).
 - No shell=True, no string interpolation into commands.
 """
+import ctypes
+import ctypes.util
 import json
 import logging
 import re
@@ -375,27 +377,78 @@ def handle_client(conn: socket.socket, addr) -> None:
         logger.info("Client disconnected")
 
 
-def run_server() -> None:
-    socket_path = Path(HXG_SOCKET_PATH)
-    socket_path.parent.mkdir(parents=True, exist_ok=True)
+def _launchd_inherited_socket() -> Optional[socket.socket]:
+    """Receive the listening socket from launchd via the Sockets API.
 
-    if socket_path.exists():
-        socket_path.unlink()
-
-    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    server.bind(str(socket_path))
-
-    # Owner: root, group: admin (gid 80 on macOS), mode 0660
-    os.chmod(str(socket_path), 0o660)
+    Returns None if not running under launchd socket activation (e.g. dev-mode
+    foreground run, older macOS where the symbol is missing, or the launchd
+    plist did not declare a Sockets entry). Caller falls back to bind/listen.
+    """
+    libsystem_path = ctypes.util.find_library("System") or "/usr/lib/libSystem.B.dylib"
     try:
-        import grp
-        gid = grp.getgrnam("admin").gr_gid
-        os.chown(str(socket_path), 0, gid)
-    except Exception:
-        pass  # best-effort
+        libsystem = ctypes.CDLL(libsystem_path, use_errno=True)
+    except OSError:
+        return None
+    try:
+        las = libsystem.launch_activate_socket
+    except AttributeError:
+        return None
+    las.argtypes = [
+        ctypes.c_char_p,
+        ctypes.POINTER(ctypes.POINTER(ctypes.c_int)),
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
+    las.restype = ctypes.c_int
 
-    server.listen(5)
-    logger.info("hxg_runner listening on %s (uid=%d)", HXG_SOCKET_PATH, os.getuid())
+    fds_ptr = ctypes.POINTER(ctypes.c_int)()
+    cnt = ctypes.c_size_t(0)
+    rc = las(b"Listener", ctypes.byref(fds_ptr), ctypes.byref(cnt))
+    if rc != 0 or cnt.value == 0:
+        return None
+
+    fd = fds_ptr[0]
+    # launchd allocates fds_ptr with malloc; we own the buffer.
+    try:
+        libc = ctypes.CDLL(ctypes.util.find_library("c") or "/usr/lib/libc.dylib")
+        libc.free(fds_ptr)
+    except Exception:
+        pass
+
+    sock = socket.fromfd(fd, socket.AF_UNIX, socket.SOCK_STREAM)
+    os.close(fd)  # fromfd dup'd it
+    return sock
+
+
+def run_server() -> None:
+    inherited = _launchd_inherited_socket()
+    socket_path = Path(HXG_SOCKET_PATH)
+
+    if inherited is not None:
+        server = inherited
+        server.setblocking(True)
+        logger.info("hxg_runner inherited socket from launchd (uid=%d)", os.getuid())
+        owns_socket_file = False
+    else:
+        # Dev / direct execution fallback: bind and listen ourselves.
+        socket_path.parent.mkdir(parents=True, exist_ok=True)
+        if socket_path.exists():
+            socket_path.unlink()
+
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server.bind(str(socket_path))
+
+        # Owner: root, group: admin (gid 80 on macOS), mode 0660
+        os.chmod(str(socket_path), 0o660)
+        try:
+            import grp
+            gid = grp.getgrnam("admin").gr_gid
+            os.chown(str(socket_path), 0, gid)
+        except Exception:
+            pass  # best-effort
+
+        server.listen(5)
+        logger.info("hxg_runner listening on %s (uid=%d, dev mode)", HXG_SOCKET_PATH, os.getuid())
+        owns_socket_file = True
 
     try:
         while True:
@@ -406,7 +459,8 @@ def run_server() -> None:
         logger.info("hxg_runner shutting down")
     finally:
         server.close()
-        if socket_path.exists():
+        # Under socket activation launchd owns the socket file; do not unlink.
+        if owns_socket_file and socket_path.exists():
             socket_path.unlink()
 
 

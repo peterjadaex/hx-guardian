@@ -13,6 +13,15 @@ from typing import AsyncGenerator, Optional
 HXG_SOCKET_PATH = "/var/run/hxg/runner.sock"
 logger = logging.getLogger(__name__)
 
+# Loopback Unix socket connect is sub-millisecond on a healthy system. The
+# previous 5s ceiling was 5,000× too generous and masked real wedges as slow
+# requests. With launchd socket activation, the socket is bound from t=0;
+# transient ECONNREFUSED only happens during a runner respawn, where a few
+# hundred ms of bounded retry covers the gap without re-executing requests.
+HXG_CONNECT_TIMEOUT = 0.25
+HXG_RECONNECT_TRIES = 3
+HXG_RECONNECT_BACKOFF = 0.1
+
 
 class RunnerError(Exception):
     pass
@@ -22,6 +31,32 @@ def _new_req_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
+async def _open_connection():
+    """Open a Unix-socket connection with bounded reconnect.
+
+    Reconnects only on connect-time failures (runner respawning, socket
+    file not yet ready, ECONNREFUSED). NEVER retries mid-stream — that
+    could re-execute a privileged operation.
+    """
+    last_exc: Exception | None = None
+    delay = HXG_RECONNECT_BACKOFF
+    for attempt in range(HXG_RECONNECT_TRIES):
+        try:
+            return await asyncio.wait_for(
+                asyncio.open_unix_connection(HXG_SOCKET_PATH),
+                timeout=HXG_CONNECT_TIMEOUT,
+            )
+        except (ConnectionRefusedError, FileNotFoundError, asyncio.TimeoutError) as e:
+            last_exc = e
+            if attempt < HXG_RECONNECT_TRIES - 1:
+                await asyncio.sleep(delay)
+                delay *= 2
+    raise RunnerError(
+        f"Cannot connect to hxg_runner at {HXG_SOCKET_PATH} after "
+        f"{HXG_RECONNECT_TRIES} attempts: {last_exc}"
+    )
+
+
 async def _send_recv_lines(req: dict, timeout: float = 10.0) -> list[dict]:
     """Send one request, collect all response lines until 'done' or connection close."""
     req_id = _new_req_id()
@@ -29,11 +64,7 @@ async def _send_recv_lines(req: dict, timeout: float = 10.0) -> list[dict]:
     payload = (json.dumps(req) + "\n").encode()
 
     try:
-        loop = asyncio.get_event_loop()
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_unix_connection(HXG_SOCKET_PATH),
-            timeout=5.0,
-        )
+        reader, writer = await _open_connection()
         writer.write(payload)
         await writer.drain()
 
@@ -60,9 +91,8 @@ async def _send_recv_lines(req: dict, timeout: float = 10.0) -> list[dict]:
             pass
 
         return results
-    except (ConnectionRefusedError, FileNotFoundError) as e:
-        raise RunnerError(f"Cannot connect to hxg_runner at {HXG_SOCKET_PATH}: {e}. "
-                          "Is the runner daemon running? (sudo python3 hxg_runner.py)")
+    except RunnerError:
+        raise
     except Exception as e:
         raise RunnerError(f"Runner communication error: {e}")
 
@@ -103,10 +133,7 @@ async def scan_batch_stream(rules: Optional[list[str]] = None) -> AsyncGenerator
     payload = (json.dumps(req) + "\n").encode()
 
     try:
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_unix_connection(HXG_SOCKET_PATH),
-            timeout=5.0,
-        )
+        reader, writer = await _open_connection()
         writer.write(payload)
         await writer.drain()
 
@@ -134,8 +161,8 @@ async def scan_batch_stream(rules: Optional[list[str]] = None) -> AsyncGenerator
         except Exception:
             pass
 
-    except (ConnectionRefusedError, FileNotFoundError) as e:
-        raise RunnerError(f"Cannot connect to hxg_runner: {e}")
+    except RunnerError:
+        raise
     except Exception as e:
         raise RunnerError(f"Runner stream error: {e}")
 
@@ -168,10 +195,7 @@ async def install_profiles_batch(profile_paths: list[str]) -> AsyncGenerator[dic
     payload = (json.dumps(req) + "\n").encode()
 
     try:
-        reader, writer = await asyncio.wait_for(
-            asyncio.open_unix_connection(HXG_SOCKET_PATH),
-            timeout=5.0,
-        )
+        reader, writer = await _open_connection()
         writer.write(payload)
         await writer.drain()
 
@@ -197,16 +221,16 @@ async def install_profiles_batch(profile_paths: list[str]) -> AsyncGenerator[dic
         except Exception:
             pass
 
-    except (ConnectionRefusedError, FileNotFoundError) as e:
-        raise RunnerError(f"Cannot connect to hxg_runner: {e}")
+    except RunnerError:
+        raise
     except Exception as e:
         raise RunnerError(f"Runner stream error: {e}")
 
 
 async def ping() -> bool:
-    """Check if runner is alive."""
+    """Check if runner is alive. Bounded by HXG_CONNECT_TIMEOUT × tries + 1s read."""
     try:
-        results = await _send_recv_lines({"action": "ping"}, timeout=3.0)
+        results = await _send_recv_lines({"action": "ping"}, timeout=1.0)
         return bool(results and results[0].get("pong"))
     except RunnerError:
         return False

@@ -342,13 +342,27 @@ network.
 
 ### 6.2 Verify the runner is connected
 
+The dashboard exposes three public no-auth endpoints for liveness:
+
 ```bash
 curl -s http://127.0.0.1:8000/api/health
-# → {"status":"ok","runner_connected":true,"version":"1.0.0"}
+# → {"status":"ok","ready":true,"version":"1.0.0"}
+
+curl -s http://127.0.0.1:8000/api/runner/status
+# → {"runner_connected":true}
+
+curl -s http://127.0.0.1:8000/api/internal/startup
+# → {"started_at":...,"finished_at":...,"elapsed_seconds":0.012,"ready":true,"error":null}
 ```
 
-The `/api/health` endpoint is public and takes no auth. If `runner_connected`
-is `false`, jump to [§12 Troubleshooting](#12-troubleshooting).
+`/api/health` reports only this server's liveness — it does **not** depend on
+the runner, so a slow runner cannot collapse the dashboard. Runner liveness is
+a separate endpoint, `/api/runner/status`. `/api/internal/startup` shows how
+long the background DB/scheduler init took and surfaces the exception class
+if startup failed (handy for diagnosis without log access).
+
+If `ready` is `false` or `runner_connected` is `false`, jump to
+[§12 Troubleshooting](#12-troubleshooting).
 
 ### 6.3 Authentication model
 
@@ -606,7 +620,7 @@ All four require `sudo`.
 
 | Script | Purpose | Run from | Notes |
 |---|---|---|---|
-| `start.sh` | Bootstraps all four LaunchDaemons (runner, server, USB watcher, shell watcher). Re-bootstraps any that are already loaded. | `/Library/Application Support/hxguardian/app/` (or `~/hxg-install/app/` if still present) | Also invoked at the end of `install.sh`. After it runs, it pings `/api/health` and prints the dashboard URL. |
+| `start.sh` | Bootstraps all four LaunchDaemons (runner, server, USB watcher, shell watcher). Re-bootstraps any that are already loaded. | `/Library/Application Support/hxguardian/app/` (or `~/hxg-install/app/` if still present) | Also invoked at the end of `install.sh`. Gates on three checks before exiting: server responds, `/api/health` reports `ready: true`, and `/api/runner/status` reports `runner_connected: true`. Exits non-zero (with the relevant log tail) if any check fails — better to fail the install loudly than let the operator find the dashboard wedged later. |
 | `stop.sh` | `bootout`s all four daemons, kills any lingering processes (TERM then KILL), removes the stale Unix socket. | Same as `start.sh` | Use before manual binary swaps or before re-running `install.sh`. |
 | `restart.sh` | Calls `stop.sh` then `start.sh`. | Same as `start.sh` | Convenience only — equivalent to running both back-to-back. |
 | `update.sh [target]` | Re-deploys pre-built binaries from a transfer bundle's `app/dist/`, then restarts the matching LaunchDaemons. `target` is one of `runner`, `server`, `usbwatcher`, `shellwatcher`, or `all` (default). | **Bundle directory only** — `~/hxg-install/app/` or `/Volumes/<SD>/hxg-install/app/`. Requires `dist/` to sit alongside the script, which is only true in the SD-card bundle. | The fast path for shipping a new build. Skips pwpolicy, the `/etc/zshrc` edit, and the MDM profile open — those only need to happen once at first install. |
@@ -776,14 +790,31 @@ updated rather than duplicated.
 **Dashboard not loading**
 ```bash
 curl -s http://127.0.0.1:8000/api/health
-# Should return: {"status":"ok","runner_connected":...}
+# Should return: {"status":"ok","ready":true,"version":"1.0.0"}
+curl -s http://127.0.0.1:8000/api/internal/startup
+# elapsed_seconds + error fields tell you where startup is stuck
 ```
 
-**`runner_connected: false` in health check**
+**Dashboard hangs after reboot (every request, including static files)**
+- Should not happen with the current build — the lifespan handler yields
+  immediately and the runner socket is bound by launchd via socket activation
+  (no boot-order race possible).
+- If it does, see the operator escape hatch in
+  [`airgap-reboot-debug.md` §10](../airgap-reboot-debug.md) — restoring the
+  pre-fix runner plist is a one-line `cp` from the install-time backup at
+  `/Library/LaunchDaemons/com.hxguardian.runner.plist.bak.<TIMESTAMP>` plus
+  `launchctl bootout && bootstrap`.
+
+**`runner_connected: false` in `/api/runner/status`**
 ```bash
 sudo launchctl print system/com.hxguardian.runner | head
-# If not loaded, start it:
+# Under socket activation the runner is on-demand: the listener stays bound
+# by launchd even when the binary process is not currently running. To force
+# a respawn (and pick up a fresh binary), bootout + bootstrap:
+sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.runner.plist
 sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.runner.plist
+# Then probe the socket directly to trigger the spawn:
+echo '{"action":"ping"}' | nc -U /var/run/hxg/runner.sock -w 5
 ```
 
 **Scan returns ERROR for all rules**
@@ -795,7 +826,7 @@ sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.runner.pli
 - The frontend polls session status and reloads automatically when the scan
   finishes. Wait for the **Scanning…** button to return to normal, then reload
   the Rules page.
-- If results never update, check that the runner is connected (`/api/health`).
+- If results never update, check that the runner is connected (`/api/runner/status`).
 
 **MDM rules still showing `MDM_REQUIRED` after deploying the unified profile**
 - MDM-only rules are verified by whether the profile is installed. Deploying
@@ -836,12 +867,15 @@ sudo zsh ~/hxg-install/app/install.sh
 ```
 
 **Permission denied on socket**
+Under launchd socket activation, the runner socket file is owned by launchd —
+do **not** `rm -rf /var/run/hxg` (that breaks the bound listener and a plain
+`kickstart -k` won't re-create it because `KeepAlive=false`). Re-bind via
+bootout + bootstrap so launchd re-creates the socket with the perms declared
+in the plist (`root:admin 660`):
 ```bash
-sudo rm -rf /var/run/hxg
-sudo mkdir -p /var/run/hxg
-sudo chown root:admin /var/run/hxg
-sudo chmod 770 /var/run/hxg
-sudo launchctl kickstart -k system/com.hxguardian.runner
+sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.runner.plist
+sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.runner.plist
+ls -l /var/run/hxg/runner.sock     # expect: srw-rw---- root admin
 ```
 
 ---

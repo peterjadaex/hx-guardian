@@ -1,6 +1,7 @@
 # ─── Build outputs & SD-card bundle (produced by app/build.sh + prepare_sd_card.sh) ─
 app/dist/
 transfer/
+*.zip
 
 # ─── Runtime data (created on first server start; never commit) ─────────────────
 # hxg.key is the 2FA encryption master key — must stay per-install.

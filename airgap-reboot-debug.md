@@ -291,3 +291,30 @@ sudo /bin/launchctl print system/com.hxguardian.runner | head -60
 ```
 sudo /bin/launchctl kickstart -k system/com.hxguardian.server
 ```
+
+---
+
+## 10. Escape hatch — disable launchd socket activation
+
+If launchd socket activation misbehaves on this device (e.g. the runner never spawns, the socket file has wrong perms, or the ctypes path failed inside the frozen binary), an operator can fall back to the pre-fix bind/listen behavior **without an SD card or rebuild**:
+
+1. Restore the previous plist from the install-time snapshot:
+   ```
+   ls -t /Library/LaunchDaemons/com.hxguardian.runner.plist.bak.* | head -1
+   sudo cp /Library/LaunchDaemons/com.hxguardian.runner.plist.bak.<TIMESTAMP> \
+           /Library/LaunchDaemons/com.hxguardian.runner.plist
+   ```
+   *Or* hand-edit the active plist: remove the `<key>Sockets</key>` block, set `RunAtLoad` to `<true/>`, set `KeepAlive` to `<true/>`.
+
+2. Reload the daemon:
+   ```
+   sudo /bin/launchctl bootout system/com.hxguardian.runner
+   sudo /bin/launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.runner.plist
+   ```
+
+3. Verify the runner is up:
+   ```
+   echo '{"action":"ping"}' | /usr/bin/nc -U /var/run/hxg/runner.sock -w 5
+   ```
+
+The runner's `run_server()` automatically falls back to manual bind/listen if `launch_activate_socket` is unavailable or returns no fds, so no code change is needed — just the plist edit. Logs at `/Library/Logs/hxguardian-runner.log` will show `"listening on … (dev mode)"` instead of `"inherited socket from launchd"`, confirming the fallback path.

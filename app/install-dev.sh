@@ -1,7 +1,15 @@
 #!/bin/zsh
-# HX-Guardian Install Script
-# Run: sudo zsh app/install.sh
+# HX-Guardian Install Script — DEV variant
+# Run: sudo zsh app/install-dev.sh
 # Must be run from the hx-guardian repo root directory.
+#
+# Compared to install.sh, this script omits the steps that change device
+# behavior beyond running the dashboard:
+#   - USB watcher daemon (would force-eject non-whitelisted USB storage)
+#   - pwpolicy enforcement (15-char passwords, 5-attempt lockout)
+#   - Opening the unified .mobileconfig (would disable Bluetooth, iCloud,
+#     AirDrop, AppleID, etc. once approved)
+# Bluetooth, Wi-Fi, USB storage, iCloud and so on stay working as normal.
 
 set -euo pipefail
 
@@ -16,12 +24,12 @@ HXG_SCRIPTS="$HXG_SUPPORT"   # standards/ is copied here; paths stay standards/s
 DIST_DIR="$APP_DIR/dist"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " HX-Guardian Security Dashboard — Installation"
+echo " HX-Guardian Security Dashboard — Installation (dev install)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Check root
 if [[ $EUID -ne 0 ]]; then
-    echo "ERROR: Must run as root. Use: sudo zsh app/install.sh"
+    echo "ERROR: Must run as root. Use: sudo zsh app/install-dev.sh"
     exit 1
 fi
 
@@ -34,7 +42,8 @@ echo "[cleanup] Removing previous installation..."
 
 # 1. Unload launchd services. Label-wildcard instead of a hardcoded list so any
 #    stray com.hxguardian.* registration (from an older install, a renamed
-#    service, or a hand-edited plist) is drained — not just the four we ship today.
+#    service, or a hand-edited plist) is drained — including a usbwatcher from
+#    a prior airgap install on this machine.
 /bin/launchctl list 2>/dev/null \
     | /usr/bin/awk '$3 ~ /^com\.hxguardian\./ {print $3}' \
     | while read -r label; do
@@ -84,39 +93,36 @@ rm -f /Library/Logs/hxguardian-runner.log /Library/Logs/hxguardian-runner-error.
 rm -rf "$HXG_BIN"
 echo "  ✓ Previous install removed"
 
-# Verify binaries exist
-for binary in hxg-server hxg-runner hxg-usb-watcher hxg-shell-watcher; do
+# Verify binaries exist (USB watcher omitted in dev install)
+for binary in hxg-server hxg-runner hxg-shell-watcher; do
     if [[ ! -f "$DIST_DIR/$binary/$binary" ]]; then
         echo "ERROR: Binary not found: $DIST_DIR/$binary/$binary"
-        echo "  Run: zsh app/build.sh  (on an internet-connected Mac)"
+        echo "  Run: zsh app/build.sh"
         exit 1
     fi
 done
 
 # ── 0. Deploy binaries ────────────────────────────────────────────────────────
 echo ""
-echo "[0/7] Deploying binaries..."
+echo "[0/7] Deploying binaries (server, runner, shell-watcher)..."
 mkdir -p "$HXG_BIN" "$HXG_DATA"
 
 # Remove any previous install (file or directory) to allow clean copy
-rm -rf "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-usb-watcher" "$HXG_BIN/hxg-shell-watcher"
+rm -rf "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-shell-watcher"
 
 cp -R "$DIST_DIR/hxg-server"        "$HXG_BIN/"
 cp -R "$DIST_DIR/hxg-runner"        "$HXG_BIN/"
-cp -R "$DIST_DIR/hxg-usb-watcher"   "$HXG_BIN/"
 cp -R "$DIST_DIR/hxg-shell-watcher" "$HXG_BIN/"
 
-chown -R root:wheel "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-usb-watcher" "$HXG_BIN/hxg-shell-watcher"
-chmod -R 755 "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-usb-watcher" "$HXG_BIN/hxg-shell-watcher"
+chown -R root:wheel "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-shell-watcher"
+chmod -R 755 "$HXG_BIN/hxg-server" "$HXG_BIN/hxg-runner" "$HXG_BIN/hxg-shell-watcher"
 
 # Remove quarantine and ad-hoc sign so Gatekeeper does not block launch
 xattr -dr com.apple.quarantine "$HXG_BIN/hxg-server"        2>/dev/null || true
 xattr -dr com.apple.quarantine "$HXG_BIN/hxg-runner"        2>/dev/null || true
-xattr -dr com.apple.quarantine "$HXG_BIN/hxg-usb-watcher"   2>/dev/null || true
 xattr -dr com.apple.quarantine "$HXG_BIN/hxg-shell-watcher" 2>/dev/null || true
 codesign --force --deep --sign - "$HXG_BIN/hxg-server"        2>/dev/null || true
 codesign --force --deep --sign - "$HXG_BIN/hxg-runner"        2>/dev/null || true
-codesign --force --deep --sign - "$HXG_BIN/hxg-usb-watcher"   2>/dev/null || true
 codesign --force --deep --sign - "$HXG_BIN/hxg-shell-watcher" 2>/dev/null || true
 
 # Data directory owned by the operator user so the server (non-root) can write to it
@@ -143,14 +149,6 @@ cd "$HXG_BIN/hxg-runner"
 exec "$HXG_BIN/hxg-runner/hxg-runner"
 EOF
 
-cat > "$HXG_BIN/run-hxg-usb-watcher" << EOF
-#!/bin/zsh
-export HOME="/var/root"
-export TMPDIR="/tmp"
-cd "$HXG_BIN/hxg-usb-watcher"
-exec "$HXG_BIN/hxg-usb-watcher/hxg-usb-watcher"
-EOF
-
 cat > "$HXG_BIN/run-hxg-shell-watcher" << EOF
 #!/bin/zsh
 export HOME="/var/root"
@@ -159,10 +157,10 @@ cd "$HXG_BIN/hxg-shell-watcher"
 exec "$HXG_BIN/hxg-shell-watcher/hxg-shell-watcher"
 EOF
 
-chmod 755 "$HXG_BIN/run-hxg-server" "$HXG_BIN/run-hxg-runner" "$HXG_BIN/run-hxg-usb-watcher" "$HXG_BIN/run-hxg-shell-watcher"
-chown root:wheel "$HXG_BIN/run-hxg-server" "$HXG_BIN/run-hxg-runner" "$HXG_BIN/run-hxg-usb-watcher" "$HXG_BIN/run-hxg-shell-watcher"
+chmod 755 "$HXG_BIN/run-hxg-server" "$HXG_BIN/run-hxg-runner" "$HXG_BIN/run-hxg-shell-watcher"
+chown root:wheel "$HXG_BIN/run-hxg-server" "$HXG_BIN/run-hxg-runner" "$HXG_BIN/run-hxg-shell-watcher"
 
-echo "  ✓ Binaries: $HXG_BIN"
+echo "  ✓ Binaries: $HXG_BIN  (USB watcher skipped — dev install)"
 
 # ── 1. Deploy standards (scripts) with root-only permissions ──────────────────
 echo ""
@@ -284,17 +282,7 @@ else
         echo ""
         echo "  HX-Guardian scan scripts need /usr/bin/xmllint (ships with CLT)."
         echo ""
-        echo "  Option 1 — manual one-shot install:"
-        echo "    Copy 'Command Line Tools for Xcode' .dmg to the SD card, then on this Mac:"
-        echo "      hdiutil attach /Volumes/<SD_CARD>/Command_Line_Tools_for_Xcode_*.dmg"
-        echo "      sudo installer -pkg \"/Volumes/Command Line Developer Tools/Command Line Tools.pkg\" -target /"
-        echo "      hdiutil detach \"/Volumes/Command Line Developer Tools\""
-        echo "    Re-run this installer afterwards."
-        echo ""
-        echo "  Option 2 — integrated (for every future build):"
-        echo "    1. On the dev Mac, drop the CLT .dmg at: app/vendor/clt/"
-        echo "    2. Re-run: zsh app/prepare_sd_card.sh"
-        echo "    3. Re-transfer the bundle and re-run this installer."
+        echo "  Install on a dev Mac with:  xcode-select --install"
         exit 1
     fi
 
@@ -316,7 +304,7 @@ echo "  ✓ Socket directory: /var/run/hxg"
 # ── 3. Pre-create log files ──────────────────────────────────────────────────
 echo ""
 echo "[3/7] Creating log files..."
-# Runner/USB logs: root-owned (LaunchDaemons run as root, can create their own)
+# Runner logs: root-owned (LaunchDaemons run as root, can create their own)
 touch /Library/Logs/hxguardian-runner.log /Library/Logs/hxguardian-runner-error.log
 chown root:wheel /Library/Logs/hxguardian-runner.log /Library/Logs/hxguardian-runner-error.log
 chmod 644 /Library/Logs/hxguardian-runner.log /Library/Logs/hxguardian-runner-error.log
@@ -329,12 +317,10 @@ echo "  ✓ Log files created in /Library/Logs/"
 
 # ── 4. Install launchd plists ────────────────────────────────────────────────
 echo ""
-echo "[4/7] Installing launchd plists..."
+echo "[4/7] Installing launchd plists (USB watcher omitted in dev install)..."
 
 RUNNER_PLIST="/Library/LaunchDaemons/com.hxguardian.runner.plist"
-# Snapshot the existing plist before overwrite so an operator can roll back
-# without an SD card if the new plist misbehaves (e.g. socket activation
-# failing on an unforeseen macOS quirk). Cheap (~1KB) and keeps a known-good.
+# Snapshot before overwrite — see comment in install.sh for rationale.
 if [[ -f "$RUNNER_PLIST" ]]; then
     cp -p "$RUNNER_PLIST" "$RUNNER_PLIST.bak.$(date +%s)" 2>/dev/null || true
 fi
@@ -392,15 +378,6 @@ chown root:wheel "$SERVER_PLIST"
 chmod 644 "$SERVER_PLIST"
 echo "  ✓ Server plist (LaunchDaemon): $SERVER_PLIST"
 
-USB_PLIST="/Library/LaunchDaemons/com.hxguardian.usbwatcher.plist"
-cp -X "$REPO_ROOT/standards/launchd/com.hxguardian.usbwatcher.plist" "$USB_PLIST"
-xattr -c "$USB_PLIST" 2>/dev/null || true
-chown root:wheel "$USB_PLIST"
-chmod 644 "$USB_PLIST"
-touch /var/log/hxguardian_usb.log
-chmod 644 /var/log/hxguardian_usb.log
-echo "  ✓ USB Watcher plist: $USB_PLIST"
-
 SHELL_PLIST="/Library/LaunchDaemons/com.hxguardian.shellwatcher.plist"
 cp -X "$REPO_ROOT/standards/launchd/com.hxguardian.shellwatcher.plist" "$SHELL_PLIST"
 xattr -c "$SHELL_PLIST" 2>/dev/null || true
@@ -440,123 +417,30 @@ chown root:wheel /etc/zshrc
 chmod 644 /etc/zshrc
 echo "  ✓ /etc/zshrc updated — new zsh sessions capture commands in real time"
 
-# ── 5. Enforce password policy via pwpolicy ──────────────────────────────────
+# ── 5. Password policy ───────────────────────────────────────────────────────
 echo ""
-echo "[5/7] Enforcing password policy..."
-# com.apple.mobiledevice.passwordpolicy requires MDM — equivalent policy set here via pwpolicy.
-# Policy: min 15 chars, must contain upper+lower+digit+special, 5 failed attempts before lockout.
-# Intentionally omitted (known-broken on macOS Tahoe local-node pwpolicy):
-#   - maxLifetime: fires immediately when passwordLastSetTime is unset on fresh accounts
-#   - minimumLifetime: conflicts with any forced-reset path
-#   - PCRE lookaheads / backreferences: not evaluated reliably by the on-device regex engine
-# If age/history enforcement is required, ship them via an MDM configuration profile instead.
-# Use pwpolicy -setaccountpolicies (XML format) — the format that scan scripts
-# read via `pwpolicy -getaccountpolicies`. The old -setglobalpolicy key=value
-# format is a separate mechanism that the scan XPath queries do not read.
-PWPOLICY_FILE="$(mktemp /tmp/hxg-pwpolicy.XXXXXX.plist)"
-cat > "$PWPOLICY_FILE" << 'PWPLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>policyCategoryAuthentication</key>
-    <array>
-        <!-- Max 5 failed login attempts before lockout -->
-        <dict>
-            <key>policyContent</key>
-            <string>policyAttributeFailedAuthentications &lt; policyAttributeMaximumFailedAuthentications</string>
-            <key>policyIdentifier</key>
-            <string>maxFailedAttempts</string>
-            <key>policyParameters</key>
-            <dict>
-                <key>policyAttributeMaximumFailedAuthentications</key>
-                <integer>5</integer>
-            </dict>
-        </dict>
-    </array>
-    <key>policyCategoryPasswordContent</key>
-    <array>
-        <!-- Minimum length: 15 characters -->
-        <dict>
-            <key>policyContent</key>
-            <string>policyAttributePassword matches '.{15,}'</string>
-            <key>policyIdentifier</key>
-            <string>minimumLength</string>
-            <key>policyParameters</key>
-            <dict>
-                <key>policyAttributeMinimumLength</key>
-                <integer>15</integer>
-            </dict>
-        </dict>
-        <!-- Must contain at least one uppercase letter -->
-        <dict>
-            <key>policyContent</key>
-            <string>policyAttributePassword matches '.*[A-Z].*'</string>
-            <key>policyIdentifier</key>
-            <string>requireUppercase</string>
-        </dict>
-        <!-- Must contain at least one lowercase letter -->
-        <dict>
-            <key>policyContent</key>
-            <string>policyAttributePassword matches '.*[a-z].*'</string>
-            <key>policyIdentifier</key>
-            <string>requireLowercase</string>
-        </dict>
-        <!-- Must contain at least one digit -->
-        <dict>
-            <key>policyContent</key>
-            <string>policyAttributePassword matches '.*[0-9].*'</string>
-            <key>policyIdentifier</key>
-            <string>requireDigit</string>
-        </dict>
-        <!-- Must contain at least one non-alphanumeric character -->
-        <dict>
-            <key>policyContent</key>
-            <string>policyAttributePassword matches '.*[^a-zA-Z0-9].*'</string>
-            <key>policyIdentifier</key>
-            <string>requireSpecialCharacter</string>
-        </dict>
-    </array>
-</dict>
-</plist>
-PWPLIST
-
-if /usr/bin/pwpolicy -n /Local/Default -setaccountpolicies "$PWPOLICY_FILE" 2>/dev/null; then
-    echo "  ✓ Password account policies applied"
-else
-    echo "  ⚠ pwpolicy failed — check: pwpolicy -getaccountpolicies"
-fi
-rm -f "$PWPOLICY_FILE"
+echo "[5/7] Password policy enforcement..."
+echo "  → skipped (dev install)"
 
 # ── 6. Start services ───────────────────────────────────────────────────────
 echo ""
 echo "[6/7] Starting services..."
 zsh "$APP_DIR/start.sh"
 
-# ── 7. Open unified configuration profile for user approval ───────────────────
+# ── 7. Unified configuration profile ─────────────────────────────────────────
 echo ""
-echo "[7/7] Opening unified configuration profile for approval..."
-PROFILE="$HXG_SUPPORT/unified/com.hxguardian.unified.mobileconfig"
-if [[ -f "$PROFILE" ]]; then
-    USER_UID=$(/usr/bin/id -u "$ACTUAL_USER" 2>/dev/null || true)
-    if [[ -n "$USER_UID" ]] && /bin/launchctl asuser "$USER_UID" /usr/bin/open "$PROFILE" 2>/dev/null; then
-        echo "  ✓ Profile opened — approve in System Settings > General > Device Management"
-    else
-        echo "  ⚠ Could not auto-open. Manually run:"
-        echo "      open \"$PROFILE\""
-    fi
-else
-    echo "  ⚠ Profile not found at $PROFILE"
-fi
+echo "[7/7] Unified configuration profile..."
+echo "  → skipped (dev install) — Bluetooth, iCloud, AirDrop, etc. left untouched"
 
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " Installation complete!"
+echo " Dev installation complete!"
 echo ""
-echo " Approve the HX-Guardian Unified profile in System Settings"
-echo " (General > Device Management) to satisfy the SetupAssistant"
-echo " and Account-Modification rules."
+echo " Skipped (vs. install.sh):"
+echo "   - USB watcher daemon (no force-eject of USB storage)"
+echo "   - Password policy via pwpolicy"
+echo "   - Unified .mobileconfig profile"
 echo ""
 echo " Manage services:"
 echo "   sudo zsh app/start.sh"
@@ -564,8 +448,8 @@ echo "   sudo zsh app/stop.sh"
 echo "   sudo zsh app/restart.sh"
 echo ""
 echo " Apply updates (no full reinstall):"
-echo "   zsh app/build.sh                  <- rebuild binaries (dev machine)"
+echo "   zsh app/build.sh                  <- rebuild binaries"
 echo "   sudo zsh app/update.sh runner     <- deploy runner only"
 echo "   sudo zsh app/update.sh server     <- deploy server only"
-echo "   sudo zsh app/update.sh            <- deploy all three"
+echo "   sudo zsh app/update.sh            <- deploy all"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
