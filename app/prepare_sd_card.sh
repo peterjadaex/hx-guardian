@@ -58,6 +58,7 @@ cp "$APP_DIR/start.sh"                                            "$TRANSFER_DIR
 cp "$APP_DIR/stop.sh"                                             "$TRANSFER_DIR/app/"
 cp "$APP_DIR/restart.sh"                                          "$TRANSFER_DIR/app/"
 cp "$APP_DIR/rules_setup.sh"                                      "$TRANSFER_DIR/app/"
+cp "$APP_DIR/relax-for-testing.sh"                                "$TRANSFER_DIR/app/"
 # Server plist is generated inline by install.sh (with UserName substituted) — not copied here
 cp "$APP_DIR/launchd/com.hxguardian.runner.plist"                   "$TRANSFER_DIR/app/launchd/"
 cp "$REPO_ROOT/standards/launchd/com.hxguardian.usbwatcher.plist"   "$TRANSFER_DIR/standards/launchd/"
@@ -143,6 +144,7 @@ check "app/start.sh"                                 "$TRANSFER_DIR/app/start.sh
 check "app/stop.sh"                                  "$TRANSFER_DIR/app/stop.sh"
 check "app/restart.sh"                               "$TRANSFER_DIR/app/restart.sh"
 check "app/rules_setup.sh"                          "$TRANSFER_DIR/app/rules_setup.sh"
+check "app/relax-for-testing.sh"                    "$TRANSFER_DIR/app/relax-for-testing.sh"
 check "app/launchd/com.hxguardian.runner.plist"     "$TRANSFER_DIR/app/launchd/com.hxguardian.runner.plist"
 check "standards/launchd/usbwatcher.plist"           "$TRANSFER_DIR/standards/launchd/com.hxguardian.usbwatcher.plist"
 check "standards/launchd/shellwatcher.plist"         "$TRANSFER_DIR/standards/launchd/com.hxguardian.shellwatcher.plist"
@@ -158,6 +160,7 @@ check "fix/system_settings_loginwindow_text"         "$TRANSFER_DIR/standards/sc
 check "fix/system_settings_token_removal_enforce"    "$TRANSFER_DIR/standards/scripts/fix/system_settings_token_removal_enforce.sh"
 check "standards/mobileconfigs (800-53r5_high)"      "$TRANSFER_DIR/standards/800-53r5_high/mobileconfigs/unsigned"
 check "standards/unified (unified profile)"          "$TRANSFER_DIR/standards/unified/com.hxguardian.unified.mobileconfig"
+check "standards/unified (testing profile)"          "$TRANSFER_DIR/standards/unified/com.hxguardian.unified-testing.mobileconfig"
 check "airgap_readme.md (top level)"                 "$TRANSFER_DIR/airgap_readme.md"
 check "airgap_readme.html (top level)"               "$TRANSFER_DIR/airgap_readme.html"
 

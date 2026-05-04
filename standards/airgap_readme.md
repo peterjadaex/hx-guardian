@@ -30,7 +30,8 @@ and for day-to-day operation once the device is disconnected.
 10. [Daily operations](#10-daily-operations)
 11. [Recovery procedures](#11-recovery-procedures)
 12. [Troubleshooting](#12-troubleshooting)
-13. [Appendix — script quick reference](#appendix--script-quick-reference)
+13. [Testing posture (optional — internet + AnyDesk)](#13-testing-posture-optional--internet--anydesk)
+14. [Appendix — script quick reference](#appendix--script-quick-reference)
 
 ---
 
@@ -877,6 +878,59 @@ sudo launchctl bootout system /Library/LaunchDaemons/com.hxguardian.runner.plist
 sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.runner.plist
 ls -l /var/run/hxg/runner.sock     # expect: srw-rw---- root admin
 ```
+
+---
+
+## 13. Testing posture (optional — internet + AnyDesk)
+
+> **Not for production devices.** This section converts an airgap device into
+> a testing environment that allows internet access and AnyDesk for remote
+> desktop + file transfer. Production devices stay on the production unified
+> profile.
+
+The bundle ships two artifacts for this:
+
+| File | Purpose |
+|---|---|
+| `standards/unified/com.hxguardian.unified-testing.mobileconfig` | Sibling MDM profile. Same security floor as the production unified profile (FileVault, firewall + stealth, Gatekeeper, AirDrop blocked, iCloud blocked, USB Restricted Mode, password policy floor) **with one difference** — Wi-Fi and Bluetooth are visible in Control Center so the operator can toggle Wi-Fi from the menu bar. Bluetooth itself remains disabled by the bluetooth payload; only the UI is un-hidden. |
+| `app/relax-for-testing.sh` | One-shot zsh script with `enable` / `revert` subcommands. Enables Wi-Fi, adds AnyDesk to the application firewall allow-list, and prints the manual follow-ups. Idempotent and reversible. |
+
+### 13.1 Enable testing posture
+
+1. Drop the AnyDesk PKG on the device via SD card, then install:
+   ```bash
+   sudo /usr/sbin/installer -pkg /path/to/AnyDesk.pkg -target /
+   ```
+2. Run the toggle script:
+   ```bash
+   sudo zsh ~/hxg-install/app/relax-for-testing.sh enable
+   ```
+3. Follow the manual steps the script prints:
+   - **System Settings → Privacy & Security**: enable AnyDesk for Screen Recording and Accessibility (mandatory for remote control). Full Disk Access only if file transfer needs `~/Library/`.
+   - **System Settings → General → Device Management**: remove `HX-Guardian Unified` and install `com.hxguardian.unified-testing.mobileconfig` (Finder → double-click the file).
+4. Connect from a peer machine using the AnyDesk ID shown in the device's AnyDesk UI. Use **Files → Open File Manager** in the session for file transfer — no FTP server required.
+
+### 13.2 Expected compliance fallout
+
+After enabling, a fresh dashboard scan will move these rules from PASS to FAIL. **This is the correct, expected signal** — the device is in testing posture and the scan accurately reports it. Do not exempt these rules; the FAILs are the audit trail of the relaxation:
+
+| Rule | Why it now fails |
+|---|---|
+| `system_settings_wifi_disable` | Wi-Fi enabled |
+| `os_firewall_default_deny_require` | Application firewall + stealth mode does not satisfy the strict `pfctl block drop in all` requirement |
+| `os_bonjour_disable` (possibly) | mDNSResponder may advertise once the network is up |
+
+Rules that **keep passing** (verified): `system_settings_screen_sharing_disable` (AnyDesk does not load Apple's `com.apple.screensharing` daemon), `os_airdrop_disable`, `os_ssh_disable`, FileVault, password policy, Gatekeeper.
+
+### 13.3 Revert to production posture
+
+1. ```bash
+   sudo zsh ~/hxg-install/app/relax-for-testing.sh revert
+   ```
+2. Manual steps the script prints:
+   - **System Settings → General → Device Management**: remove `HX-Guardian Unified — Testing` and reinstall `com.hxguardian.unified.mobileconfig`.
+   - Optional cleanup: `sudo rm -rf /Applications/AnyDesk.app`.
+3. Trigger a full HX-Guardian scan from the dashboard — all rules should return to PASS.
 
 ---
 
