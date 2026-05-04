@@ -999,7 +999,7 @@ ls -l /var/run/hxg/runner.sock     # expect: srw-rw---- root admin</code></pre>
         <strong>Not for production devices.</strong> This section converts an airgap device into a testing environment that allows internet access and AnyDesk for remote desktop + file transfer. Production devices stay on the production unified profile.
       </blockquote>
 
-      <p>The bundle ships two artifacts for this:</p>
+      <p>The bundle ships three artifacts for this:</p>
       <table>
         <thead><tr><th>File</th><th>Purpose</th></tr></thead>
         <tbody>
@@ -1008,40 +1008,48 @@ ls -l /var/run/hxg/runner.sock     # expect: srw-rw---- root admin</code></pre>
             <td>Sibling MDM profile. Same security floor as the production unified profile (FileVault, firewall + stealth, Gatekeeper, AirDrop blocked, iCloud blocked, USB Restricted Mode, password policy floor) <strong>with one difference</strong> — Wi-Fi and Bluetooth are visible in Control Center so the operator can toggle Wi-Fi from the menu bar. Bluetooth itself remains disabled by the bluetooth payload; only the UI is un-hidden.</td>
           </tr>
           <tr>
+            <td><code>app/rules_setup.sh testing</code></td>
+            <td>The production rules-setup script with a <code>testing</code> mode. Same as <code>prod</code> except three extra rules are exempted up front so their disruptive fixes never run: <code>system_settings_wifi_disable</code> (would <code>networksetup off</code> the radio), <code>system_settings_ethernet_disable</code>, and <code>os_firewall_default_deny_require</code> (would write a <code>pf</code> <code>block drop in all</code> anchor that breaks AnyDesk inbound). The exempted rules show as <strong>EXEMPT</strong> in the dashboard, not FAIL — the audit log records the testing-posture reason.</td>
+          </tr>
+          <tr>
             <td><code>app/relax-for-testing.sh</code></td>
-            <td>One-shot zsh script with <code>enable</code> / <code>revert</code> subcommands. Enables Wi-Fi, adds AnyDesk to the application firewall allow-list, and prints the manual follow-ups. Idempotent and reversible.</td>
+            <td>One-shot zsh script with <code>enable</code> / <code>revert</code> subcommands. <strong>Use this on a device that was already locked down with <code>rules_setup.sh prod</code></strong> — re-enables Wi-Fi and adds AnyDesk to the application firewall allow-list. Idempotent and reversible. (For a fresh install, prefer <code>rules_setup.sh testing</code> instead — it's cleaner because the disruptive fixes never get applied in the first place.)</td>
           </tr>
         </tbody>
       </table>
 
-      <h3>13.1 Enable testing posture</h3>
+      <h3>13.1a Fresh testing install — preferred path</h3>
+      <p>For a device being set up as a tester from the start, pass <code>testing</code> to the post-install script in <a href="#s4">§4</a> instead of running it with no argument:</p>
+<pre><code>sudo zsh ~/hxg-install/app/install.sh                       # same as production (or pass `dev` for a non-airgap dev mac)
+zsh      ~/hxg-install/app/rules_setup.sh testing           # NOT the bare `rules_setup.sh`</code></pre>
+      <p>The disruptive fixes (Wi-Fi off, Ethernet off, pf default-deny) never run, so internet stays on. Then proceed to step 13.1c for AnyDesk + the testing MDM profile.</p>
+
+      <h3>13.1b Convert an already-airgapped device to testing posture</h3>
+      <p>For a device that was already hardened with <code>rules_setup.sh prod</code> (or the legacy bare invocation), use the toggle script — it re-enables Wi-Fi and allow-lists AnyDesk through the application firewall. (Note: the pf default-deny anchor written by <code>os_firewall_default_deny_require</code> is still active. If AnyDesk inbound is blocked, also exempt that rule via the dashboard or remove the anchor manually with <code>sudo pfctl -a hxguardian -F all</code>.)</p>
+<pre><code>sudo zsh ~/hxg-install/app/relax-for-testing.sh enable</code></pre>
+
+      <h3>13.1c AnyDesk install + permissions (both paths)</h3>
       <ol>
         <li>Drop the AnyDesk PKG on the device via SD card, then install:
 <pre><code>sudo /usr/sbin/installer -pkg /path/to/AnyDesk.pkg -target /</code></pre>
         </li>
-        <li>Run the toggle script:
-<pre><code>sudo zsh ~/hxg-install/app/relax-for-testing.sh enable</code></pre>
-        </li>
-        <li>Follow the manual steps the script prints:
-          <ul>
-            <li><strong>System Settings → Privacy &amp; Security</strong>: enable AnyDesk for Screen Recording and Accessibility (mandatory for remote control). Full Disk Access only if file transfer needs <code>~/Library/</code>.</li>
-            <li><strong>System Settings → General → Device Management</strong>: remove <code>HX-Guardian Unified</code> and install <code>com.hxguardian.unified-testing.mobileconfig</code> (Finder → double-click the file).</li>
-          </ul>
-        </li>
+        <li><strong>System Settings → Privacy &amp; Security</strong>: enable AnyDesk for Screen Recording and Accessibility (mandatory for remote control). Full Disk Access only if file transfer needs <code>~/Library/</code>.</li>
+        <li><strong>System Settings → General → Device Management</strong>: remove <code>HX-Guardian Unified</code> and install <code>com.hxguardian.unified-testing.mobileconfig</code> (Finder → double-click the file).</li>
         <li>Connect from a peer machine using the AnyDesk ID shown in the device's AnyDesk UI. Use <strong>Files → Open File Manager</strong> in the session for file transfer — no FTP server required.</li>
       </ol>
 
-      <h3>13.2 Expected compliance fallout</h3>
-      <p>After enabling, a fresh dashboard scan will move these rules from PASS to FAIL. <strong>This is the correct, expected signal</strong> — the device is in testing posture and the scan accurately reports it. Do not exempt these rules; the FAILs are the audit trail of the relaxation:</p>
+      <h3>13.2 Expected dashboard state</h3>
+      <p>If you used <code>rules_setup.sh testing</code> (preferred path), three rules show as <strong>EXEMPT</strong> with a "Testing posture" reason in the audit log:</p>
       <table>
-        <thead><tr><th>Rule</th><th>Why it now fails</th></tr></thead>
+        <thead><tr><th>Rule</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td><code>system_settings_wifi_disable</code></td><td>Wi-Fi enabled</td></tr>
-          <tr><td><code>os_firewall_default_deny_require</code></td><td>Application firewall + stealth mode does not satisfy the strict <code>pfctl block drop in all</code> requirement</td></tr>
-          <tr><td><code>os_bonjour_disable</code> (possibly)</td><td>mDNSResponder may advertise once the network is up</td></tr>
+          <tr><td><code>system_settings_wifi_disable</code></td><td>EXEMPT — Wi-Fi enabled for AnyDesk + internet</td></tr>
+          <tr><td><code>system_settings_ethernet_disable</code></td><td>EXEMPT — Ethernet enabled for network access</td></tr>
+          <tr><td><code>os_firewall_default_deny_require</code></td><td>EXEMPT — pf default-deny conflicts with AnyDesk</td></tr>
         </tbody>
       </table>
-      <p>Rules that <strong>keep passing</strong> (verified): <code>system_settings_screen_sharing_disable</code> (AnyDesk does not load Apple's <code>com.apple.screensharing</code> daemon), <code>os_airdrop_disable</code>, <code>os_ssh_disable</code>, FileVault, password policy, Gatekeeper.</p>
+      <p>If you used <code>relax-for-testing.sh</code> against a previously locked-down device, those same rules show as <strong>FAIL</strong> instead — the relaxation is in place but no exemption was recorded. Either is fine; the EXEMPT path keeps the compliance score cleaner.</p>
+      <p>Rules that <strong>keep passing</strong> under either path: <code>system_settings_screen_sharing_disable</code> (AnyDesk does not load Apple's <code>com.apple.screensharing</code> daemon), <code>os_airdrop_disable</code>, <code>os_ssh_disable</code>, FileVault, password policy, Gatekeeper.</p>
 
       <h3>13.3 Revert to production posture</h3>
       <ol>

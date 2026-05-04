@@ -888,39 +888,56 @@ ls -l /var/run/hxg/runner.sock     # expect: srw-rw---- root admin
 > desktop + file transfer. Production devices stay on the production unified
 > profile.
 
-The bundle ships two artifacts for this:
+The bundle ships three artifacts for this:
 
 | File | Purpose |
 |---|---|
 | `standards/unified/com.hxguardian.unified-testing.mobileconfig` | Sibling MDM profile. Same security floor as the production unified profile (FileVault, firewall + stealth, Gatekeeper, AirDrop blocked, iCloud blocked, USB Restricted Mode, password policy floor) **with one difference** — Wi-Fi and Bluetooth are visible in Control Center so the operator can toggle Wi-Fi from the menu bar. Bluetooth itself remains disabled by the bluetooth payload; only the UI is un-hidden. |
-| `app/relax-for-testing.sh` | One-shot zsh script with `enable` / `revert` subcommands. Enables Wi-Fi, adds AnyDesk to the application firewall allow-list, and prints the manual follow-ups. Idempotent and reversible. |
+| `app/rules_setup.sh testing` | The production rules-setup script with a `testing` mode. Same as `prod` except three extra rules are exempted up front so their disruptive fixes never run: `system_settings_wifi_disable` (would `networksetup off` the radio), `system_settings_ethernet_disable`, and `os_firewall_default_deny_require` (would write a `pf` `block drop in all` anchor that breaks AnyDesk inbound). The exempted rules show as **EXEMPT** in the dashboard, not FAIL — the audit log records the testing-posture reason. |
+| `app/relax-for-testing.sh` | One-shot zsh script with `enable` / `revert` subcommands. **Use this on a device that was already locked down with `rules_setup.sh prod`** — re-enables Wi-Fi and adds AnyDesk to the application firewall allow-list. Idempotent and reversible. (For a fresh install, prefer `rules_setup.sh testing` instead — it's cleaner because the disruptive fixes never get applied in the first place.) |
 
-### 13.1 Enable testing posture
+### 13.1a Fresh testing install — preferred path
+
+For a device being set up as a tester from the start, pass `testing` to the post-install script in [§4](#4-apply-bulk-fixes-and-exemptions) instead of running it with no argument:
+
+```bash
+sudo zsh ~/hxg-install/app/install.sh                       # same as production (or pass `dev` for a non-airgap dev mac)
+zsh      ~/hxg-install/app/rules_setup.sh testing           # NOT the bare `rules_setup.sh`
+```
+
+The disruptive fixes (Wi-Fi off, Ethernet off, pf default-deny) never run, so internet stays on. Then proceed to step 13.1c for AnyDesk + the testing MDM profile.
+
+### 13.1b Convert an already-airgapped device to testing posture
+
+For a device that was already hardened with `rules_setup.sh prod` (or the legacy bare invocation), use the toggle script — it re-enables Wi-Fi and allow-lists AnyDesk through the application firewall. (Note: the pf default-deny anchor written by `os_firewall_default_deny_require` is still active. If AnyDesk inbound is blocked, also exempt that rule via the dashboard or remove the anchor manually with `sudo pfctl -a hxguardian -F all`.)
+
+```bash
+sudo zsh ~/hxg-install/app/relax-for-testing.sh enable
+```
+
+### 13.1c AnyDesk install + permissions (both paths)
 
 1. Drop the AnyDesk PKG on the device via SD card, then install:
    ```bash
    sudo /usr/sbin/installer -pkg /path/to/AnyDesk.pkg -target /
    ```
-2. Run the toggle script:
-   ```bash
-   sudo zsh ~/hxg-install/app/relax-for-testing.sh enable
-   ```
-3. Follow the manual steps the script prints:
-   - **System Settings → Privacy & Security**: enable AnyDesk for Screen Recording and Accessibility (mandatory for remote control). Full Disk Access only if file transfer needs `~/Library/`.
-   - **System Settings → General → Device Management**: remove `HX-Guardian Unified` and install `com.hxguardian.unified-testing.mobileconfig` (Finder → double-click the file).
+2. **System Settings → Privacy & Security**: enable AnyDesk for Screen Recording and Accessibility (mandatory for remote control). Full Disk Access only if file transfer needs `~/Library/`.
+3. **System Settings → General → Device Management**: remove `HX-Guardian Unified` and install `com.hxguardian.unified-testing.mobileconfig` (Finder → double-click the file).
 4. Connect from a peer machine using the AnyDesk ID shown in the device's AnyDesk UI. Use **Files → Open File Manager** in the session for file transfer — no FTP server required.
 
-### 13.2 Expected compliance fallout
+### 13.2 Expected dashboard state
 
-After enabling, a fresh dashboard scan will move these rules from PASS to FAIL. **This is the correct, expected signal** — the device is in testing posture and the scan accurately reports it. Do not exempt these rules; the FAILs are the audit trail of the relaxation:
+If you used `rules_setup.sh testing` (preferred path), three rules show as **EXEMPT** with a "Testing posture" reason in the audit log:
 
-| Rule | Why it now fails |
+| Rule | Status |
 |---|---|
-| `system_settings_wifi_disable` | Wi-Fi enabled |
-| `os_firewall_default_deny_require` | Application firewall + stealth mode does not satisfy the strict `pfctl block drop in all` requirement |
-| `os_bonjour_disable` (possibly) | mDNSResponder may advertise once the network is up |
+| `system_settings_wifi_disable` | EXEMPT — Wi-Fi enabled for AnyDesk + internet |
+| `system_settings_ethernet_disable` | EXEMPT — Ethernet enabled for network access |
+| `os_firewall_default_deny_require` | EXEMPT — pf default-deny conflicts with AnyDesk |
 
-Rules that **keep passing** (verified): `system_settings_screen_sharing_disable` (AnyDesk does not load Apple's `com.apple.screensharing` daemon), `os_airdrop_disable`, `os_ssh_disable`, FileVault, password policy, Gatekeeper.
+If you used `relax-for-testing.sh` against a previously locked-down device, those same rules show as **FAIL** instead — the relaxation is in place but no exemption was recorded. Either is fine; the EXEMPT path keeps the compliance score cleaner.
+
+Rules that **keep passing** under either path: `system_settings_screen_sharing_disable` (AnyDesk does not load Apple's `com.apple.screensharing` daemon), `os_airdrop_disable`, `os_ssh_disable`, FileVault, password policy, Gatekeeper.
 
 ### 13.3 Revert to production posture
 

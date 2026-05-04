@@ -6,6 +6,14 @@
 # and lock in policy exemptions in one shot. Everything is recorded in the app
 # database and reflected in the dashboard immediately.
 #
+# Usage: zsh app/rules_setup.sh [prod|testing]
+#   prod (default) — production airgap posture: full lockdown
+#   testing        — testing posture: ALSO exempts the three rules whose fix
+#                    scripts kill internet access (system_settings_wifi_disable,
+#                    system_settings_ethernet_disable, os_firewall_default_deny_require).
+#                    Use on a tester device that needs internet + AnyDesk.
+#                    DO NOT USE ON PRODUCTION AIRGAP DEVICES.
+#
 # Does not require root — talks to the local HTTP API on 127.0.0.1:8000.
 #
 # ─────────────────────────────────────────────────────────────────────────────
@@ -111,6 +119,17 @@
 readonly API="http://127.0.0.1:8000/api"
 readonly SCRIPT_DIR="${0:A:h}"
 
+RULES_MODE="${1:-prod}"
+case "$RULES_MODE" in
+    prod|testing) ;;
+    "")           RULES_MODE="prod" ;;
+    *)
+        print "ERROR: unknown mode '$RULES_MODE'" >&2
+        print "Usage: zsh app/rules_setup.sh [prod|testing]" >&2
+        exit 1
+        ;;
+esac
+
 # =============================================================================
 # EXEMPTIONS
 # Format: "rule_name|Human-readable reason|expires_at"
@@ -175,6 +194,20 @@ EXEMPT_ENTRIES=(
     "pwpolicy_minimum_lifetime_enforce|Minimum-lifetime enforcement blocks password rotation during install; bricks local auth on Tahoe|permanent"
     "pwpolicy_simple_sequence_disable|Simple-sequence check invalidates existing passwords; not enforced to avoid lockout|permanent"
 )
+
+# Testing-posture additions: rules whose fix scripts kill internet access
+# (Wi-Fi off, Ethernet off, pf block drop in all). Exempted only when this
+# script is invoked as `rules_setup.sh testing`. The application firewall
+# (managed via socketfilterfw) still provides per-app inbound filtering, and
+# the unified MDM profile keeps stealth mode on. Re-apply the original fix
+# scripts and remove these exemptions to convert back to airgap posture.
+if [[ "$RULES_MODE" == "testing" ]]; then
+    EXEMPT_ENTRIES+=(
+        "system_settings_wifi_disable|Testing posture: Wi-Fi enabled for AnyDesk + internet access. Re-apply fix and remove this exemption to return to airgap.|permanent"
+        "system_settings_ethernet_disable|Testing posture: Ethernet enabled for network access. Re-apply fix and remove this exemption to return to airgap.|permanent"
+        "os_firewall_default_deny_require|Testing posture: pf default-deny conflicts with AnyDesk inbound. Application firewall (com.apple.alf) provides per-app filtering instead. Re-apply fix to return to airgap.|permanent"
+    )
+fi
 
 # =============================================================================
 # FIX-ONLY SKIPS
@@ -484,7 +517,14 @@ _run_rescan() {
 main() {
     print ""
     print "════════════════════════════════════════════════════"
-    print "  HX-Guardian  ·  Rules Setup"
+    if [[ "$RULES_MODE" == "testing" ]]; then
+        print "  HX-Guardian  ·  Rules Setup  ·  TESTING POSTURE"
+        print "════════════════════════════════════════════════════"
+        print "  Wi-Fi, Ethernet, and pf default-deny are EXEMPTED."
+        print "  DO NOT use this variant on production airgap devices."
+    else
+        print "  HX-Guardian  ·  Rules Setup"
+    fi
     print "════════════════════════════════════════════════════"
     print ""
 
