@@ -1,0 +1,4 @@
+interface:
+  display_name: "HXG Documentation Guide"
+  short_description: "Maintain accurate repository documentation"
+  default_prompt: "Use $hxg-documentation-guide to create or update HX-Guardian documentation for the correct audience and keep it aligned with implementation and security constraints."

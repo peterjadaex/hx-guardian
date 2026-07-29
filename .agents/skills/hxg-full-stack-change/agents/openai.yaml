@@ -1,0 +1,4 @@
+interface:
+  display_name: "HXG Full-Stack Change"
+  short_description: "Implement safe dashboard and API changes"
+  default_prompt: "Use $hxg-full-stack-change to implement a focused HX-Guardian application change with security-preserving validation."

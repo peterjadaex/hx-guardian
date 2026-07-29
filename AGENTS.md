@@ -29,6 +29,27 @@ runtime or installation flow.
 Read `app/app_readme.md` for development and packaging details. Read
 `standards/airgap_readme.md` for target-device installation and operations.
 
+## Repository skills and knowledge
+
+Repository-local skills live under `.agents/skills/`. Use the matching skill
+whenever its trigger applies; its references contain task-specific knowledge
+that should be loaded only as directed by the skill.
+
+- `.agents/skills/hxg-full-stack-change/`: application features, API/UI changes,
+  database evolution, authentication-sensitive flows, and runner integration.
+- `.agents/skills/hxg-compliance-rule/`: compliance manifest, scan/fix/undo
+  scripts, baseline mappings, profiles, exemptions, and rule documentation.
+- `.agents/skills/hxg-offline-release/`: builds, installers, launchd, PyInstaller,
+  offline bundles, updates, and deployment documentation.
+- `.agents/skills/hxg-documentation-guide/`: developer and operator guides,
+  architecture/API references, troubleshooting, hardening-control documentation,
+  and documentation consistency reviews.
+
+`AGENTS.md` remains the controlling repository policy. A skill may add a narrower
+workflow but must not weaken these security or safety rules. If multiple skills
+apply, use the smallest set that covers the task and reconcile all of their
+validation requirements.
+
 ## Working rules
 
 - Inspect the relevant call path before editing. API changes commonly require

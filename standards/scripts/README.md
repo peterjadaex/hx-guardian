@@ -4,56 +4,60 @@ This document explains how the individual scan and fix scripts are organized, ho
 
 ## Overview
 
-We extracted **266 unique security rules** from three macOS security baselines and generated standalone shell scripts for each. Every rule has at most one scan script and one fix script, chosen from the highest-priority standard that defines it.
+HX-Guardian tracks **268 unique security rules** from three macOS security
+baselines plus local HX-Guardian controls. Every rule has at most one scan
+script and one fix script, chosen from the highest-priority source that defines
+it.
 
 | Metric | Count |
 |---|---|
-| Total rules | 266 |
-| Scan scripts (check compliance) | 214 |
-| Fix scripts (apply remediation) | 86 |
-| Manual / MDM-only (no script) | 52 |
+| Total rules | 268 |
+| Scan scripts (check compliance) | 217 |
+| Fix scripts (apply remediation) | 102 |
+| Manual / MDM-only (no scan script) | 51 |
 
 ## Source Priority
 
 When a rule exists in multiple standards, the script is taken from the highest-priority source to ensure the strictest implementation:
 
-| Priority | Standard | Rules sourced |
+| Priority | Standard | Scan scripts sourced |
 |---|---|---|
-| 1 (highest) | NIST 800-53r5 High | 170 |
+| 1 (highest) | NIST 800-53r5 High | 172 |
 | 2 | CIS Controls v8 | 41 |
 | 3 (lowest) | CIS Level 2 | 3 |
+| Local | HX-Guardian | 1 |
 
 The `manifest.json` records which standard each script was sourced from (`scan_source` / `fix_source`).
 
 ## Directory Structure
 
 ```
-build/scripts/
-  manifest.json                          # Index of all 266 rules
+standards/scripts/
+  manifest.json                          # Index of all 268 rules
   README.md                              # This file
   scan/
     audit_acls_files_configure.sh        # One scan script per rule
     audit_acls_folders_configure.sh
-    ...                                  # 214 files
+    ...                                  # 217 files
   fix/
     audit_acls_files_configure.sh        # One fix script per rule
     audit_acls_folders_configure.sh
-    ...                                  # 86 files
+    ...                                  # 102 files
 ```
 
 ## Rule Categories
 
 Rules are grouped into 7 categories from the upstream baselines:
 
-| Category | Scan | Fix | Manual/MDM |
-|---|---|---|---|
-| Auditing | 25 | 25 | 3 |
-| Authentication | 7 | 4 | 0 |
-| iCloud | 14 | 0 | 0 |
-| Operating System | 91 | 40 | 37 |
-| Password Policy | 11 | 2 | 4 |
-| System Settings | 66 | 15 | 2 |
-| Other (supplemental) | 0 | 0 | 6 |
+| Category | Total | Scan | Fix | Manual/MDM |
+|---|---:|---:|---:|---:|
+| Auditing | 28 | 25 | 25 | 3 |
+| Authentication | 7 | 7 | 4 | 0 |
+| iCloud | 14 | 14 | 0 | 0 |
+| Operating System | 129 | 92 | 50 | 37 |
+| Password Policy | 15 | 11 | 2 | 4 |
+| System Settings | 69 | 68 | 21 | 1 |
+| Other (supplemental) | 6 | 0 | 0 | 6 |
 
 ## Script Interface
 
@@ -227,7 +231,8 @@ Rules with `scan_script: null` and `fix_script: null` in the manifest should be 
 If baselines are updated, re-run the generator:
 
 ```bash
-python3 build/generate_scripts.py
+python3 standards/generate_scripts.py
 ```
 
-This re-parses the three `*_compliance.sh` files and `security_standards_comparison.md`, then overwrites the `scripts/` directory.
+This re-parses the three `*_compliance.sh` files and
+`security_standards_comparison.md`, then overwrites `standards/scripts/`.

@@ -183,9 +183,10 @@ EXEMPT_ENTRIES=(
     "os_ssh_server_alive_interval_configure|SSH service disabled; ServerAliveInterval not applicable|permanent"
 
     # ── Password policy attributes that brick local auth on Tahoe if enforced ─
-    # Alphanumeric + special-character enforcement is applied via the unified
-    # mobileconfig; the rules below are intentionally left un-enforced because
-    # applying them via pwpolicy locks users out.
+    # Alphanumeric + special-character enforcement is applied by the unified
+    # profile and the supported local policy written by install.sh. The rules
+    # below are intentionally left un-enforced because applying them via
+    # local-node pwpolicy locks users out.
     "pwpolicy_account_inactivity_enforce|Disables accounts after idle days; not enforced to avoid lockout on airgap Macs with infrequent login|permanent"
     "pwpolicy_account_lockout_timeout_enforce|Lockout auto-recovery timer requires MDM-delivered pwpolicy; not enforced locally to avoid login trap|permanent"
     "pwpolicy_custom_regex_enforce|Site-specific regex not defined; enforcing breaks existing passwords|permanent"
@@ -211,12 +212,11 @@ fi
 
 # =============================================================================
 # FIX-ONLY SKIPS
-# Rules whose fix_script is known to brick local auth on macOS Tahoe by
-# re-applying password-policy primitives that the installer deliberately omits
-# (minimumLifetime, inactiveDays, forced reset, etc.). These rules are NOT
-# exempted — they will continue to appear as non-compliant in the dashboard
-# until the operator addresses them via an MDM profile. Phase 1 simply refuses
-# to run their fix_script.
+# Defense-in-depth skip for fix scripts known to brick local auth on macOS
+# Tahoe by re-applying primitives the installer deliberately omits. These two
+# rules are also permanent EXEMPT_ENTRIES above, so the exemption map normally
+# skips them first. Keep this list as a second guard if exemption handling is
+# refactored.
 # =============================================================================
 SKIP_FIX_ENTRIES=(
     "pwpolicy_minimum_lifetime_enforce"

@@ -103,6 +103,10 @@
 			<key>forceOnDeviceOnlyDictation</key>
 			<true/>
 		</dict>
+		<!-- Password policy matches production: the profile supplies the
+		     alphanumeric/complexity floor; install.sh supplies length 15 and
+		     the 5-attempt lockout threshold. Tahoe-incompatible age, history,
+		     inactivity, regex, sequence, and timeout rules remain exempted. -->
 		<dict>
 			<key>PayloadIdentifier</key>
 			<string>com.hxguardian.unified-testing.passwordpolicy.7bd7712d-ba8b-4c30-b632-cea67735cdcf</string>

@@ -554,17 +554,20 @@ else
             <key>policyIdentifier</key>
             <string>requireLowercase</string>
         </dict>
-        <!-- Must contain at least one digit -->
+        <!-- Must contain alphanumeric content. Upper/lower rules above require
+             letters; this rule requires at least one digit. The identifier
+             intentionally matches pwpolicy_alpha_numeric_enforce. -->
         <dict>
             <key>policyContent</key>
             <string>policyAttributePassword matches '.*[0-9].*'</string>
             <key>policyIdentifier</key>
-            <string>requireDigit</string>
+            <string>requireAlphanumeric</string>
         </dict>
-        <!-- Must contain at least one non-alphanumeric character -->
+        <!-- Must contain at least one non-alphanumeric character. Keep the
+             baseline regex form expected by pwpolicy_special_character_enforce. -->
         <dict>
             <key>policyContent</key>
-            <string>policyAttributePassword matches '.*[^a-zA-Z0-9].*'</string>
+            <string>policyAttributePassword matches '(.*[^a-zA-Z0-9].*){1}'</string>
             <key>policyIdentifier</key>
             <string>requireSpecialCharacter</string>
         </dict>

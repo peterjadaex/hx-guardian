@@ -107,9 +107,10 @@
 		</dict>
 
 		<!-- 2. PASSWORD POLICY — scoped to alphanumeric + 1 special character only.
-		          Other password-policy attributes (length, history, lifetime, lockout) are
-		          enforced via local pwpolicy in install.sh to avoid the MDM/supervision
-		          requirement for the full payload. -->
+		          install.sh locally enforces length 15, upper/lower/digit/special,
+		          and a 5-attempt lockout threshold. History, lifetime, inactivity,
+		          custom-regex, sequence, and automatic lockout-timeout rules are
+		          permanently exempted for macOS Tahoe local-auth safety. -->
 		<dict>
 			<key>PayloadIdentifier</key>
 			<string>com.hxguardian.unified.passwordpolicy.5efa108a-b470-4cfd-81d7-a0409c22bbe4</string>

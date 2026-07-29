@@ -1,0 +1,4 @@
+interface:
+  display_name: "HXG Offline Release"
+  short_description: "Validate offline packaging changes"
+  default_prompt: "Use $hxg-offline-release to update or review HX-Guardian installation, packaging, or air-gap deployment behavior safely."

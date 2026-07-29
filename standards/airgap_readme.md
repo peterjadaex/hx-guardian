@@ -166,7 +166,7 @@ The installer performs all steps fully offline — no internet required:
 | 3 | Creates `/var/run/hxg/` (Unix socket directory) and log files in `/Library/Logs/` |
 | 4 | Installs four **LaunchDaemons** — runner (root), server (admin user), USB watcher (root), shell watcher (root) |
 | 4b | Writes the hxguardian block into `/etc/zshrc` (enables `INC_APPEND_HISTORY` + `EXTENDED_HISTORY` so the shell watcher captures commands in real time) |
-| 5 | Enforces password policy locally via `pwpolicy` (min 15 chars, complexity, lockout). All existing non-system local accounts are flagged to change password on next login. |
+| 5 | Enforces the supported password-policy subset locally via `pwpolicy` (min 15 chars, complexity, 5-attempt lockout threshold). Eligible non-system local accounts, except the logged-in installer account, are flagged to change password on next login. |
 | 6 | Starts all four services (`start.sh`) and pings `/api/health` |
 | 7 | Opens the unified MDM profile in System Settings for user approval — complete §5 when prompted |
 
@@ -178,19 +178,23 @@ Two layers enforce password policy on the airgap device:
    `com.apple.mobiledevice.passwordpolicy` payload — `requireAlphanumeric=true`,
    `minComplexChars=1`. This gives the OS a baseline passcode check the moment
    the profile lands.
-2. **Local layer (full enforcement).** `install.sh` writes a site-wide
-   `pwpolicy` covering every local account — min 15 chars,
-   upper+lower+digit+special, 5-failures lockout. This is where the real
-   enforcement lives.
+2. **Local layer (supported enforcement subset).** `install.sh` writes a
+   site-wide `pwpolicy` covering every local account — min 15 chars,
+   upper+lower+digit+special, and a 5-failure lockout threshold. Automatic
+   lockout recovery timeout, password age/history, account inactivity, custom
+   regex, and sequence restrictions are deliberately exempted because
+   local-node enforcement can lock out users on macOS Tahoe.
 
 **Your own admin password is not force-changed by the installer.** The script
 explicitly skips the currently logged-in installer user so the airgap device
 does not lock you out on first logout. The password you used to run
 `sudo zsh app/install.sh` keeps working.
 
-**But you still need to meet the policy on any voluntary change.** Compliance
-scans (`pwpolicy_*`) PASS because they check that the policy is present, not
-each account's password hash.
+**But you still need to meet the policy on any voluntary change.** The four
+supported scripted controls should report **PASS**: minimum length,
+alphanumeric, special character, and five-attempt lockout. The seven
+Tahoe-incompatible controls appear as **EXEMPT**, not PASS. Manual lifecycle
+controls require separate evidence; scans do not inspect password hashes.
 
 **Strongly recommended:** change your admin password voluntarily **now**, before
 airgapping:
@@ -246,7 +250,8 @@ zsh /Library/Application\ Support/hxguardian/app/rules_setup.sh
 
 | Group | Rules |
 |---|---|
-| Smartcard | `auth_pam_login_smartcard_enforce`, `auth_pam_su_smartcard_enforce`, `auth_pam_sudo_smartcard_enforce`, `auth_smartcard_allow`, `auth_smartcard_certificate_trust_enforce_high`, `auth_smartcard_enforce`, `supplemental_smartcard` |
+| Smartcard (not deployed) | `auth_pam_login_smartcard_enforce`, `auth_pam_su_smartcard_enforce`, `auth_pam_sudo_smartcard_enforce`, `auth_smartcard_allow`, `auth_smartcard_certificate_trust_enforce_high`, `auth_smartcard_enforce`, `supplemental_smartcard`, `system_settings_token_removal_enforce` |
+| Password policy (Tahoe safety) | `pwpolicy_account_inactivity_enforce`, `pwpolicy_account_lockout_timeout_enforce`, `pwpolicy_custom_regex_enforce`, `pwpolicy_history_enforce`, `pwpolicy_max_lifetime_enforce`, `pwpolicy_minimum_lifetime_enforce`, `pwpolicy_simple_sequence_disable` |
 | Touch ID | `os_touchid_prompt_disable`, `system_settings_touch_id_settings_disable`, `system_settings_touchid_unlock_disable` |
 | Policy exceptions | `os_config_data_install_enforce`, `os_config_profile_ui_install_disable`, `os_httpd_disable`, `os_root_disable` |
 | Software updates | `os_software_update_app_update_enforce`, `os_software_update_deferral`, `system_settings_download_software_update_enforce`, `system_settings_software_update_download_enforce`, `system_settings_softwareupdate_current` |
@@ -305,9 +310,10 @@ profiles:
 | Diagnostics | Disables crash-report submission to Apple |
 | Password policy (minimal floor) | `requireAlphanumeric=true`, `minComplexChars=1` — baseline only |
 
-The profile's password payload is a **minimal floor only**. The full policy
-(length, history, lockout) is layered on locally by `install.sh` using
-`pwpolicy`. See §3.3.
+The profile's password payload is a **minimal floor only**. The supported local
+subset (length, complexity, and five-attempt lockout threshold) is layered on
+by `install.sh` using `pwpolicy`; the Tahoe-incompatible controls remain
+permanently exempted. See §3.3.
 
 ### 5.3 Verify the profile is installed
 
@@ -723,7 +729,8 @@ The admin can reset the operator account password directly from macOS:
 
 ### 11.2 Unlock a locked-out account
 
-If the password-policy lockout triggers, unlock from an admin shell:
+There is no automatic lockout-recovery timeout. If the five-attempt lockout
+triggers, an administrator must unlock the account from an admin shell:
 
 ```bash
 sudo pwpolicy -u operator -clearaccountpolicies

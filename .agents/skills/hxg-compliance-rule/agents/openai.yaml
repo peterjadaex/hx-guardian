@@ -1,0 +1,4 @@
+interface:
+  display_name: "HXG Compliance Rule"
+  short_description: "Change compliance rules safely"
+  default_prompt: "Use $hxg-compliance-rule to add or update an HX-Guardian compliance rule and keep all related artifacts consistent."
