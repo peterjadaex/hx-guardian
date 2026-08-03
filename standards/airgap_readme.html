@@ -399,8 +399,8 @@
       </blockquote>
 
       <h3>1.2 What you need from the developer</h3>
-      <p>An SD card containing the HX-Guardian install bundle (produced by <code>prepare_sd_card.sh</code>):</p>
-<pre><code>/Volumes/&lt;SD_CARD&gt;/hxg-install/
+      <p>An SD card containing <code>hxg-install.zip</code> (produced by <code>prepare_sd_card.sh</code>). After extraction, it contains:</p>
+<pre><code>~/hxg-install/
 ├── app/
 │   ├── dist/
 │   │   ├── hxg-server/          ← pre-compiled web server binary (PyInstaller onedir)
@@ -440,8 +440,9 @@
 <pre><code>System Settings → [Apple ID] → Sign Out</code></pre>
       <p>Disable iCloud Drive, Find My Mac, and all iCloud sync <strong>before</strong> continuing.</p>
 
-      <h3>2.2 Copy the bundle from SD card to local disk</h3>
-<pre><code>cp -R /Volumes/&lt;SD_CARD_NAME&gt;/hxg-install ~/hxg-install</code></pre>
+      <h3>2.2 Extract the bundle from SD card to local disk</h3>
+<pre><code>ditto -x -k /Volumes/&lt;SD_CARD_NAME&gt;/hxg-install.zip ~/</code></pre>
+      <p>This creates <code>~/hxg-install/</code>. Keep the ZIP on the SD card as the offline recovery copy.</p>
     </section>
 
     <section id="s3">
@@ -475,7 +476,7 @@
           <tr><td>3</td><td>Creates <code>/var/run/hxg/</code> (Unix socket directory) and log files in <code>/Library/Logs/</code></td></tr>
           <tr><td>4</td><td>Installs four <strong>LaunchDaemons</strong> — runner (root), server (admin user), USB watcher (root), shell watcher (root)</td></tr>
           <tr><td>4b</td><td>Writes the hxguardian block into <code>/etc/zshrc</code> (enables <code>INC_APPEND_HISTORY</code> + <code>EXTENDED_HISTORY</code> so the shell watcher captures commands in real time)</td></tr>
-          <tr><td>5</td><td>Enforces password policy locally via <code>pwpolicy</code> (min 15 chars, complexity, lockout). All existing non-system local accounts are flagged to change password on next login.</td></tr>
+          <tr><td>5</td><td>Enforces password policy locally via <code>pwpolicy</code> (min 15 chars, complexity, 10-attempt site lockout threshold). It does not mark existing or future accounts for a forced password change.</td></tr>
           <tr><td>6</td><td>Starts all four services (<code>start.sh</code>) and pings <code>/api/health</code></td></tr>
           <tr><td>7</td><td>Opens the unified MDM profile in System Settings for user approval — complete §5 when prompted</td></tr>
         </tbody>
@@ -485,10 +486,10 @@
       <p>Two layers enforce password policy on the airgap device:</p>
       <ol>
         <li><strong>Profile layer (minimal floor).</strong> The unified MDM profile ships a small <code>com.apple.mobiledevice.passwordpolicy</code> payload — <code>requireAlphanumeric=true</code>, <code>minComplexChars=1</code>. This gives the OS a baseline passcode check the moment the profile lands.</li>
-        <li><strong>Local layer (full enforcement).</strong> <code>install.sh</code> writes a site-wide <code>pwpolicy</code> covering every local account — min 15 chars, upper+lower+digit+special, 5-failures lockout. This is where the real enforcement lives.</li>
+        <li><strong>Local layer (supported enforcement subset).</strong> <code>install.sh</code> writes a site-wide <code>pwpolicy</code> covering every local account — min 15 chars, upper+lower+digit+special, and a 10-failure site lockout threshold. This exceeds the stricter baseline threshold, so <code>pwpolicy_account_lockout_enforce</code> is recorded as a permanent exemption.</li>
       </ol>
-      <p><strong>Your own admin password is not force-changed by the installer.</strong> The script explicitly skips the currently logged-in installer user so the airgap device does not lock you out on first logout. The password you used to run <code>sudo zsh app/install.sh</code> keeps working.</p>
-      <p><strong>But you still need to meet the policy on any voluntary change.</strong> Compliance scans (<code>pwpolicy_*</code>) PASS because they check that the policy is present, not each account's password hash.</p>
+      <p><strong>Your own admin password is not force-changed by the installer.</strong> The installer applies password constraints but does not mark any account for a first-login password reset. The password you used to run <code>sudo zsh app/install.sh</code> keeps working.</p>
+      <p><strong>But you still need to meet the policy on any voluntary change.</strong> Minimum-length, alphanumeric, and special-character controls report <strong>PASS</strong>. The 10-attempt site lockout appears as <strong>EXEMPT</strong>, not PASS, because it exceeds the stricter baseline threshold.</p>
       <p><strong>Strongly recommended:</strong> change your admin password voluntarily <strong>now</strong>, before airgapping:</p>
 <pre><code>passwd</code></pre>
       <p>That confirms the policy is active (the system will reject a non-compliant new password) and prevents being surprised later with an offline device.</p>
@@ -561,7 +562,7 @@
           <tr><td>FileVault 2</td><td>Pre-requires FileVault (operator still enables via System Settings — §7)</td></tr>
           <tr><td>Firewall</td><td>Enables application firewall + stealth mode</td></tr>
           <tr><td>iCloud</td><td>Blocks Drive, Keychain, Photos, Mail, Calendar, Notes, Reminders, Bookmarks, Private Relay, and hides the Apple ID pane</td></tr>
-          <tr><td>Login window</td><td>Hides user list, disables guest, shows username+password prompt</td></tr>
+          <tr><td>Login window</td><td>Hides user list, disables guest, shows username+password prompt, and displays a static warning that the account locks after 10 failed password attempts</td></tr>
           <tr><td>Screen lock</td><td>Idle timeout + password-required</td></tr>
           <tr><td>Software updates</td><td>Enforces automatic checks</td></tr>
           <tr><td>Gatekeeper</td><td>Identified developers only, right-click override disallowed</td></tr>
@@ -572,7 +573,7 @@
           <tr><td>Password policy (minimal floor)</td><td><code>requireAlphanumeric=true</code>, <code>minComplexChars=1</code> — baseline only</td></tr>
         </tbody>
       </table>
-      <p>The profile's password payload is a <strong>minimal floor only</strong>. The full policy (length, history, lockout) is layered on locally by <code>install.sh</code> using <code>pwpolicy</code>. See §3.3.</p>
+      <p>The profile's password payload is a <strong>minimal floor only</strong>. The supported local subset (length, complexity, and the 10-attempt site lockout threshold) is layered on by <code>install.sh</code> using <code>pwpolicy</code>. The stricter baseline lockout rule is permanently exempted. See §3.3.</p>
 
       <h3>5.3 Verify the profile is installed</h3>
       <p>From the dashboard: <strong>MDM Profiles</strong> page — <code>com.hxguardian.unified</code> shows a green installed check. Or from the terminal:</p>
@@ -673,18 +674,19 @@ sudo zsh standards/scripts/scan/os_filevault_autologin_disable.sh</code></pre>
       <ol>
         <li><strong>System Settings → Users &amp; Groups → Add Account…</strong> (admin password required).</li>
         <li><strong>New User</strong> → <strong>Standard</strong>.</li>
-        <li>Enter a full name (e.g. "Operator"), account name (e.g. <code>operator</code>), and a strong password.</li>
+        <li>Enter a full name (e.g. "Operator"), account name (e.g. <code>operator</code>), and the final operator password. It must have at least 15 characters and include uppercase, lowercase, numeric, and special characters.</li>
         <li>Click <strong>Create User</strong>.</li>
       </ol>
       <blockquote>
-        <p><code>install.sh</code> enforces the compliant password policy via <code>pwpolicy</code> automatically — the new account inherits it.</p>
+        <p><code>install.sh</code> applies the site password policy through <code>pwpolicy</code>. It does not force this new account to change its password at first login.</p>
       </blockquote>
 
-      <h3>8.2 First login and password change</h3>
+      <h3>8.2 First login verification</h3>
       <ol>
         <li>Log out of the admin account.</li>
-        <li>Log in as <code>operator</code> with the temporary password.</li>
-        <li>macOS will <strong>force a password change</strong> — set a password that satisfies the policy (min 15 chars, mixed case, digit, special character).</li>
+        <li>Log in as <code>operator</code> with the final password created in §8.1.</li>
+        <li>Confirm the login succeeds and the login window displays the static 10-attempt lockout warning.</li>
+        <li>If login fails, do not keep retrying. Return to the admin account and reset the operator password through <strong>System Settings → Users &amp; Groups</strong>.</li>
         <li>Log out and return to the admin account.</li>
       </ol>
 
@@ -880,11 +882,11 @@ sudo zsh ~/hxg-install/app/update.sh</code></pre>
       </blockquote>
 
       <h3>11.2 Unlock a locked-out account</h3>
-      <p>If the password-policy lockout triggers, unlock from an admin shell:</p>
+      <p>There is no automatic lockout-recovery timeout. If the ten-attempt password-policy lockout triggers, unlock from an admin shell:</p>
+      <p>The login window warns users about the 10-attempt threshold, but macOS does not display or expose a live remaining-attempt count.</p>
 <pre><code>sudo pwpolicy -u operator -clearaccountpolicies</code></pre>
-      <p>Then re-apply the site-wide policy so the account remains compliant by re-running <code>install.sh</code> from the SD-card bundle (or <code>~/hxg-install/</code> if you kept it):</p>
-<pre><code>sudo zsh ~/hxg-install/app/install.sh
-# or, if you removed it: re-mount the SD card and run from there</code></pre>
+      <p>Then re-apply the site-wide policy so the account remains compliant by re-running <code>install.sh</code> from <code>~/hxg-install/</code>. If it was removed, extract <code>hxg-install.zip</code> from the SD card again using §2.2.</p>
+<pre><code>sudo zsh ~/hxg-install/app/install.sh</code></pre>
       <p>(The installer is idempotent — it re-runs the pwpolicy step without disturbing existing services or data. <code>install.sh</code> is intentionally not deployed under <code>/Library/Application Support/hxguardian/</code> because it depends on the bundled <code>dist/</code> tree; only <code>start.sh</code>, <code>stop.sh</code>, <code>restart.sh</code>, and <code>rules_setup.sh</code> live there post-install.)</p>
 
       <h3>11.3 Re-enroll a Touch ID fingerprint</h3>
@@ -908,7 +910,7 @@ sudo launchctl kickstart -k system/com.hxguardian.server</code></pre>
 
       <h3>11.5 Reinstall HX-Guardian from SD card</h3>
       <p>Bring the original SD card (or a fresh one from the developer) and run:</p>
-<pre><code>cp -R /Volumes/&lt;SD_CARD_NAME&gt;/hxg-install ~/hxg-install
+<pre><code>ditto -x -k /Volumes/&lt;SD_CARD_NAME&gt;/hxg-install.zip ~/
 sudo zsh ~/hxg-install/app/install.sh
 zsh ~/hxg-install/app/rules_setup.sh</code></pre>
       <p>The installer is idempotent — it upgrades binaries and standards in place and preserves <code>/Library/Application Support/hxguardian/data/</code> (DB + reports). Re-running <code>rules_setup.sh</code> after reinstall is also safe — exemptions are updated rather than duplicated.</p>

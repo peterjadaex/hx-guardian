@@ -16,7 +16,7 @@ fi
 mkdir -p "/Library/Managed Preferences"
 /usr/bin/defaults write "/Library/Managed Preferences/com.apple.loginwindow" \
     LoginwindowText \
-    "This system is for authorized use only. All activity is monitored and recorded. Unauthorized access is prohibited and subject to prosecution."
+    "This system is for authorized use only. All activity is monitored and recorded. Unauthorized access is prohibited and subject to prosecution. Account locks after 10 failed password attempts; contact an administrator if locked."
 
 if [[ $? -eq 0 ]]; then
     printf '{"rule":"system_settings_loginwindow_loginwindowtext_enable","action":"EXECUTED","message":"Fix applied"}\n'

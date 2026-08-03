@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from core.database import init_db
 from core.scheduler import start_scheduler, stop_scheduler
+from core.two_factor import initialize_key
 
 from routers import (
     rules,
@@ -90,6 +91,10 @@ async def _startup_background():
 async def lifespan(app: FastAPI):
     global _ready, _startup_started_at
     logger.info("Starting HX-Guardian dashboard...")
+    # Create and validate the per-installation encryption key before accepting
+    # requests. Startup fails closed if the path is unsafe or an existing key is
+    # malformed; silently replacing it would make enrolled 2FA data unreadable.
+    initialize_key()
     _ready = asyncio.get_running_loop().create_future()
     _startup_started_at = time.monotonic()
     task = asyncio.create_task(_startup_background())

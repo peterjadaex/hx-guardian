@@ -344,17 +344,56 @@ def notify_user(device_name: str) -> None:
         log.warning("Could not send notification: %s", exc)
 
 
-def log_to_audit(dev: dict, ejected: list[str]) -> None:
+def _volume_snapshots(bsd_names: list[str]) -> list[dict]:
+    """Capture volume identity while it is still attached.
+
+    The volume is no longer discoverable through diskutil after ejection, so
+    retain the UUID needed for a later, narrowly scoped whitelist entry.
+    """
+    snapshots = []
+    for bsd in bsd_names:
+        info = {}
+        try:
+            result = subprocess.run(
+                ["diskutil", "info", "-plist", f"/dev/{bsd}"],
+                capture_output=True, timeout=5,
+            )
+            info = plistlib.loads(result.stdout)
+        except Exception:
+            pass
+        snapshots.append({
+            "vol_name": info.get("VolumeName", ""),
+            "bsd_name": bsd,
+            "mount_point": info.get("MountPoint", ""),
+            "file_system": info.get("FilesystemType", ""),
+            "size": info.get("TotalSize", ""),
+            "volume_uuid": info.get("VolumeUUID", "") or get_volume_uuid(bsd),
+        })
+    return snapshots
+
+
+def log_to_audit(
+    dev: dict,
+    ejected: list[str],
+    volume_snapshots: list[dict] | None = None,
+) -> None:
     """Write a USB_UNAUTHORIZED_DEVICE record to the audit_log table."""
     if not DB_PATH.exists():
         return
     try:
+        ejected_disks = {re.sub(r"s\d+$", "", bsd) for bsd in ejected}
+        ejected_volume_details = [
+            snapshot
+            for snapshot in (volume_snapshots or [])
+            if re.sub(r"s\d+$", "", snapshot["bsd_name"]) in ejected_disks
+        ]
         detail = json.dumps({
             "name": dev.get("name"),
             "vendor": dev.get("vendor"),
             "product_id": dev.get("product_id"),
             "serial": dev.get("serial"),
             "ejected_volumes": ejected,
+            "ejected_volume_details": ejected_volume_details,
         })
         con = sqlite3.connect(str(DB_PATH))
         con.execute(
@@ -398,8 +437,9 @@ def handle_unauthorized(dev: dict, whitelist: list[dict]) -> None:
         name, dev.get("vendor"), dev.get("product_id"), dev.get("serial"),
     )
     bsds_to_eject = _filter_unauthorized_bsds(dev, whitelist)
+    volume_snapshots = _volume_snapshots(bsds_to_eject)
     ejected = eject_storage(bsds_to_eject)
-    log_to_audit(dev, ejected)
+    log_to_audit(dev, ejected, volume_snapshots)
     notify_user(name)
 
 
@@ -441,9 +481,10 @@ def main() -> None:
                 # UUID checks — eject any that aren't explicitly whitelisted.
                 bsds_to_eject = _filter_unauthorized_bsds(dev, whitelist)
                 if bsds_to_eject:
+                    volume_snapshots = _volume_snapshots(bsds_to_eject)
                     ejected = eject_storage(bsds_to_eject)
                     if ejected:
-                        log_to_audit(dev, ejected)
+                        log_to_audit(dev, ejected, volume_snapshots)
                         notify_user(dev.get("name", "Unknown Device"))
                 ejected_bsds.update(dev.get("bsd_names", []))
             elif k not in alerted_keys:
@@ -469,10 +510,11 @@ def main() -> None:
                         "Unauthorized volume reinserted on %s: %s",
                         dev.get("name"), unauthorized_bsds,
                     )
+                    volume_snapshots = _volume_snapshots(unauthorized_bsds)
                     ejected = eject_storage(unauthorized_bsds)
                     ejected_bsds.update(ejected)
                     if ejected:
-                        log_to_audit(dev, ejected)
+                        log_to_audit(dev, ejected, volume_snapshots)
                         notify_user(dev.get("name", "Unknown Device"))
                 ejected_bsds.update(new_bsds)  # mark all new bsds seen regardless
 

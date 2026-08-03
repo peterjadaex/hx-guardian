@@ -10,6 +10,7 @@ import hmac as _hmac
 import logging
 import os
 import secrets
+import stat
 import struct
 import sys
 import time
@@ -32,20 +33,51 @@ def _key_path() -> Path:
     return base / "hxg.key"
 
 
-def _load_or_create_key() -> bytes:
+def initialize_key() -> bytes:
+    """Ensure the per-installation encryption key exists and return it.
+
+    Creation is exclusive so concurrent startup or setup requests cannot replace
+    one another's key. Existing keys are never regenerated: losing this key would
+    make an enrolled TOTP secret unreadable.
+    """
     path = _key_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        raw = path.read_bytes()
-        if len(raw) == 32:
-            return raw
-        logger.warning("hxg.key has unexpected length %d, regenerating", len(raw))
-    raw = os.urandom(32)
-    path.write_bytes(raw)
+
     try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        metadata = None
+
+    if metadata is not None:
+        if not stat.S_ISREG(metadata.st_mode):
+            raise RuntimeError(f"Encryption key path is not a regular file: {path}")
+        raw = path.read_bytes()
+        if len(raw) != 32:
+            raise RuntimeError(
+                f"Encryption key has unexpected length {len(raw)}; expected 32 bytes"
+            )
         os.chmod(path, 0o600)
-    except OSError as e:
-        logger.warning("Could not chmod hxg.key: %s", e)
+        return raw
+
+    raw = os.urandom(32)
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        # Another startup worker won the exclusive-create race.
+        return initialize_key()
+
+    try:
+        with os.fdopen(fd, "wb") as key_file:
+            key_file.write(raw)
+            key_file.flush()
+            os.fsync(key_file.fileno())
+    except Exception:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+        raise
+
     logger.info("Created new encryption key at %s", path)
     return raw
 
@@ -76,7 +108,7 @@ def _xor_ctr(data: bytes, key: bytes, iv: bytes) -> bytes:
 def encrypt_secret(plain: str) -> str:
     """Encrypt a TOTP secret string; returns a base64-encoded token."""
     Fernet = _try_fernet()
-    raw_key = _load_or_create_key()
+    raw_key = initialize_key()
     if Fernet:
         import base64 as _b64
         fernet_key = _b64.urlsafe_b64encode(raw_key)
@@ -89,7 +121,7 @@ def encrypt_secret(plain: str) -> str:
 def decrypt_secret(token: str) -> str:
     """Decrypt a token produced by encrypt_secret."""
     Fernet = _try_fernet()
-    raw_key = _load_or_create_key()
+    raw_key = initialize_key()
     if Fernet:
         import base64 as _b64
         fernet_key = _b64.urlsafe_b64encode(raw_key)

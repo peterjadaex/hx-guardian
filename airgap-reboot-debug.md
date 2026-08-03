@@ -1,18 +1,19 @@
 # Airgap dashboard — "localhost:8000 not loadable after restart"
 
-Debug summary, 2026-04-25. Captures the full investigation, what is now fixed in the working tree, and what is still open.
+Debug summary, 2026-04-25, **updated 2026-07-31** with round 2 (§11): a second, unrelated reboot bug — pf firewall blocking loopback — diagnosed, fixed on the device, and fixed at the source.
 
 ---
 
 ## TL;DR
 
-The original report ("localhost:8000 dies after every reboot") turned out to be **three separate problems stacked on top of each other**, not one. We fully diagnosed and fixed two; the third still needs one more diagnostic run on the airgap to pinpoint, but we already know the right shape of the fix.
+The original report ("localhost:8000 dies after every reboot") turned out to be **four separate problems** surfaced across two debugging rounds, not one.
 
 | # | Problem | Status |
 |---|---------|--------|
-| 1 | `pgrep` reports every `hxg-*` daemon **doubled** after reboot | **Fixed in working tree.** Wrapper scripts now `exec` the binary. |
-| 2 | `install.sh` cleanup only knew the four hardcoded labels and `/Library/LaunchDaemons/` — couldn't drain stray `LaunchAgents` or older labels | **Fixed in working tree.** Cleanup is now label-wildcard and covers Agents + user home. |
-| 3 | After reboot, the server is **alive and bound on :8000** but the entire uvicorn event loop is wedged — *every* request (including the React SPA itself) hangs forever | **Diagnosed but root cause not yet pinpointed.** Real fix candidates known. Needs a 3-line `sample` capture from the airgap to confirm which frame is stuck. |
+| 1 | `pgrep` reports every `hxg-*` daemon **doubled** after reboot | **Fixed & shipped.** Wrapper scripts now `exec` the binary. |
+| 2 | `install.sh` cleanup only knew the four hardcoded labels and `/Library/LaunchDaemons/` — couldn't drain stray `LaunchAgents` or older labels | **Fixed & shipped.** Cleanup is now label-wildcard and covers Agents + user home. |
+| 3 | After reboot, the server is **alive and bound on :8000** but the entire uvicorn event loop is wedged — *every* request (including the React SPA itself) hangs forever | **Resolved.** The §7 hardening (non-blocking `/api/health`, separate `/api/runner/status`, socket-activated runner, bounded connect retries) shipped; the wedge signature has not recurred on the new build. The `sample` capture became moot. |
+| 4 | *(Round 2, July 2026)* After reboot, TCP connects to `127.0.0.1:8000` **time out at the handshake** — server healthy, packets never arrive. Caused by HX-Guardian's own `os_firewall_default_deny_require` pf rule filtering loopback | **Root-caused & fixed** (§11). `set skip on lo0` in `/etc/pf.conf`; fix/scan/undo scripts updated so installs produce and audit the correct state. |
 
 ---
 
@@ -214,6 +215,8 @@ Either resolves the boot race cleanly without touching the privilege boundary. T
 
 ## 8. Open items / next steps
 
+> **Status 2026-07-31:** items below are closed — the §7 fixes shipped and the wedge signature has not recurred, so the `sample` capture was never needed. Kept for historical context. For the July reboot bug, see §11.
+
 1. **Get the sample output from the airgap** to lock down Root cause C:
    ```
    sudo /usr/bin/sample 2929 5 -file /tmp/s.txt 2>&1 >/dev/null
@@ -318,3 +321,88 @@ If launchd socket activation misbehaves on this device (e.g. the runner never sp
    ```
 
 The runner's `run_server()` automatically falls back to manual bind/listen if `launch_activate_socket` is unavailable or returns no fds, so no code change is needed — just the plist edit. Logs at `/Library/Logs/hxguardian-runner.log` will show `"listening on … (dev mode)"` instead of `"inherited socket from launchd"`, confirming the fallback path.
+
+---
+
+## 11. Round 2 (2026-07-31) — pf firewall blocks loopback after reboot
+
+A new "dashboard dead after reboot" report, months after the §7 fixes shipped. Same headline symptom, **completely different bug** — and the giveaway was in the curl error text.
+
+### 11.1 How this differs from Root cause C
+
+| | Root cause C (April) | Round 2 (July) |
+|---|---|---|
+| curl error | `Operation timed out ... 0 bytes received` — TCP connected, app hung | `Connection timed out` — TCP **handshake never completes** |
+| Manual service restart | Always recovered | Does **not** recover (fresh PID, same timeout) |
+| First appears | After reboot | After reboot |
+| Conclusion | Wedged uvicorn event loop (process state) | Packets dropped before reaching a healthy listener (**system state**) |
+
+Rule of thumb for future triage: *"Connection timed out" = network path (firewall); "Operation timed out with 0 bytes received" = application path (wedged server).*
+
+### 11.2 Root cause
+
+HX-Guardian's own hardening rule `os_firewall_default_deny_require` writes a pf anchor with `block drop in all`. Two compounding problems:
+
+1. **Dormant until reboot.** The fix script ran `pfctl -f /etc/pf.conf` (load rules) but never `pfctl -e` (enable pf). With pf disabled at install time, the block rule sat inert — dashboard worked, rule scanned PASS. At boot, `com.apple.pfctl` reloads `/etc/pf.conf` and pf gets enabled (firewall/stealth payload in the unified profile), so the default-deny went live *for the first time* only after a restart. Hence "works when first installed, dies after reboot."
+2. **The anchor's loopback pass rule doesn't actually protect loopback.** The anchor contained `pass in quick on lo0 all flags S/SA keep state` — verified loaded via `pfctl -a hxguardian -sr` — yet loopback TCP still died. That form relies on pf's stateful tracking, which misbehaves on macOS `lo0` (loopback checksum offload); packets get silently dropped despite the pass rule.
+
+Diagnosis was confirmed on the device: `sudo pfctl -d` → dashboard instantly reachable; `pfctl -e` → dead again, even with the pass rule loaded.
+
+### 11.3 The fix — `set skip on lo0`
+
+The canonical pf loopback exemption: exclude the `lo0` interface from pf processing entirely, before any rule (ours or Apple's) is evaluated. Applied on the device:
+
+```
+sudo sed -i '' '1i\
+# HX-Guardian: exempt loopback so localhost services keep working\
+set skip on lo0
+' /etc/pf.conf
+sudo pfctl -f /etc/pf.conf
+sudo pfctl -e
+```
+
+Verified: `pfctl -sI -v` shows `lo0 (skip)`, `/api/health` responds with pf **enabled**, and it survives a reboot (`/etc/pf.conf` is what macOS reloads at boot). `block drop in all` still applies to real interfaces, so the airgap inbound-deny posture is unchanged — the exemption only covers the machine talking to itself. pf.conf grammar requires options before any rule, which is why the line goes at the *top* of the file.
+
+### 11.4 Fixed at the source (repo, 2026-07-31)
+
+All three scripts for the rule updated so installs produce — and audits verify — the working state:
+
+- **[fix](standards/scripts/fix/os_firewall_default_deny_require.sh)** — after writing the anchor, idempotently inserts `set skip on lo0` (with marker comment) at the top of `/etc/pf.conf` before reloading.
+- **[scan](standards/scripts/scan/os_firewall_default_deny_require.sh)** — now PASSes only when *both* `block drop in all` is loaded *and* `pfctl -sI -v` shows `lo0 (skip)`. The broken state previously scanned as compliant; now it scans FAIL, so the dashboard surfaces affected devices and its Fix button remediates them.
+- **[undo](standards/scripts/undo_fix/os_firewall_default_deny_require.sh)** — also removes the skip line + comment, restoring `/etc/pf.conf` exactly.
+
+Devices get these via the normal pipeline: `zsh app/prepare_sd_card.sh` → SD card → `sudo zsh app/install.sh`.
+
+### 11.5 Fleet remediation runbook (per device, no SD card needed)
+
+Triage:
+```
+grep -c '^set skip on lo0' /etc/pf.conf ; sudo pfctl -si | head -1
+```
+`0` + `Enabled` = affected now; `0` + `Disabled` = one reboot away from affected. Either way, apply the idempotent fix (identical to what the updated fix script does, so hand-fixed devices match script-fixed ones):
+```
+if ! grep -q '^set skip on lo0' /etc/pf.conf; then
+sudo sed -i '' '1i\
+# HX-Guardian: exempt loopback so localhost services keep working\
+set skip on lo0
+' /etc/pf.conf
+fi
+sudo pfctl -f /etc/pf.conf
+sudo pfctl -e
+```
+Verify:
+```
+sudo pfctl -sI -v | grep lo0        # must show: lo0 (skip)
+curl -sS --max-time 5 http://127.0.0.1:8000/api/health
+```
+On a currently-broken device the dashboard comes back the moment `pfctl -f` runs — no service restart needed. Note the ordering constraint: a dead dashboard can't be fixed via its own Fix button, so this terminal step comes first; the redeployed scan then keeps the fleet honest afterward.
+
+### 11.6 Extra diagnostic commands (round-2 additions to §9)
+
+```
+sudo pfctl -si | head -2                 # pf enabled?
+sudo pfctl -sr                           # main ruleset
+sudo pfctl -a hxguardian -sr             # anchor as actually loaded (file ≠ memory until pfctl -f)
+sudo pfctl -sI -v | grep -B1 skip        # per-interface skip flags
+sudo pfctl -d  /  sudo pfctl -e          # 30-second firewall-vs-app discriminator (re-enable immediately)
+```

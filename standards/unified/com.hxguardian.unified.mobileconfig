@@ -108,7 +108,8 @@
 
 		<!-- 2. PASSWORD POLICY — scoped to alphanumeric + 1 special character only.
 		          install.sh locally enforces length 15, upper/lower/digit/special,
-		          and a 5-attempt lockout threshold. History, lifetime, inactivity,
+		          and a 10-attempt site lockout threshold. The stricter baseline
+		          lockout rule is recorded as a permanent exemption. History, lifetime, inactivity,
 		          custom-regex, sequence, and automatic lockout-timeout rules are
 		          permanently exempted for macOS Tahoe local-auth safety. -->
 		<dict>
@@ -176,14 +177,14 @@
 			<true/>
 			<key>RetriesUntilHint</key>
 			<integer>0</integer>
-			<key>SHOWFULLNAME</key>
-			<true/>
 			<key>com.apple.login.mcx.DisableAutoLoginClient</key>
 			<true/>
 			<key>LoginwindowText</key>
-			<string>This system is for authorized use only. All activity is monitored and recorded. Unauthorized access is prohibited and subject to prosecution.</string>
-			<key>screenUnlockMode</key>
-			<integer>1</integer>
+			<string>This system is for authorized use only. All activity is monitored and recorded. Unauthorized access is prohibited and subject to prosecution. Account locks after 10 failed password attempts; contact an administrator if locked.</string>
+			<!-- SHOWFULLNAME and screenUnlockMode intentionally omitted: name-and-password
+			     mode disables Touch ID fast user switching, which site policy permits.
+			     Rule system_settings_loginwindow_prompt_username_password_enforce is
+			     exempted in app/rules_setup.sh. -->
 		</dict>
 
 		<!-- 6. MCX (Guest Account, FileVault, Internet Sharing, Time) -->

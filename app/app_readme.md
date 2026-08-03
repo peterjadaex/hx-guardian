@@ -214,57 +214,54 @@ source .venv/bin/activate        # PyInstaller runs from the venv
 zsh app/prepare_sd_card.sh
 ```
 
-The script runs [app/build.sh](build.sh) first (PyInstaller → ad-hoc codesign) then
-assembles a minimal `transfer/` directory at the repo root:
+The script runs [app/build.sh](build.sh) first (PyInstaller → ad-hoc codesign),
+assembles and verifies the bundle in a temporary staging directory, then writes
+`hxg-install.zip` at the repo root. The archive contains one top-level
+`hxg-install/` directory:
 
 | Path | Contents |
 |---|---|
-| `transfer/app/dist/hxg-server/` | FastAPI web server binary (onedir) |
-| `transfer/app/dist/hxg-runner/` | Privileged script runner binary (onedir) |
-| `transfer/app/dist/hxg-usb-watcher/` | USB enforcement daemon binary (onedir) |
-| `transfer/app/install.sh` + `start/stop/restart/update.sh` | Management scripts |
-| `transfer/app/rules_setup.sh` | Post-install bulk fix + exemption script |
-| `transfer/app/launchd/com.hxguardian.runner.plist` | LaunchDaemon plist for the runner |
-| `transfer/standards/launchd/com.hxguardian.usbwatcher.plist` | LaunchDaemon plist for the USB watcher |
-| `transfer/standards/scripts/` | manifest.json, scan/, fix/ |
-| `transfer/standards/<baseline>/mobileconfigs/unsigned/` | MDM profiles per baseline |
-| `transfer/standards/unified/` | Merged unified MDM profile |
-| `transfer/app/vendor/bin/xmllint` | Standalone xmllint binary (~200 KB, universal) — copied from dev Mac's `/usr/bin/xmllint`. `install.sh` deploys it and sed-patches the scan scripts that need it, so airgap devices don't need Xcode CLT. |
+| `hxg-install/app/dist/hxg-server/` | FastAPI web server binary (onedir) |
+| `hxg-install/app/dist/hxg-runner/` | Privileged script runner binary (onedir) |
+| `hxg-install/app/dist/hxg-usb-watcher/` | USB enforcement daemon binary (onedir) |
+| `hxg-install/app/install.sh` + `start/stop/restart/update.sh` | Management scripts |
+| `hxg-install/app/rules_setup.sh` | Post-install bulk fix + exemption script |
+| `hxg-install/app/launchd/com.hxguardian.runner.plist` | LaunchDaemon plist for the runner |
+| `hxg-install/standards/launchd/com.hxguardian.usbwatcher.plist` | LaunchDaemon plist for the USB watcher |
+| `hxg-install/standards/scripts/` | manifest.json, scan/, fix/ |
+| `hxg-install/standards/<baseline>/mobileconfigs/unsigned/` | MDM profiles per baseline |
+| `hxg-install/standards/unified/` | Merged unified MDM profile |
+| `hxg-install/app/vendor/clt/` | Staged Xcode Command Line Tools `.dmg` or `.pkg` installer, when available |
 
 It prints a checklist at the end confirming every artifact is present.
 
 ### 4.2 Verify the bundle is complete before copying
 
 ```bash
-# Compiled binaries
-ls transfer/app/dist/hxg-server/hxg-server
-ls transfer/app/dist/hxg-runner/hxg-runner
-ls transfer/app/dist/hxg-usb-watcher/hxg-usb-watcher
+# Verify ZIP integrity and inspect key entries
+unzip -tq hxg-install.zip
+unzip -l hxg-install.zip | grep 'hxg-install/app/dist/hxg-server/hxg-server'
+unzip -l hxg-install.zip | grep 'hxg-install/app/install.sh'
+unzip -l hxg-install.zip | grep 'hxg-install/standards/scripts/manifest.json'
+unzip -l hxg-install.zip | grep 'hxg-install/standards/unified/com.hxguardian.unified.mobileconfig'
 
-# Installer + manifest
-ls transfer/app/install.sh
-ls transfer/standards/scripts/manifest.json
-
-# Unified MDM profile
-ls transfer/standards/unified/com.hxguardian.unified.mobileconfig
-
-# Bundle size (for sizing the SD card)
-du -sh transfer/
+# Archive size (for sizing the SD card)
+du -sh hxg-install.zip
 ```
 
 ### 4.3 Copy to SD card
 
-Copy **only** the `transfer/` directory — not the whole repo.
+Copy **only** the generated ZIP archive — not the whole repo.
 
 ```bash
-cp -R transfer/ /Volumes/<SD_CARD_NAME>/hxg-install
+cp hxg-install.zip /Volumes/<SD_CARD_NAME>/
 ```
 
 The SD card is now ready to hand off to the airgap device admin. Nothing else
 needs to be downloaded on the target.
 
 **Operator-side install order (brief):**
-1. `cp -R /Volumes/<SD_CARD>/hxg-install ~/hxg-install`
+1. `ditto -x -k /Volumes/<SD_CARD>/hxg-install.zip ~/`
 2. `sudo zsh ~/hxg-install/app/install.sh`
 3. Install `standards/unified/com.hxguardian.unified.mobileconfig` via System Settings
 4. `zsh ~/hxg-install/app/rules_setup.sh` — applies all fixes + exemptions, triggers rescan
@@ -283,8 +280,9 @@ Before handing a build to operators, run through these:
 - [ ] `curl -s http://127.0.0.1:8000/api/health` returns `runner_connected: true`.
 - [ ] `npm run build` in `app/frontend/` completes without errors (if frontend changed).
 - [ ] [app/frontend/dist/index.html](frontend/dist/index.html) is up to date and committed.
-- [ ] Dev Mac has Xcode CLT installed (`/usr/bin/xmllint --version` works) — `prepare_sd_card.sh` copies this binary into the bundle so the airgap device doesn't need CLT.
+- [ ] A matching Xcode CLT installer is staged under `app/vendor/clt/` when the target does not already have CLT.
 - [ ] `zsh app/prepare_sd_card.sh` completes and the final checklist is all green.
+- [ ] `unzip -tq hxg-install.zip` succeeds.
 - [ ] The LaunchDaemon/LaunchAgent plists in [app/launchd/](launchd/) reference the
       path where the binaries will live on the target device. Update paths if they differ.
 

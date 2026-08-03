@@ -43,6 +43,26 @@ type UsbVolume = {
   whitelisted: boolean
 }
 
+type UsbSecurityEvent = {
+  ts?: string
+  target?: string
+  detail?: {
+    name?: string
+    vendor?: string
+    product_id?: string
+    serial?: string
+    ejected_volumes?: string[]
+    ejected_volume_details?: Array<{
+      vol_name?: string
+      bsd_name: string
+      mount_point?: string
+      file_system?: string
+      size?: string | number
+      volume_uuid: string
+    }>
+  }
+}
+
 const emptyForm = { name: '', vendor: '', product_id: '', serial: '', volume_uuid: '', notes: '' }
 
 // ─── Inline OTP prompt ───────────────────────────────────────────────────────
@@ -134,7 +154,7 @@ export function Connections() {
   const [error, setError] = useState('')
   const [data, setData] = useState<any>(null)
   const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([])
-  const [usbEvents, setUsbEvents] = useState<any[]>([])
+  const [usbEvents, setUsbEvents] = useState<UsbSecurityEvent[]>([])
   const [eventsPage, setEventsPage] = useState(0)
   const [eventsTotal, setEventsTotal] = useState(0)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -239,7 +259,7 @@ export function Connections() {
     setFormError('')
   }
 
-  const prefillFormFromEvent = (e: any) => {
+  const prefillFormFromEvent = (e: UsbSecurityEvent) => {
     setAddForm({
       name:        e.target || e.detail?.name || '',
       vendor:      e.detail?.vendor || '',
@@ -253,7 +273,7 @@ export function Connections() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const isEventWhitelisted = (e: any) => {
+  const isEventWhitelisted = (e: UsbSecurityEvent) => {
     const pid = e.detail?.product_id || ''
     const serial = e.detail?.serial || ''
     return whitelist.some(w => {
@@ -264,6 +284,47 @@ export function Connections() {
       return checks.length > 0 && checks.every(Boolean)
     })
   }
+
+  const latestEjectedVolume = usbEvents
+    .flatMap(event => (event.detail?.ejected_volume_details ?? []).map(volume => ({ event, volume })))
+    .find(({ volume }) => volume.volume_uuid)
+
+  const isLatestEjectedVolumeWhitelisted = latestEjectedVolume
+    ? whitelist.some(entry => {
+        const { event, volume } = latestEjectedVolume
+        const checks = []
+        if (entry.product_id) checks.push(entry.product_id === (event.detail?.product_id || ''))
+        if (entry.serial) checks.push(entry.serial === (event.detail?.serial || ''))
+        if (entry.volume_uuid) checks.push(entry.volume_uuid === volume.volume_uuid)
+        return Boolean(entry.volume_uuid) && checks.length > 0 && checks.every(Boolean)
+      })
+    : false
+
+  const connectedUsbVolumes = (data?.usb_volumes ?? []) as UsbVolume[]
+  const latestVolumeIsConnected = latestEjectedVolume
+    ? connectedUsbVolumes.some(volume => volume.volume_uuid === latestEjectedVolume.volume.volume_uuid)
+    : false
+  const retainedUsbVolume: (UsbVolume & { ejected: true }) | null =
+    latestEjectedVolume && !latestVolumeIsConnected
+      ? {
+          vol_name: latestEjectedVolume.volume.vol_name || latestEjectedVolume.event.target || '',
+          bsd_name: latestEjectedVolume.volume.bsd_name,
+          mount_point: latestEjectedVolume.volume.mount_point || '',
+          file_system: latestEjectedVolume.volume.file_system || '',
+          size: String(latestEjectedVolume.volume.size || ''),
+          volume_uuid: latestEjectedVolume.volume.volume_uuid,
+          parent_name: latestEjectedVolume.event.target || latestEjectedVolume.event.detail?.name || '',
+          parent_vendor: latestEjectedVolume.event.detail?.vendor || '',
+          parent_product_id: latestEjectedVolume.event.detail?.product_id || '',
+          parent_serial: latestEjectedVolume.event.detail?.serial || '',
+          whitelisted: isLatestEjectedVolumeWhitelisted,
+          ejected: true,
+        }
+      : null
+  const displayedUsbVolumes: Array<UsbVolume & { ejected?: boolean }> = [
+    ...connectedUsbVolumes,
+    ...(retainedUsbVolume ? [retainedUsbVolume] : []),
+  ]
 
   const prefillForm = (dev: UsbDevice) => {
     setAddForm({
@@ -396,16 +457,16 @@ export function Connections() {
         {/* USB Volumes */}
         <Card className="p-5">
           <div className="flex items-center gap-2 text-slate-400 text-xs font-medium mb-3">
-            <HardDrive className="w-4 h-4" /> USB VOLUMES ({data?.usb_volumes?.length || 0})
+            <HardDrive className="w-4 h-4" /> USB VOLUMES ({displayedUsbVolumes.length})
           </div>
-          {data?.usb_volumes?.length > 0 ? (
+          {displayedUsbVolumes.length > 0 ? (
             <div className="space-y-2">
-              {data.usb_volumes.map((v: UsbVolume, i: number) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-[#1e2d4a]/50 last:border-0">
+              {displayedUsbVolumes.map((v, i) => (
+                <div key={`${v.volume_uuid || v.bsd_name}-${i}`} className="flex items-center justify-between py-2 border-b border-[#1e2d4a]/50 last:border-0">
                   <div>
                     <div className="text-white text-sm">{v.vol_name || v.bsd_name}</div>
                     <div className="text-slate-500 text-xs">
-                      {v.mount_point}
+                      {v.ejected ? <span className="text-orange-400">Ejected</span> : v.mount_point}
                       {v.file_system && <span className="ml-2 text-slate-600">{v.file_system}</span>}
                       {v.size && <span className="ml-2 text-slate-600">{v.size}</span>}
                     </div>
@@ -610,14 +671,14 @@ export function Connections() {
               )}
             </div>
             <div className="space-y-2">
-              {usbEvents.map((e: any, i: number) => (
+              {usbEvents.map((e: UsbSecurityEvent, i: number) => (
                 <div key={i} className="flex items-start justify-between py-2 border-b border-[#1e2d4a]/50 last:border-0">
                   <div>
                     <div className="text-red-300 text-sm font-medium">{e.target}</div>
                     <div className="text-slate-500 text-xs mt-0.5">
                       {e.detail?.vendor && <span>{e.detail.vendor} · </span>}
                       {e.detail?.product_id && <span className="font-mono">{e.detail.product_id}</span>}
-                      {e.detail?.ejected_volumes?.length > 0 && (
+                      {Boolean(e.detail?.ejected_volumes?.length) && (
                         <span className="ml-2 text-orange-400">Storage ejected</span>
                       )}
                     </div>

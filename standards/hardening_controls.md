@@ -61,16 +61,22 @@ Enforced locally or by the unified profile:
 
 - Minimum length: 15 characters
 - Uppercase, lowercase, numeric, and special-character requirements
-- Lockout threshold: 5 failed attempts
+- Site lockout threshold: 10 failed attempts
 - Password hints removed from accounts
 - Stored passwords encrypted; passwords obscured on entry
+- Login window shows a static 10-attempt lockout warning; macOS does not expose
+  a live remaining-attempt count
 
-The lockout has no automatic recovery timeout. The timeout rule is permanently
-exempted because local-node timeout enforcement is unreliable on macOS Tahoe;
-an administrator performs recovery using the documented operator procedure.
+The lockout has no automatic recovery timeout. The site threshold of 10 is less
+restrictive than the baseline threshold, so
+`pwpolicy_account_lockout_enforce` is a documented permanent exemption. The
+timeout rule is also permanently exempted because local-node timeout
+enforcement is unreliable on macOS Tahoe; an administrator performs recovery
+using the documented operator procedure.
 
-Permanently exempted to avoid local authentication failures on macOS Tahoe:
+Permanent password-policy exemptions:
 
+- Baseline failed-attempt threshold (site policy permits 10 attempts)
 - Account inactivity disable
 - Automatic lockout recovery timeout
 - Site-specific custom regex
@@ -251,14 +257,17 @@ Other:
 - Password-after-screensaver delay = 0 (immediate)
 - Auto-logout after inactivity
 - Apple Watch unlock disabled
-- Touch ID unlock disabled
-- Touch ID settings pane disabled
+- Touch ID baseline disable rules (unlock, settings pane, setup prompt) are
+  permanently exempted — site policy permits Touch ID for operator session
+  switching
 - Smart-token removal is out of scope because smartcard hardware is not deployed
 - Hot Corners disabled / secured
 
 ### 5.3 Login Window
 - Custom policy banner displayed
-- Prompt for username + password (no user list)
+- Username-and-password prompt rule permanently exempted (user list shown) so
+  operators can use Touch ID fast user switching; SHOWFULLNAME and
+  screenUnlockMode are intentionally omitted from the unified profile
 - Automatic login disabled
 - Guest account disabled
 

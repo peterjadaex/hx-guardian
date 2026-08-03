@@ -53,10 +53,11 @@ and for day-to-day operation once the device is disconnected.
 
 ### 1.2 What you need from the developer
 
-An SD card containing the HX-Guardian install bundle (produced by `prepare_sd_card.sh`):
+An SD card containing `hxg-install.zip` (produced by `prepare_sd_card.sh`).
+After extraction, it contains:
 
 ```
-/Volumes/<SD_CARD>/hxg-install/
+~/hxg-install/
 ├── app/
 │   ├── dist/
 │   │   ├── hxg-server/          ← pre-compiled web server binary (PyInstaller onedir)
@@ -111,11 +112,14 @@ System Settings → [Apple ID] → Sign Out
 
 Disable iCloud Drive, Find My Mac, and all iCloud sync **before** continuing.
 
-### 2.2 Copy the bundle from SD card to local disk
+### 2.2 Extract the bundle from SD card to local disk
 
 ```bash
-cp -R /Volumes/<SD_CARD_NAME>/hxg-install ~/hxg-install
+ditto -x -k /Volumes/<SD_CARD_NAME>/hxg-install.zip ~/
 ```
+
+This creates `~/hxg-install/`. Keep the ZIP on the SD card as the offline
+recovery copy.
 
 ---
 
@@ -166,7 +170,7 @@ The installer performs all steps fully offline — no internet required:
 | 3 | Creates `/var/run/hxg/` (Unix socket directory) and log files in `/Library/Logs/` |
 | 4 | Installs four **LaunchDaemons** — runner (root), server (admin user), USB watcher (root), shell watcher (root) |
 | 4b | Writes the hxguardian block into `/etc/zshrc` (enables `INC_APPEND_HISTORY` + `EXTENDED_HISTORY` so the shell watcher captures commands in real time) |
-| 5 | Enforces the supported password-policy subset locally via `pwpolicy` (min 15 chars, complexity, 5-attempt lockout threshold). Eligible non-system local accounts, except the logged-in installer account, are flagged to change password on next login. |
+| 5 | Enforces the supported password-policy subset locally via `pwpolicy` (min 15 chars, complexity, 10-attempt site lockout threshold). It does not mark existing or future accounts for a forced password change. |
 | 6 | Starts all four services (`start.sh`) and pings `/api/health` |
 | 7 | Opens the unified MDM profile in System Settings for user approval — complete §5 when prompted |
 
@@ -180,21 +184,23 @@ Two layers enforce password policy on the airgap device:
    the profile lands.
 2. **Local layer (supported enforcement subset).** `install.sh` writes a
    site-wide `pwpolicy` covering every local account — min 15 chars,
-   upper+lower+digit+special, and a 5-failure lockout threshold. Automatic
-   lockout recovery timeout, password age/history, account inactivity, custom
-   regex, and sequence restrictions are deliberately exempted because
+   upper+lower+digit+special, and a 10-failure site lockout threshold. This
+   exceeds the stricter baseline threshold, so
+   `pwpolicy_account_lockout_enforce` is recorded as a permanent exemption.
+   Automatic lockout recovery, password age/history, account inactivity,
+   custom regex, and sequence restrictions are deliberately exempted because
    local-node enforcement can lock out users on macOS Tahoe.
 
-**Your own admin password is not force-changed by the installer.** The script
-explicitly skips the currently logged-in installer user so the airgap device
-does not lock you out on first logout. The password you used to run
-`sudo zsh app/install.sh` keeps working.
+**Your own admin password is not force-changed by the installer.** The installer
+applies password constraints but does not mark any account for a first-login
+password reset. The password you used to run `sudo zsh app/install.sh` keeps
+working.
 
-**But you still need to meet the policy on any voluntary change.** The four
-supported scripted controls should report **PASS**: minimum length,
-alphanumeric, special character, and five-attempt lockout. The seven
-Tahoe-incompatible controls appear as **EXEMPT**, not PASS. Manual lifecycle
-controls require separate evidence; scans do not inspect password hashes.
+**But you still need to meet the policy on any voluntary change.** Minimum
+length, alphanumeric, and special-character controls should report **PASS**.
+The 10-attempt site lockout and seven Tahoe-incompatible controls appear as
+**EXEMPT**, not PASS. Manual lifecycle controls require separate evidence;
+scans do not inspect password hashes.
 
 **Strongly recommended:** change your admin password voluntarily **now**, before
 airgapping:
@@ -300,7 +306,7 @@ profiles:
 | FileVault 2 | Pre-requires FileVault (operator still enables via System Settings — §7) |
 | Firewall | Enables application firewall + stealth mode |
 | iCloud | Blocks Drive, Keychain, Photos, Mail, Calendar, Notes, Reminders, Bookmarks, Private Relay, and hides the Apple ID pane |
-| Login window | Hides user list, disables guest, shows username+password prompt |
+| Login window | Hides user list, disables guest, shows username+password prompt, and displays a static warning that the account locks after 10 failed password attempts |
 | Screen lock | Idle timeout + password-required |
 | Software updates | Enforces automatic checks |
 | Gatekeeper | Identified developers only, right-click override disallowed |
@@ -311,9 +317,9 @@ profiles:
 | Password policy (minimal floor) | `requireAlphanumeric=true`, `minComplexChars=1` — baseline only |
 
 The profile's password payload is a **minimal floor only**. The supported local
-subset (length, complexity, and five-attempt lockout threshold) is layered on
-by `install.sh` using `pwpolicy`; the Tahoe-incompatible controls remain
-permanently exempted. See §3.3.
+subset (length, complexity, and the 10-attempt site lockout threshold) is
+layered on by `install.sh` using `pwpolicy`. The stricter baseline lockout rule
+and Tahoe-incompatible controls remain permanently exempted. See §3.3.
 
 ### 5.3 Verify the profile is installed
 
@@ -474,20 +480,23 @@ System Settings while logged in as admin:
 
 1. **System Settings → Users & Groups → Add Account…** (admin password required).
 2. **New User** → **Standard**.
-3. Enter a full name (e.g. "Operator"), account name (e.g. `operator`),
-   and a strong password.
+3. Enter a full name (e.g. "Operator"), account name (e.g. `operator`), and
+   the final operator password. It must have at least 15 characters and include
+   uppercase, lowercase, numeric, and special characters.
 4. Click **Create User**.
 
-> `install.sh` enforces the compliant password policy via `pwpolicy`
-> automatically — the new account inherits it.
+> `install.sh` applies the site password policy through `pwpolicy`. It does not
+> force this new account to change its password at first login.
 
-### 8.2 First login and password change
+### 8.2 First login verification
 
 1. Log out of the admin account.
-2. Log in as `operator` with the temporary password.
-3. macOS will **force a password change** — set a password that satisfies the
-   policy (min 15 chars, mixed case, digit, special character).
-4. Log out and return to the admin account.
+2. Log in as `operator` with the final password created in §8.1.
+3. Confirm the login succeeds and the login window displays the static
+   10-attempt lockout warning.
+4. If login fails, do not keep retrying. Return to the admin account and reset
+   the operator password through **System Settings → Users & Groups**.
+5. Log out and return to the admin account.
 
 ### 8.3 Touch ID enrollment — one fingerprint per operator
 
@@ -729,16 +738,19 @@ The admin can reset the operator account password directly from macOS:
 
 ### 11.2 Unlock a locked-out account
 
-There is no automatic lockout-recovery timeout. If the five-attempt lockout
+There is no automatic lockout-recovery timeout. If the ten-attempt lockout
 triggers, an administrator must unlock the account from an admin shell:
+
+The login window warns users about the 10-attempt threshold, but macOS does not
+display or expose a live remaining-attempt count.
 
 ```bash
 sudo pwpolicy -u operator -clearaccountpolicies
 ```
 
 Then re-apply the site-wide policy so the account remains compliant by
-re-running `install.sh` from the SD-card bundle (or `~/hxg-install/` if you
-kept it):
+re-running `install.sh` from `~/hxg-install/`. If it was removed, extract
+`hxg-install.zip` from the SD card again using §2.2.
 
 ```bash
 sudo zsh ~/hxg-install/app/install.sh
@@ -781,7 +793,7 @@ Only someone logged into the owning account can add or remove fingerprints:
 Bring the original SD card (or a fresh one from the developer) and run:
 
 ```bash
-cp -R /Volumes/<SD_CARD_NAME>/hxg-install ~/hxg-install
+ditto -x -k /Volumes/<SD_CARD_NAME>/hxg-install.zip ~/
 sudo zsh ~/hxg-install/app/install.sh
 zsh ~/hxg-install/app/rules_setup.sh
 ```

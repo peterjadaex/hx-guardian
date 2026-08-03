@@ -105,7 +105,8 @@
 		</dict>
 		<!-- Password policy matches production: the profile supplies the
 		     alphanumeric/complexity floor; install.sh supplies length 15 and
-		     the 5-attempt lockout threshold. Tahoe-incompatible age, history,
+		     the 10-attempt site lockout threshold. The stricter baseline lockout
+		     rule is recorded as a permanent exemption. Tahoe-incompatible age, history,
 		     inactivity, regex, sequence, and timeout rules remain exempted. -->
 		<dict>
 			<key>PayloadIdentifier</key>
@@ -166,14 +167,14 @@
 			<true/>
 			<key>RetriesUntilHint</key>
 			<integer>0</integer>
-			<key>SHOWFULLNAME</key>
-			<true/>
 			<key>com.apple.login.mcx.DisableAutoLoginClient</key>
 			<true/>
 			<key>LoginwindowText</key>
-			<string>This system is for authorized use only. All activity is monitored and recorded. Unauthorized access is prohibited and subject to prosecution.</string>
-			<key>screenUnlockMode</key>
-			<integer>1</integer>
+			<string>This system is for authorized use only. All activity is monitored and recorded. Unauthorized access is prohibited and subject to prosecution. Account locks after 10 failed password attempts; contact an administrator if locked.</string>
+			<!-- SHOWFULLNAME and screenUnlockMode intentionally omitted: name-and-password
+			     mode disables Touch ID fast user switching, which site policy permits.
+			     Rule system_settings_loginwindow_prompt_username_password_enforce is
+			     exempted in app/rules_setup.sh. -->
 		</dict>
 		<dict>
 			<key>PayloadIdentifier</key>

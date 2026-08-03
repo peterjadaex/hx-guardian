@@ -18,6 +18,8 @@ fi
     -e '/# HX-Guardian: default-deny inbound firewall/d' \
     -e '/^anchor "hxguardian"$/d' \
     -e '/^load anchor "hxguardian" from/d' \
+    -e '/# HX-Guardian: exempt loopback so localhost services keep working/d' \
+    -e '/^set skip on lo0$/d' \
     /etc/pf.conf
 
 /sbin/pfctl -f /etc/pf.conf 2>/dev/null

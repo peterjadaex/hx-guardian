@@ -2,7 +2,7 @@
 # HX-Guardian Install Script
 # Run: sudo zsh app/install.sh [prod|dev]
 #   prod (default) — full airgap hardening: USB watcher daemon, pwpolicy
-#                    enforcement (15-char passwords, 5-attempt lockout), and
+#                    enforcement (15-char passwords, 10-attempt lockout), and
 #                    the unified MDM profile (disables Bluetooth, iCloud,
 #                    AirDrop, AppleID, etc. once approved).
 #   dev            — same install MINUS the three steps above. Useful on a
@@ -496,7 +496,7 @@ if [[ "$INSTALL_MODE" == "dev" ]]; then
     echo "  → skipped (dev install)"
 else
     # com.apple.mobiledevice.passwordpolicy requires MDM — equivalent policy set here via pwpolicy.
-    # Policy: min 15 chars, must contain upper+lower+digit+special, 5 failed attempts before lockout.
+    # Policy: min 15 chars, must contain upper+lower+digit+special, 10 failed attempts before lockout.
     # Intentionally omitted (known-broken on macOS Tahoe local-node pwpolicy):
     #   - maxLifetime: fires immediately when passwordLastSetTime is unset on fresh accounts
     #   - minimumLifetime: conflicts with any forced-reset path
@@ -513,7 +513,7 @@ else
 <dict>
     <key>policyCategoryAuthentication</key>
     <array>
-        <!-- Max 5 failed login attempts before lockout -->
+        <!-- Max 10 failed login attempts before lockout -->
         <dict>
             <key>policyContent</key>
             <string>policyAttributeFailedAuthentications &lt; policyAttributeMaximumFailedAuthentications</string>
@@ -522,7 +522,7 @@ else
             <key>policyParameters</key>
             <dict>
                 <key>policyAttributeMaximumFailedAuthentications</key>
-                <integer>5</integer>
+                <integer>10</integer>
             </dict>
         </dict>
     </array>

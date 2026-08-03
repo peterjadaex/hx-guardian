@@ -240,7 +240,7 @@ Valid category values are `Auditing`, `Authentication`, `Password Policy`,
 | HXG-AUD-004 | Verify retention, capacity, and off-load controls | Mixed evidence |  |  |
 | HXG-AUD-005 | Verify system and sudo logging | Mixed evidence |  |  |
 | HXG-AUTH-002 | Verify password policy | Read-only scan |  |  |
-| HXG-AUTH-003 | Verify five-attempt lockout and manual recovery posture | Read-only |  |  |
+| HXG-AUTH-003 | Verify ten-attempt site lockout and manual recovery posture | Read-only |  |  |
 | HXG-AUTH-004 | Verify authenticator-change re-authentication | Controlled |  |  |
 | HXG-ICLD-001 | Verify iCloud and cloud-service isolation | Profile / UI |  |  |
 | HXG-OS-001 | Verify boot and code integrity | Mixed evidence |  |  |
@@ -875,15 +875,15 @@ HXG_SESSION_ID='<SESSION_ID>'
 
 4. Require these enforced rules to be `PASS`:
 
-   - `pwpolicy_account_lockout_enforce` — maximum 5 failed attempts.
    - `pwpolicy_alpha_numeric_enforce` — alphanumeric requirement.
    - `pwpolicy_minimum_length_enforce` — minimum 15 characters.
    - `pwpolicy_special_character_enforce` — at least one special character.
 
-5. Require these seven rules to be active, permanent `EXEMPT` entries with
+5. Require these eight rules to be active, permanent `EXEMPT` entries with
    `is_expired:false` and the safety reason configured by
    `app/rules_setup.sh`:
 
+   - `pwpolicy_account_lockout_enforce`
    - `pwpolicy_account_inactivity_enforce`
    - `pwpolicy_account_lockout_timeout_enforce`
    - `pwpolicy_custom_regex_enforce`
@@ -907,9 +907,9 @@ HXG_SESSION_ID='<SESSION_ID>'
 
 **Expected result:**
 
-- The four locally/profile-enforced password controls are PASS.
-- The seven Tahoe-incompatible controls are active permanent exemptions with
-  the exact deployment safety rationale.
+- The three locally/profile-enforced password-content controls are PASS.
+- The 10-attempt site lockout and seven Tahoe-incompatible controls are active
+  permanent exemptions with the exact deployment rationale.
 - Password hints are absent.
 - Stored passwords are protected by the operating system and password entry is
   obscured.
@@ -925,7 +925,7 @@ HXG_SESSION_ID='<SESSION_ID>'
 
 >
 
-### HXG-AUTH-003 — Verify five-attempt lockout and manual recovery posture
+### HXG-AUTH-003 — Verify ten-attempt site lockout and manual recovery posture
 
 **Test type:** Read-only. Do not intentionally fail authentication or lock an
 account.
@@ -949,27 +949,29 @@ account.
        --xpath '//dict/key[text()="policyAttributeMaximumFailedAuthentications"]/following-sibling::integer[1]/text()' -
    ```
 
-3. Require the command output to equal `5` and
-   `pwpolicy_account_lockout_enforce` to be `PASS`.
+3. Require the command output to equal `10`.
 4. Query exemptions:
 
    ```bash
    /usr/bin/curl -fsS "$HXG_BASE_URL/api/exemptions"
    ```
 
-5. Require `pwpolicy_account_lockout_timeout_enforce` to be active, permanent
-   `EXEMPT` with the reason that automatic recovery requires an MDM-delivered
-   policy and is not enforced locally to avoid a login trap.
+5. Require both lockout rules to be active, permanent `EXEMPT` entries:
+
+   - `pwpolicy_account_lockout_enforce` — the site permits 10 attempts, which
+     exceeds the five-attempt compliance threshold.
+   - `pwpolicy_account_lockout_timeout_enforce` — automatic recovery requires
+     an MDM-delivered policy and is not enforced locally to avoid a login trap.
 6. Open [Airgap Device Admin & Operator Guide](airgap_readme.md), §11.2, and
    record the manual admin recovery procedure/version and responsible role.
    Do not execute the recovery command during this test.
-7. Confirm the evidence explicitly states: five failed attempts trigger
+7. Confirm the evidence explicitly states: ten failed attempts trigger
    lockout; there is no automatic timeout; recovery requires an administrator.
 
 **Expected result:**
 
-- The enforced threshold is exactly five failed authentications.
-- `pwpolicy_account_lockout_enforce` is PASS.
+- The enforced site threshold is exactly ten failed authentications.
+- `pwpolicy_account_lockout_enforce` is a current permanent exemption, not PASS.
 - `pwpolicy_account_lockout_timeout_enforce` is a current permanent exemption,
   not PASS or unapproved FAIL.
 - Manual administrator recovery is documented and no account is altered by
@@ -1955,18 +1957,25 @@ the session to lock or auto-logout.
      /Library/Preferences/com.apple.loginwindow autoLoginUser 2>/dev/null
    ```
 
-3. Require all five rules to be `PASS`.
-4. Confirm `SHOWFULLNAME=1`, `GuestEnabled=0`, and no `autoLoginUser` value.
+3. Require all rules to be `PASS`, except
+   `system_settings_loginwindow_prompt_username_password_enforce`, which must
+   report `EXEMPT` (name-and-password mode disables Touch ID fast user
+   switching; the SHOWFULLNAME/screenUnlockMode keys are intentionally omitted
+   from the unified profile).
+4. Confirm `SHOWFULLNAME` is unset or `0`, `GuestEnabled=0`, and no
+   `autoLoginUser` value.
 5. During an approved logout/reboot window, photograph or record the policy
-   banner text/version and confirm username/password fields are shown instead
-   of a user list.
+   banner text/version and confirm the login window shows the user list
+   (Touch ID fast user switching is permitted by site policy).
 6. Do not attempt guest or unauthorized authentication. Mark behavioral
    verification BLOCKED if no logout window is approved.
 
 **Expected result:**
 
 - The approved policy banner is displayed.
-- Login prompts for username and password rather than showing a user list.
+- Login shows the user list; the username-and-password prompt rule is a
+  documented permanent exemption so operators can use Touch ID fast user
+  switching.
 - Automatic login and guest account are disabled.
 
 **Actual result:**

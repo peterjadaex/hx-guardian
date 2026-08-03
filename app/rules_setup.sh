@@ -26,15 +26,15 @@
 #   zsh app/build.sh
 #
 #   Output: app/dist/hxg-server   hxg-runner   hxg-usb-watcher
-#   (Skip this step if you already have a built transfer/ package.)
+#   (Skip this step if you already have a built hxg-install.zip archive.)
 #
 #
 # STEP 2 — Bundle and write to SD card  (internet-connected Mac)
 # ──────────────────────────────────────────────────────────────
 #   zsh app/prepare_sd_card.sh
-#   cp -R transfer/ /Volumes/<SD_CARD>/hxg-install
+#   cp hxg-install.zip /Volumes/<SD_CARD>/
 #
-#   What gets bundled into transfer/:
+#   What gets bundled into hxg-install.zip:
 #     app/dist/           pre-built binaries (hxg-server, hxg-runner, hxg-usb-watcher)
 #     app/install.sh      main installer
 #     app/start.sh        start all services
@@ -53,7 +53,7 @@
 #   (Insert SD card, open Terminal on the airgap Mac)
 #
 #   a) Copy install package from the SD card:
-#        cp -R /Volumes/<SD_CARD>/hxg-install ~/hxg-install
+#        ditto -x -k /Volumes/<SD_CARD>/hxg-install.zip ~/
 #
 #   b) Run the installer (deploys binaries, standards, LaunchDaemons,
 #      password policy, and starts all services automatically):
@@ -149,6 +149,7 @@ EXEMPT_ENTRIES=(
     "os_touchid_prompt_disable|Touch ID configuration not enforced in this environment|permanent"
     "system_settings_touch_id_settings_disable|Touch ID configuration not enforced in this environment|permanent"
     "system_settings_touchid_unlock_disable|Touch ID configuration not enforced in this environment|permanent"
+    "system_settings_loginwindow_prompt_username_password_enforce|Name-and-password login window (SHOWFULLNAME/screenUnlockMode) disables Touch ID fast user switching; site policy permits Touch ID for operator session switching. Keys removed from the unified profile.|permanent"
 
     # ── Specific policy exceptions ────────────────────────────────────────────
     "os_config_data_install_enforce|Configuration data auto-install disabled per local policy|permanent"
@@ -181,6 +182,10 @@ EXEMPT_ENTRIES=(
 
     # ── SSH service disabled entirely (see system_settings_ssh_disable) ──────
     "os_ssh_server_alive_interval_configure|SSH service disabled; ServerAliveInterval not applicable|permanent"
+
+    # ── Password policy site deviation ────────────────────────────────────────
+    # The local policy intentionally permits more retries than the baseline.
+    "pwpolicy_account_lockout_enforce|Site policy permits 10 failed attempts before lockout; this exceeds the five-attempt compliance threshold|permanent"
 
     # ── Password policy attributes that brick local auth on Tahoe if enforced ─
     # Alphanumeric + special-character enforcement is applied by the unified
