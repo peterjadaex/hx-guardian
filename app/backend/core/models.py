@@ -11,13 +11,22 @@ from sqlalchemy.orm import relationship
 from core.database import Base
 
 
+# triggered_by values for internal verification scans: single-rule scans and the
+# rescans that follow a fix, an undo, or an exemption change. These sessions are
+# still written — rules.py._latest_status, the preflight check, and the
+# scan_before lookup in fixes.py all read their ScanResult rows — but they hold a
+# single rule, so their score_pct is always 0 or 100 and must stay out of
+# operator-facing history, trends, and report session pickers.
+VERIFICATION_TRIGGERS = ("single_rule", "fix_rescan", "undo_fix_rescan", "post_exemption")
+
+
 class ScanSession(Base):
     __tablename__ = "scan_sessions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     finished_at = Column(DateTime, nullable=True)
-    triggered_by = Column(String(32), nullable=False, default="manual")  # manual|scheduled|preflight
+    triggered_by = Column(String(32), nullable=False, default="manual")  # manual|scheduled|single_rule|fix_rescan|undo_fix_rescan|post_exemption
     filter_json = Column(Text, nullable=True)   # JSON filter criteria
     total_rules = Column(Integer, default=0)
     pass_count = Column(Integer, default=0)

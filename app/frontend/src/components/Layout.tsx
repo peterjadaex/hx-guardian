@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
-  Shield, LayoutDashboard, ListChecks, History, Monitor,
+  Shield, LayoutDashboard, ListChecks, History,
   FileText, Usb, Settings, Calendar,
   ClipboardList, BookOpen, SlidersHorizontal
 } from 'lucide-react'
@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { path: '/',            label: 'Dashboard',     icon: LayoutDashboard },
   { path: '/rules',       label: 'Rules',         icon: ListChecks },
   { path: '/history',     label: 'Scan History',  icon: History },
-  { path: '/device',      label: 'Device Status', icon: Monitor },
   { path: '/connections', label: 'Connections',   icon: Usb },
   { path: '/logs',        label: 'Device Logs',   icon: FileText },
   { path: '/exemptions',  label: 'Exemptions',    icon: Settings },

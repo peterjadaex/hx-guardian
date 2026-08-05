@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FileText, Download, ExternalLink } from 'lucide-react'
+import { FileText, Download, ExternalLink, Printer } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
-import { getHistory, getReportHtml, getReportCsv } from '../lib/api'
+import { getHistory, getReportHtml, getReportCsv, getReportPdf } from '../lib/api'
 import { parseServerTime } from '../lib/time'
 
 export function Reports() {
@@ -57,17 +57,28 @@ export function Reports() {
                 <div className="text-white font-medium">Full HTML Report</div>
                 <div className="text-slate-400 text-sm mt-1">
                   Comprehensive compliance report with all 266 rules, device status, category breakdown.
-                  Print to PDF from browser.
+                  Open it in the browser or save it straight to PDF.
                 </div>
-                <a
-                  href={getReportHtml(selectedSession)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-700/50 text-blue-400 text-sm rounded-lg transition-colors"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  Open Report
-                </a>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <a
+                    href={getReportHtml(selectedSession)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-700/50 text-blue-400 text-sm rounded-lg transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Open Report
+                  </a>
+                  <a
+                    href={getReportPdf(selectedSession)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-700/50 text-blue-400 text-sm rounded-lg transition-colors"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    Save as PDF
+                  </a>
+                </div>
               </div>
             </div>
           </Card>

@@ -3,10 +3,20 @@ import { Link } from 'react-router-dom'
 import { Search, Play, ChevronRight, Wrench, Loader2, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, RotateCcw } from 'lucide-react'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
-import { getRules, getRuleMeta, startScan, getSession } from '../lib/api'
+import { getRules, getRuleMeta, startScan } from '../lib/api'
+import { useActiveScan } from '../lib/useActiveScan'
 import { parseServerTime } from '../lib/time'
 
-const STATUSES = ['ALL', 'FAIL', 'PASS', 'NOT_APPLICABLE', 'MDM_REQUIRED', 'EXEMPT', 'ERROR', 'NEVER_SCANNED']
+const STATUSES = [
+  { value: '', label: 'All Statuses' },
+  { value: 'FAIL', label: 'FAIL' },
+  { value: 'PASS', label: 'PASS' },
+  { value: 'NOT_APPLICABLE', label: 'N/A' },
+  { value: 'MDM_REQUIRED', label: 'Not Scannable' },
+  { value: 'EXEMPT', label: 'Exempt' },
+  { value: 'ERROR', label: 'Error' },
+  { value: 'NEVER_SCANNED', label: 'Not Scanned' },
+]
 
 type SortCol = 'rule' | 'category' | 'severity' | 'status' | 'last_scanned'
 type SortDir = 'asc' | 'desc'
@@ -24,7 +34,6 @@ export function Rules() {
   const [status, setStatus] = useState('')
   const [standard, setStandard] = useState('')
   const [severity, setSeverity] = useState('')
-  const [scanning, setScanning] = useState(false)
   const [sortCol, setSortCol] = useState<SortCol | null>(null)
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
@@ -37,13 +46,14 @@ export function Rules() {
     loadRules()
   }, [q, category, status, standard, severity])
 
-  const loadRules = async () => {
-    setLoading(true)
+  // quiet skips the full-page spinner, for refreshes the operator did not ask for.
+  const loadRules = async (quiet = false) => {
+    if (!quiet) setLoading(true)
     try {
       const params: Record<string, string> = {}
       if (q) params.q = q
       if (category) params.category = category
-      if (status && status !== 'ALL') params.status = status
+      if (status) params.status = status
       if (standard) params.standard = standard
       if (severity) params.severity = severity
       const data = await getRules(params)
@@ -51,26 +61,19 @@ export function Rules() {
     } catch (e: any) {
       setError(e.message)
     } finally {
-      setLoading(false)
+      if (!quiet) setLoading(false)
     }
   }
 
+  const { scanning, trackSession } = useActiveScan(() => loadRules(true))
+
   const handleScanCategory = async () => {
     const filter = category ? { category } : standard ? { standard } : undefined
-    setScanning(true)
     try {
       const { session_id } = await startScan(filter)
-      // Poll until the background scan session finishes, then reload results
-      for (let i = 0; i < 300; i++) {
-        await new Promise(r => setTimeout(r, 2000))
-        const sess = await getSession(session_id)
-        if (!sess.is_running) break
-      }
-      await loadRules()
+      trackSession(session_id)
     } catch (e: any) {
       setError((e.response?.data?.detail) || e.message)
-    } finally {
-      setScanning(false)
     }
   }
 
@@ -138,7 +141,7 @@ export function Rules() {
         </div>
 
         <select value={status} onChange={e => setStatus(e.target.value)} className={SELECT_CLS}>
-          {STATUSES.map(s => <option key={s} value={s === 'ALL' ? '' : s}>{s === 'ALL' ? 'All Statuses' : s}</option>)}
+          {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
 
         <select value={severity} onChange={e => setSeverity(e.target.value)} className={SELECT_CLS}>

@@ -100,17 +100,16 @@ hx-guardian/
 
 | Page | Description |
 |---|---|
-| **Dashboard** | Compliance score, per-category charts, device status strip, pre-flight readiness |
+| **Dashboard** | Compliance score, per-category charts, device status strip (SIP, FileVault, Gatekeeper, Firewall, Secure Boot), device information, pre-flight readiness |
 | **Rules** | All 266 rules with filtering by category / standard / status |
 | **Rule Detail** | Scan now, apply fix, scan history, exemption management |
-| **Scan History** | Compliance trend chart, past scan sessions, CSV export |
-| **Device Status** | macOS version, SIP, FileVault, Gatekeeper, Secure Boot |
+| **Scan History** | Compliance trend chart, past scan sessions, CSV export, save as PDF |
 | **Connections** | Live USB devices and storage volumes with whitelist management, Bluetooth state, network interfaces, established TCP connections |
 | **Device Logs** | System log viewer with live streaming and keyword filter |
 | **MDM Profiles** | Maps 52 MDM-only rules to mobileconfig profiles; check install status; download profiles |
 | **Exemptions** | Grant / revoke rule exemptions with reason and expiry date |
 | **Schedule** | Configure automatic recurring scans (cron-based) |
-| **Reports** | Generate printable HTML compliance report or CSV export |
+| **Reports** | Generate HTML compliance report, save as PDF, or CSV export |
 | **Audit Log** | Append-only log of all operator actions |
 
 ---

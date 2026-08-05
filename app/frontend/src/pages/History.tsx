@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { RefreshCw, ChevronRight, Download } from 'lucide-react'
+import { RefreshCw, ChevronRight, Download, Printer } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
-import { getHistory, getTrends, getReportCsv } from '../lib/api'
+import { getHistory, getTrends, getReportCsv, getReportPdf } from '../lib/api'
 import { parseServerTime } from '../lib/time'
 
 export function History() {
@@ -117,9 +117,13 @@ export function History() {
                         className="flex items-center gap-1 text-xs text-slate-400 hover:text-white">
                         View <ChevronRight className="w-3 h-3" />
                       </Link>
-                      <a href={getReportCsv(s.id)} download
+                      <a href={getReportCsv(s.id)} download title="Download CSV"
                         className="flex items-center gap-1 text-xs text-slate-400 hover:text-white">
                         <Download className="w-3 h-3" />
+                      </a>
+                      <a href={getReportPdf(s.id)} target="_blank" rel="noopener noreferrer" title="Save as PDF"
+                        className="flex items-center gap-1 text-xs text-slate-400 hover:text-white">
+                        <Printer className="w-3 h-3" />
                       </a>
                     </div>
                   </td>

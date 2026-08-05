@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw, Play, CheckCircle, XCircle, Shield } from 'lucide-react'
+import { RefreshCw, Play, CheckCircle, XCircle, Shield, Monitor } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
 import { getHistory, getTrends, getCategoryBreakdown, startScan, getPreflight, getDeviceStatus } from '../lib/api'
+import { useActiveScan } from '../lib/useActiveScan'
 import { parseServerTime } from '../lib/time'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -25,14 +26,14 @@ export function Dashboard() {
   const [trends, setTrends] = useState<any[]>([])
   const [preflight, setPreflight] = useState<any>(null)
   const [deviceStatus, setDeviceStatus] = useState<any>(null)
-  const [scanning, setScanning] = useState(false)
 
   useEffect(() => {
     loadData()
   }, [])
 
-  const loadData = async () => {
-    setLoading(true)
+  // quiet skips the full-page spinner, for refreshes the operator did not ask for.
+  const loadData = async (quiet = false) => {
+    if (!quiet) setLoading(true)
     try {
       const [histData, trendsData, catData, preflightData, deviceData] = await Promise.allSettled([
         getHistory({ limit: 1 }),
@@ -60,19 +61,19 @@ export function Dashboard() {
     } catch (e: any) {
       setError(e.message)
     } finally {
-      setLoading(false)
+      if (!quiet) setLoading(false)
     }
   }
 
+  const { scanning, trackSession } = useActiveScan(() => loadData(true))
+
   const handleFullScan = async () => {
-    setScanning(true)
     try {
       const { session_id } = await startScan()
+      trackSession(session_id)
       navigate(`/history?session=${session_id}`)
     } catch (e: any) {
       setError(e.message)
-    } finally {
-      setScanning(false)
     }
   }
 
@@ -89,11 +90,15 @@ export function Dashboard() {
 
   const scoreColor = score === null ? '#64748b' : score >= 90 ? '#22c55e' : score >= 70 ? '#eab308' : '#ef4444'
 
+  const uptimeStr = deviceStatus?.uptime_secs
+    ? `${Math.floor(deviceStatus.uptime_secs / 3600)}h ${Math.floor((deviceStatus.uptime_secs % 3600) / 60)}m`
+    : 'Unknown'
+
   return (
     <Layout>
       <PageHeader title="Security Dashboard" subtitle="Airgap Device Compliance Overview">
         <button
-          onClick={loadData}
+          onClick={() => loadData()}
           className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
@@ -104,7 +109,7 @@ export function Dashboard() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900 text-white text-sm font-medium rounded-lg transition-colors"
         >
           <Play className="w-4 h-4" />
-          {scanning ? 'Starting...' : 'Run Full Scan'}
+          {scanning ? 'Scan in progress…' : 'Run Full Scan'}
         </button>
       </PageHeader>
 
@@ -112,7 +117,7 @@ export function Dashboard() {
 
       <div className="px-6 pb-6 space-y-6">
         {/* Pre-flight + Device Strip */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-6 gap-4">
           {/* Pre-flight */}
           <Card className="p-4 col-span-1">
             <div className="text-slate-400 text-xs font-medium mb-2">SIGNING READINESS</div>
@@ -140,6 +145,7 @@ export function Dashboard() {
             { label: 'SIP', value: deviceStatus?.sip_enabled, ok: true },
             { label: 'FileVault', value: deviceStatus?.filevault_on, ok: true },
             { label: 'Gatekeeper', value: deviceStatus?.gatekeeper_on, ok: true },
+            { label: 'Firewall', value: deviceStatus?.firewall_on, ok: true },
           ].map(({ label, value, ok }) => (
             <Card key={label} className="p-4 flex flex-col gap-1">
               <div className="text-slate-400 text-xs font-medium">{label}</div>
@@ -154,6 +160,20 @@ export function Dashboard() {
               </div>
             </Card>
           ))}
+
+          {/* Secure Boot reports a level rather than a boolean */}
+          <Card className="p-4 flex flex-col gap-1">
+            <div className="text-slate-400 text-xs font-medium">Secure Boot</div>
+            <div className={`text-sm font-medium ${
+              deviceStatus?.secure_boot === 'full' ? 'text-green-400' :
+              deviceStatus?.secure_boot === 'medium' ? 'text-yellow-400' :
+              deviceStatus?.secure_boot === 'none' ? 'text-red-400' : 'text-slate-500'
+            }`}>
+              {deviceStatus?.secure_boot
+                ? deviceStatus.secure_boot.charAt(0).toUpperCase() + deviceStatus.secure_boot.slice(1)
+                : 'Unknown'}
+            </div>
+          </Card>
         </div>
 
         {/* Score + Category breakdown */}
@@ -255,6 +275,27 @@ export function Dashboard() {
             </ResponsiveContainer>
           </Card>
         )}
+
+        {/* Device information */}
+        <Card className="p-5">
+          <div className="text-slate-400 text-xs font-medium mb-4 flex items-center gap-2">
+            <Monitor className="w-4 h-4" /> DEVICE INFORMATION
+          </div>
+          <div className="grid grid-cols-5 gap-4">
+            {[
+              ['Model', deviceStatus?.hardware_model],
+              ['macOS Version', deviceStatus?.os_version],
+              ['Build', deviceStatus?.build_version],
+              ['Serial Number', deviceStatus?.serial_number],
+              ['Uptime', uptimeStr],
+            ].map(([label, val]) => (
+              <div key={label} className="flex flex-col gap-1">
+                <span className="text-slate-400 text-xs">{label}</span>
+                <span className="text-white text-sm font-mono">{val || '—'}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </Layout>
   )

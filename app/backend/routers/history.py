@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import ScanSession, ScanResult
+from core.models import ScanSession, ScanResult, VERIFICATION_TRIGGERS
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 
@@ -22,11 +22,13 @@ def list_history(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    base = db.query(ScanSession).filter(ScanSession.triggered_by != "single_rule")
+    base = db.query(ScanSession).filter(
+        ScanSession.triggered_by.notin_(VERIFICATION_TRIGGERS),
+        ScanSession.finished_at.isnot(None),
+    )
     total = base.count()
     sessions = (
         base
-        .filter(ScanSession.finished_at.isnot(None))
         .order_by(ScanSession.started_at.desc())
         .offset(offset)
         .limit(limit)
@@ -65,7 +67,7 @@ def get_trends(
             ScanSession.finished_at.isnot(None),
             ScanSession.started_at >= since,
             ScanSession.score_pct.isnot(None),
-            ScanSession.triggered_by != "single_rule",
+            ScanSession.triggered_by.notin_(VERIFICATION_TRIGGERS),
         )
         .order_by(ScanSession.started_at.asc())
         .all()
@@ -96,7 +98,7 @@ def get_category_trends(
             db.query(ScanSession)
             .filter(
                 ScanSession.finished_at.isnot(None),
-                ScanSession.triggered_by != "single_rule",
+                ScanSession.triggered_by.notin_(VERIFICATION_TRIGGERS),
             )
             .order_by(ScanSession.started_at.desc())
             .first()

@@ -45,6 +45,9 @@ export const getSession = (id: number) =>
 export const getSessionResults = (id: number, params?: Record<string, unknown>) =>
   api.get(`/scans/${id}/results`, { params }).then(r => r.data)
 
+export const getActiveScan = () =>
+  api.get('/scans/active').then(r => r.data)
+
 // ─── History ──────────────────────────────────────────────────────────────────
 
 export const getHistory = (params?: object) =>
@@ -129,6 +132,10 @@ export const getReportHtml = (sessionId?: number) =>
 
 export const getReportCsv = (sessionId?: number) =>
   `/api/reports/csv${sessionId ? `?session_id=${sessionId}` : ''}`
+
+// Opens the HTML report with the browser print dialog, which offers Save as PDF.
+export const getReportPdf = (sessionId?: number) =>
+  `/api/reports/html?print=1${sessionId ? `&session_id=${sessionId}` : ''}`
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
 

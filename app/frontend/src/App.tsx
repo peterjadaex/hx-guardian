@@ -4,7 +4,6 @@ import { Dashboard } from './pages/Dashboard'
 import { Rules } from './pages/Rules'
 import { RuleDetail } from './pages/RuleDetail'
 import { History } from './pages/History'
-import { Device } from './pages/Device'
 import { Connections } from './pages/Connections'
 import { Logs } from './pages/Logs'
 import { Exemptions } from './pages/Exemptions'
@@ -21,7 +20,6 @@ export default function App() {
         <Route path="/rules" element={<Rules />} />
         <Route path="/rules/:ruleName" element={<RuleDetail />} />
         <Route path="/history" element={<History />} />
-        <Route path="/device" element={<Device />} />
         <Route path="/connections" element={<Connections />} />
         <Route path="/logs" element={<Logs />} />
         <Route path="/exemptions" element={<Exemptions />} />

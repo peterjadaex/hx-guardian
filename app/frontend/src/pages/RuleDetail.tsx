@@ -4,6 +4,7 @@ import { ArrowLeft, Play, Wrench, ShieldOff, RotateCcw, Lock } from 'lucide-reac
 import { Layout, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
 import { getRuleDetail, scanRule, fixRule, undoFix, getFixHistory, grantExemption, revokeExemption, get2faStatus, verify2fa } from '../lib/api'
+import { useActiveScan } from '../lib/useActiveScan'
 import { parseServerTime } from '../lib/time'
 
 // ─── Inline OTP prompt (same pattern as Connections page) ────────────────────
@@ -119,8 +120,9 @@ export function RuleDetail() {
       .catch(() => {})
   }, [ruleName])
 
-  const loadRule = async () => {
-    setLoading(true)
+  // quiet skips the full-page spinner, for refreshes the operator did not ask for.
+  const loadRule = async (quiet = false) => {
+    if (!quiet) setLoading(true)
     try {
       const [ruleData, histData] = await Promise.allSettled([
         getRuleDetail(ruleName!),
@@ -131,9 +133,12 @@ export function RuleDetail() {
     } catch (e: any) {
       setError(e.message)
     } finally {
-      setLoading(false)
+      if (!quiet) setLoading(false)
     }
   }
+
+  // A full scan running elsewhere blocks the per-rule actions on this page.
+  const { scanning: fullScanRunning } = useActiveScan(() => loadRule(true))
 
   const require2fa = (action: (token: string) => Promise<void>) => {
     if (!twoFaEnabled || twoFaToken) {
@@ -274,21 +279,21 @@ export function RuleDetail() {
             </div>
             <div className="flex items-center gap-2">
               {rule.has_scan && (
-                <button onClick={handleScan} disabled={scanning}
+                <button onClick={handleScan} disabled={scanning || fullScanRunning}
                   className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-700/50 text-blue-400 text-sm rounded-lg transition-colors disabled:opacity-50">
                   <Play className="w-3.5 h-3.5" />
                   {scanning ? 'Scanning...' : 'Scan Now'}
                 </button>
               )}
               {rule.has_fix && (
-                <button onClick={handleFix} disabled={fixing}
+                <button onClick={handleFix} disabled={fixing || fullScanRunning}
                   className="flex items-center gap-2 px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 border border-green-700/50 text-green-400 text-sm rounded-lg transition-colors disabled:opacity-50">
                   <Wrench className="w-3.5 h-3.5" />
                   {fixing ? 'Fixing...' : 'Apply Fix'}
                 </button>
               )}
               {rule.has_undo_fix && (
-                <button onClick={handleUndoFix} disabled={undoing}
+                <button onClick={handleUndoFix} disabled={undoing || fullScanRunning}
                   className="flex items-center gap-2 px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-700/50 text-amber-400 text-sm rounded-lg transition-colors disabled:opacity-50">
                   <RotateCcw className="w-3.5 h-3.5" />
                   {undoing ? 'Undoing...' : 'Undo Fix'}

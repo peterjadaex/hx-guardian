@@ -8,7 +8,7 @@ POST /api/rules/{rule}/scan  → single rule scan (immediate)
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 import core.audit as audit
 from core.database import get_db, SessionLocal
 from core.manifest import get_all_rules, get_rules_by_category, get_rules_by_standard, get_rule
-from core.models import ScanSession, ScanResult, Exemption
+from core.models import ScanSession, ScanResult, Exemption, VERIFICATION_TRIGGERS
 from core.runner_client import scan_rule, scan_batch_stream, RunnerError
 
 logger = logging.getLogger(__name__)
@@ -198,6 +198,40 @@ async def start_scan(
 
     background_tasks.add_task(execute_scan_session, session.id, rules)
     return {"session_id": session.id, "status": "running"}
+
+
+# Declared before /api/scans/{session_id} so "active" is not matched as an int id.
+@router.get("/api/scans/active")
+def get_active_scan(db: Session = Depends(get_db)):
+    """Report the scan session currently running, so the UI can restore its
+    progress state after a page change or reload."""
+    candidates = (
+        db.query(ScanSession)
+        .filter(
+            ScanSession.finished_at.is_(None),
+            ScanSession.triggered_by.notin_(VERIFICATION_TRIGGERS),
+        )
+        .order_by(ScanSession.started_at.desc())
+        .limit(5)
+        .all()
+    )
+    for s in candidates:
+        # _active_sessions is authoritative for scans executing in this process.
+        # The freshness window covers the gap between POST /api/scans committing
+        # the row and the background task registering its queue. Sessions left
+        # unfinished by a crash or restart are reported inactive but never altered.
+        recently_started = (
+            s.started_at is not None
+            and datetime.utcnow() - s.started_at < timedelta(minutes=2)
+        )
+        if s.id in _active_sessions or recently_started:
+            return {
+                "active": True,
+                "session_id": s.id,
+                "started_at": s.started_at.isoformat() if s.started_at else None,
+                "triggered_by": s.triggered_by,
+            }
+    return {"active": False, "session_id": None}
 
 
 @router.get("/api/scans/{session_id}")
