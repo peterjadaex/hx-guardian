@@ -599,12 +599,20 @@
 # → {"status":"ok","ready":true,"version":"1.0.0"}
 
 curl -s http://127.0.0.1:8000/api/runner/status
-# → {"runner_connected":true}
+# → {"runner_connected":true,"available":true,"reason":null,"detail":"Runner is available.",
+#    "uid":0,"manifest_rules":268,"server_manifest_rules":268,
+#    "stale_manifest":false,"legacy":false,"checked_at":"..."}
 
 curl -s http://127.0.0.1:8000/api/internal/startup
 # → {"started_at":...,"finished_at":...,"elapsed_seconds":0.012,"ready":true,"error":null}</code></pre>
       <p><code>/api/health</code> reports only this server's liveness — it does <strong>not</strong> depend on the runner, so a slow runner cannot collapse the dashboard. Runner liveness is a separate endpoint, <code>/api/runner/status</code>. <code>/api/internal/startup</code> shows how long the background DB/scheduler init took and surfaces the exception class if startup failed (handy for diagnosis without log access).</p>
-      <p>If <code>ready</code> is <code>false</code> or <code>runner_connected</code> is <code>false</code>, jump to <a href="#s12">§12 Troubleshooting</a>.</p>
+      <p>Two runner fields matter and they are not the same thing:</p>
+      <ul>
+        <li><code>runner_connected</code> — something answered on the runner socket. This is what <code>start.sh</code> and <code>update.sh</code> check during post-deploy verification.</li>
+        <li><code>available</code> — the runner can actually assess compliance: it runs as root, its manifest loaded, and the standards tree is present. A runner can be connected yet unusable; <code>reason</code> and <code>detail</code> say why, and <code>detail</code> includes the fix.</li>
+      </ul>
+      <p>When <code>available</code> is <code>false</code>, the sidebar shows a red <strong>Runner unavailable</strong> pill on every dashboard page, and scans record the affected rules as <strong>Not Assessed</strong> instead of guessing. <code>stale_manifest: true</code> shows an amber <strong>Runner restart required</strong> pill — the runner reads the manifest once at startup, so it must be restarted to pick up manifest changes.</p>
+      <p>If <code>ready</code>, <code>runner_connected</code>, or <code>available</code> is <code>false</code>, jump to <a href="#s12">§12 Troubleshooting</a>.</p>
 
       <h3>6.3 Authentication model</h3>
       <ul>
@@ -772,9 +780,11 @@ sudo zsh standards/scripts/scan/os_filevault_autologin_disable.sh</code></pre>
 
       <h3>10.3 Scheduling recurring scans</h3>
       <p>Dashboard → <strong>Schedule</strong> → configure a cron expression (e.g. daily 02:00: <code>0 2 * * *</code>). The runner executes the scan session as root and results appear in <strong>Scan History</strong>.</p>
+      <p><strong>Scan History</strong> lists full scans only — internal verification rescans (the single-rule scans and the automatic rescans after a fix, undo, or exemption change) are excluded from the session list and the trend chart. Each session row offers <strong>CSV</strong> and <strong>Save as PDF</strong> exports.</p>
 
       <h3>10.4 Generating reports</h3>
-      <p>Dashboard → <strong>Reports</strong> → choose <strong>HTML</strong> (printable) or <strong>CSV</strong> (for archival). Reports include the compliance score, per-rule status, audit-log excerpt, and exemptions list.</p>
+      <p>Dashboard → <strong>Reports</strong> → choose <strong>HTML</strong> (opens the printable report in a new tab), <strong>Save as PDF</strong> (same report with the browser's print dialog opened automatically), or <strong>CSV</strong> (for archival). Reports include the compliance score, coverage ("N of M rules assessed"), per-rule status, audit-log excerpt, and exemptions list.</p>
+      <p><strong>How the score is computed:</strong> FAIL and ERROR count as non-compliant — a check that crashed is unverified, not verified-good. <strong>Not Assessed</strong> rules (the runner was unavailable during the scan) are excluded from both sides of the ratio, so unevaluated rules cannot move the score in either direction. A scan where nothing could be assessed shows <strong>—</strong> instead of a score, and a report generated from a degraded scan carries a banner with the Not Assessed count.</p>
 
       <h3>10.5 Granting / revoking an exemption</h3>
       <p>Admin-only. Dashboard → <strong>Exemptions</strong> → <strong>Grant Exemption</strong> → enter rule ID, reason, and expiry date. Admin TOTP prompt appears. Exempted rules are counted as PASS in compliance reports but remain visible in the Rules list with an <strong>Exempt</strong> badge.</p>
@@ -941,17 +951,38 @@ sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.runner.pli
 # Then probe the socket directly to trigger the spawn:
 echo '{"action":"ping"}' | nc -U /var/run/hxg/runner.sock -w 5</code></pre>
 
-      <h4>Scan returns ERROR for all rules</h4>
+      <h4><code>available: false</code> in <code>/api/runner/status</code> (red "Runner unavailable" pill in the sidebar)</h4>
+      <p>The runner answered on the socket but cannot assess compliance. <code>reason</code> says why, and <code>detail</code> includes the fix:</p>
+      <table>
+        <thead><tr><th><code>reason</code></th><th>Meaning</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td><code>not_root</code></td><td>The runner process is not running as root</td><td>Verify <code>/Library/LaunchDaemons/com.hxguardian.runner.plist</code> is unmodified, then bootout + bootstrap as above</td></tr>
+          <tr><td><code>manifest_empty</code></td><td>The runner started but loaded zero rules</td><td>Restore <code>/Library/Application Support/hxguardian/standards/scripts/manifest.json</code> (re-run <code>install.sh</code> from the SD-card bundle if needed), then restart the runner</td></tr>
+          <tr><td><code>standards_missing</code></td><td>The runner cannot find the <code>standards/scripts/scan/</code> tree</td><td>Check the path reported in <code>detail</code>; re-run <code>install.sh</code> to redeploy the standards tree</td></tr>
+        </tbody>
+      </table>
+
+      <h4><code>stale_manifest: true</code> (amber "Runner restart required" pill in the sidebar)</h4>
       <ul>
-        <li>The runner must be running as root. Check <code>/Library/Logs/hxguardian-runner.log</code>.</li>
-        <li>Verify the socket exists: <code>ls -la /var/run/hxg/runner.sock</code>.</li>
+        <li>The manifest changed after the runner started. The runner reads the manifest once at startup — restart it (bootout + bootstrap as above) to pick up the change.</li>
+      </ul>
+
+      <h4>Rules show "Not Assessed" after a scan</h4>
+      <ul>
+        <li>The runner was unavailable during the scan, so those rules were never evaluated — they are deliberately excluded from the compliance score rather than counted as failures. Fix the runner (see <code>reason</code>/<code>detail</code> on <code>/api/runner/status</code> and the table above), then re-scan.</li>
+      </ul>
+
+      <h4>Scan returns ERROR for many rules</h4>
+      <ul>
+        <li>ERROR means the check ran and failed — an unreachable runner records <strong>Not Assessed</strong> instead, so widespread ERROR points at script execution problems, not a dead runner.</li>
+        <li>Check <code>/Library/Logs/hxguardian-runner.log</code> for the underlying failure and confirm Xcode CLT is present (<code>xcode-select -p</code> — the scan scripts need <code>xmllint</code> and <code>python3</code>).</li>
         <li>The <strong>Rule Detail</strong> page shows the full server error for a single-rule scan.</li>
       </ul>
 
       <h4>Scan results not updating after "Run Full Scan"</h4>
       <ul>
         <li>The frontend polls session status and reloads automatically when the scan finishes. Wait for the <strong>Scanning…</strong> button to return to normal, then reload the Rules page.</li>
-        <li>If results never update, check that the runner is connected (<code>/api/runner/status</code>).</li>
+        <li>If results never update, check that the runner is connected <strong>and</strong> available (<code>/api/runner/status</code>).</li>
       </ul>
 
       <h4>MDM rules still showing <code>MDM_REQUIRED</code> after deploying the unified profile</h4>

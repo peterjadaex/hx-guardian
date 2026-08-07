@@ -362,7 +362,9 @@ curl -s http://127.0.0.1:8000/api/health
 # → {"status":"ok","ready":true,"version":"1.0.0"}
 
 curl -s http://127.0.0.1:8000/api/runner/status
-# → {"runner_connected":true}
+# → {"runner_connected":true,"available":true,"reason":null,"detail":"Runner is available.",
+#    "uid":0,"manifest_rules":268,"server_manifest_rules":268,
+#    "stale_manifest":false,"legacy":false,"checked_at":"..."}
 
 curl -s http://127.0.0.1:8000/api/internal/startup
 # → {"started_at":...,"finished_at":...,"elapsed_seconds":0.012,"ready":true,"error":null}
@@ -374,7 +376,22 @@ a separate endpoint, `/api/runner/status`. `/api/internal/startup` shows how
 long the background DB/scheduler init took and surfaces the exception class
 if startup failed (handy for diagnosis without log access).
 
-If `ready` is `false` or `runner_connected` is `false`, jump to
+Two runner fields matter and they are not the same thing:
+
+- `runner_connected` — something answered on the runner socket. This is what
+  `start.sh` and `update.sh` check during post-deploy verification.
+- `available` — the runner can actually assess compliance: it runs as root,
+  its manifest loaded, and the standards tree is present. A runner can be
+  connected yet unusable; `reason` and `detail` say why, and `detail` includes
+  the fix.
+
+When `available` is `false`, the sidebar shows a red **Runner unavailable**
+pill on every dashboard page, and scans record the affected rules as
+**Not Assessed** instead of guessing. `stale_manifest: true` shows an amber
+**Runner restart required** pill — the runner reads the manifest once at
+startup, so it must be restarted to pick up manifest changes.
+
+If `ready`, `runner_connected`, or `available` is `false`, jump to
 [§12 Troubleshooting](#12-troubleshooting).
 
 ### 6.3 Authentication model
@@ -614,11 +631,25 @@ Dashboard → **Schedule** → configure a cron expression
 (e.g. daily 02:00: `0 2 * * *`). The runner executes the scan session as root
 and results appear in **Scan History**.
 
+**Scan History** lists full scans only — internal verification rescans (the
+single-rule scans and the automatic rescans after a fix, undo, or exemption
+change) are excluded from the session list and the trend chart. Each session
+row offers **CSV** and **Save as PDF** exports.
+
 ### 10.4 Generating reports
 
-Dashboard → **Reports** → choose **HTML** (printable) or **CSV** (for archival).
-Reports include the compliance score, per-rule status, audit-log excerpt, and
-exemptions list.
+Dashboard → **Reports** → choose **HTML** (opens the printable report in a new
+tab), **Save as PDF** (same report with the browser's print dialog opened
+automatically), or **CSV** (for archival). Reports include the compliance
+score, coverage ("N of M rules assessed"), per-rule status, audit-log excerpt,
+and exemptions list.
+
+**How the score is computed:** FAIL and ERROR count as non-compliant — a check
+that crashed is unverified, not verified-good. **Not Assessed** rules (the
+runner was unavailable during the scan) are excluded from both sides of the
+ratio, so unevaluated rules cannot move the score in either direction. A scan
+where nothing could be assessed shows **—** instead of a score, and a report
+generated from a degraded scan carries a banner with the Not Assessed count.
 
 ### 10.5 Granting / revoking an exemption
 
@@ -837,16 +868,43 @@ sudo launchctl bootstrap system /Library/LaunchDaemons/com.hxguardian.runner.pli
 echo '{"action":"ping"}' | nc -U /var/run/hxg/runner.sock -w 5
 ```
 
-**Scan returns ERROR for all rules**
-- The runner must be running as root. Check `/Library/Logs/hxguardian-runner.log`.
-- Verify the socket exists: `ls -la /var/run/hxg/runner.sock`.
+**`available: false` in `/api/runner/status` (red "Runner unavailable" pill in the sidebar)**
+
+The runner answered on the socket but cannot assess compliance. `reason` says
+why, and `detail` includes the fix:
+
+| `reason` | Meaning | Fix |
+|---|---|---|
+| `not_root` | The runner process is not running as root | Verify `/Library/LaunchDaemons/com.hxguardian.runner.plist` is unmodified, then bootout + bootstrap as above |
+| `manifest_empty` | The runner started but loaded zero rules | Restore `/Library/Application Support/hxguardian/standards/scripts/manifest.json` (re-run `install.sh` from the SD-card bundle if needed), then restart the runner |
+| `standards_missing` | The runner cannot find the `standards/scripts/scan/` tree | Check the path reported in `detail`; re-run `install.sh` to redeploy the standards tree |
+
+**`stale_manifest: true` (amber "Runner restart required" pill in the sidebar)**
+- The manifest changed after the runner started. The runner reads the manifest
+  once at startup — restart it (bootout + bootstrap as above) to pick up the
+  change.
+
+**Rules show "Not Assessed" after a scan**
+- The runner was unavailable during the scan, so those rules were never
+  evaluated — they are deliberately excluded from the compliance score rather
+  than counted as failures. Fix the runner (see `reason`/`detail` on
+  `/api/runner/status` and the table above), then re-scan.
+
+**Scan returns ERROR for many rules**
+- ERROR means the check ran and failed — an unreachable runner records
+  **Not Assessed** instead, so widespread ERROR points at script execution
+  problems, not a dead runner.
+- Check `/Library/Logs/hxguardian-runner.log` for the underlying failure and
+  confirm Xcode CLT is present (`xcode-select -p` — the scan scripts need
+  `xmllint` and `python3`).
 - The **Rule Detail** page shows the full server error for a single-rule scan.
 
 **Scan results not updating after "Run Full Scan"**
 - The frontend polls session status and reloads automatically when the scan
   finishes. Wait for the **Scanning…** button to return to normal, then reload
   the Rules page.
-- If results never update, check that the runner is connected (`/api/runner/status`).
+- If results never update, check that the runner is connected **and** available
+  (`/api/runner/status`).
 
 **MDM rules still showing `MDM_REQUIRED` after deploying the unified profile**
 - MDM-only rules are verified by whether the profile is installed. Deploying
