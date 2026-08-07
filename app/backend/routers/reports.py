@@ -14,7 +14,9 @@ from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import ScanSession, ScanResult, DeviceSnapshot, VERIFICATION_TRIGGERS
+from core.models import (
+    ScanSession, ScanResult, DeviceSnapshot, VERIFICATION_TRIGGERS, NOT_ASSESSED,
+)
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
@@ -32,6 +34,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
   .green {{ background: #d4edda; color: #155724; }}
   .yellow {{ background: #fff3cd; color: #856404; }}
   .red {{ background: #f8d7da; color: #721c24; }}
+  .gray {{ background: #e2e3e5; color: #383d41; }}
   table {{ width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }}
   th {{ background: #0f3460; color: white; padding: 8px 12px; text-align: left; }}
   td {{ padding: 7px 12px; border-bottom: 1px solid #dee2e6; }}
@@ -43,9 +46,13 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
   .MDM_REQUIRED {{ background: #cce5ff; color: #004085; }}
   .EXEMPT {{ background: #fff3cd; color: #856404; }}
   .ERROR {{ background: #f5c6cb; color: #721c24; }}
-  .summary-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }}
+  .NOT_ASSESSED {{ background: #e9d8fd; color: #44337a; }}
+  .summary-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }}
   .summary-card {{ background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; text-align: center; }}
   .summary-card .number {{ font-size: 2em; font-weight: bold; }}
+  .coverage {{ color: #444; font-size: 0.95em; margin-top: 6px; }}
+  .degraded {{ background: #e9d8fd; border: 1px solid #b794f4; color: #44337a;
+               border-radius: 8px; padding: 12px 15px; margin: 15px 0; }}
   @media print {{ .no-print {{ display: none; }} }}
 </style>
 </head>
@@ -53,13 +60,16 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
 <h1>HX-Guardian Security Compliance Report</h1>
 <p><strong>Generated:</strong> {date} &nbsp;&nbsp; <strong>Device:</strong> {device_model} ({os_version})</p>
 <p><strong>Scan Session:</strong> #{session_id} — {triggered_by} scan on {scan_date}</p>
-
+{degraded_banner}
 <h2>Overall Compliance Score</h2>
-<div class="score-box {score_class}">{score_pct}%</div>
+<div class="score-box {score_class}">{score_pct}</div>
+<div class="coverage">{assessed} of {total_rules} rules assessed{coverage_note}</div>
 
 <div class="summary-grid">
   <div class="summary-card"><div class="number" style="color:#155724">{pass_count}</div><div>PASS</div></div>
   <div class="summary-card"><div class="number" style="color:#721c24">{fail_count}</div><div>FAIL</div></div>
+  <div class="summary-card"><div class="number" style="color:#721c24">{error_count}</div><div>ERROR</div></div>
+  <div class="summary-card"><div class="number" style="color:#44337a">{not_assessed_count}</div><div>Not Assessed</div></div>
   <div class="summary-card"><div class="number" style="color:#856404">{exempt_count}</div><div>EXEMPT</div></div>
   <div class="summary-card"><div class="number" style="color:#383d41">{na_count}</div><div>N/A</div></div>
   <div class="summary-card"><div class="number" style="color:#004085">{mdm_count}</div><div>Not Scannable</div></div>
@@ -99,6 +109,19 @@ _STATUS_LABELS = {
     "NEVER_SCANNED": "Not Scanned",
     "EXEMPT": "Exempt",
     "ERROR": "Error",
+    NOT_ASSESSED: "Not Assessed",
+}
+
+# Status → category-summary bucket. Unknown statuses fall back to "error" rather
+# than raising, so a new status can never break the whole report again.
+_CAT_BUCKET = {
+    "PASS": "pass",
+    "FAIL": "fail",
+    "NOT_APPLICABLE": "na",
+    "MDM_REQUIRED": "mdm",
+    "EXEMPT": "exempt",
+    "ERROR": "error",
+    NOT_ASSESSED: "not_assessed",
 }
 
 # Injected when ?print=1 so the browser opens its print dialog (Save as PDF).
@@ -154,20 +177,27 @@ def generate_html_report(
     for r in results:
         cat = r.category or "Other"
         if cat not in cat_map:
-            cat_map[cat] = {"pass": 0, "fail": 0, "na": 0, "mdm": 0, "exempt": 0, "error": 0}
-        cat_map[cat][r.status.lower().replace("_required", "").replace("not_applicable", "na")] += 1
+            cat_map[cat] = {"pass": 0, "fail": 0, "na": 0, "mdm": 0, "exempt": 0,
+                            "error": 0, "not_assessed": 0}
+        # Explicit map with a fallback: the previous string-mangling raised
+        # KeyError on any status outside its six expectations, which took down
+        # the entire report rather than mislabelling one cell.
+        cat_map[cat][_CAT_BUCKET.get(r.status, "error")] += 1
 
     category_rows = "".join(
         f"<tr><td>{cat}</td>"
         f"<td style='color:#155724'>{d['pass']}</td>"
         f"<td style='color:#721c24'>{d['fail']}</td>"
+        f"<td style='color:#721c24'>{d.get('error', 0)}</td>"
+        f"<td style='color:#44337a'>{d.get('not_assessed', 0)}</td>"
         f"<td>{d.get('na', 0)}</td>"
         f"<td style='color:#856404'>{d.get('exempt', 0)}</td>"
         f"<td style='color:#004085'>{d.get('mdm', 0)}</td></tr>"
         for cat, d in sorted(cat_map.items())
     )
     category_table = (
-        "<table><tr><th>Category</th><th>PASS</th><th>FAIL</th><th>N/A</th><th>EXEMPT</th><th>Not Scannable</th></tr>"
+        "<table><tr><th>Category</th><th>PASS</th><th>FAIL</th><th>ERROR</th>"
+        "<th>Not Assessed</th><th>N/A</th><th>EXEMPT</th><th>Not Scannable</th></tr>"
         + category_rows + "</table>"
     )
 
@@ -187,15 +217,50 @@ def generate_html_report(
         .order_by(DeviceSnapshot.captured_at.desc())
         .first()
     )
-    sip = "✓ Enabled" if snapshot and snapshot.sip_enabled else "✗ Disabled"
-    filevault = "✓ On" if snapshot and snapshot.filevault_on else "✗ Off"
-    gatekeeper = "✓ Enabled" if snapshot and snapshot.gatekeeper_on else "✗ Disabled"
-    firewall = "✓ On" if snapshot and snapshot.firewall_on else "✗ Off"
-    secure_boot = snapshot.secure_boot if snapshot else "unknown"
+    # filevault_on and firewall_on are tri-state: None means the state could
+    # not be determined, which must not be reported as "Off" in a signed-off
+    # compliance artifact.
+    def _tri(value, on_label: str, off_label: str) -> str:
+        if value is True:
+            return f"✓ {on_label}"
+        if value is False:
+            return f"✗ {off_label}"
+        return "? Unknown"
+
+    sip = _tri(snapshot.sip_enabled if snapshot else None, "Enabled", "Disabled")
+    filevault = _tri(snapshot.filevault_on if snapshot else None, "On", "Off")
+    gatekeeper = _tri(snapshot.gatekeeper_on if snapshot else None, "Enabled", "Disabled")
+    firewall = _tri(snapshot.firewall_on if snapshot else None, "On", "Off")
+    secure_boot = (snapshot.secure_boot if snapshot else None) or "unknown"
     os_version = snapshot.os_version if snapshot else "unknown"
     hw_model = snapshot.hardware_model if snapshot else "unknown"
 
-    score = session.score_pct or 0.0
+    # A null score means nothing was assessed. Rendering 0.0% there would state
+    # the device is wholly non-compliant on the strength of no evidence at all.
+    not_assessed_count = session.not_assessed_count or 0
+    assessed = ((session.pass_count or 0) + (session.fail_count or 0)
+                + (session.error_count or 0))
+    if session.score_pct is None:
+        score_display = "—"
+        score_class = "gray"
+    else:
+        score_display = f"{round(session.score_pct, 1)}%"
+        score_class = _score_class(session.score_pct)
+
+    coverage_note = ""
+    if not_assessed_count:
+        coverage_note = (f" — {not_assessed_count} not assessed, so this score "
+                         f"covers only part of the baseline")
+
+    degraded_banner = ""
+    if session.degraded_reason:
+        degraded_banner = (
+            f'<div class="degraded"><strong>Incomplete scan '
+            f'({session.degraded_reason}).</strong> {not_assessed_count} rule(s) could '
+            f'not be assessed because the privileged runner was unavailable. This '
+            f'report describes only the {assessed} rule(s) that were evaluated.</div>'
+        )
+
     html = _HTML_TEMPLATE.format(
         date=datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
         device_model=hw_model,
@@ -203,10 +268,15 @@ def generate_html_report(
         session_id=session.id,
         triggered_by=session.triggered_by,
         scan_date=session.started_at.strftime("%Y-%m-%d %H:%M UTC") if session.started_at else "",
-        score_pct=round(score, 1),
-        score_class=_score_class(score),
+        score_pct=score_display,
+        score_class=score_class,
+        assessed=assessed,
+        coverage_note=coverage_note,
+        degraded_banner=degraded_banner,
         pass_count=session.pass_count,
         fail_count=session.fail_count,
+        error_count=session.error_count or 0,
+        not_assessed_count=not_assessed_count,
         na_count=session.na_count,
         exempt_count=session.exempt_count,
         mdm_count=session.mdm_count,

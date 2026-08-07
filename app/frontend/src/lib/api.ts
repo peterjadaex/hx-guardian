@@ -247,6 +247,11 @@ export const streamBiometricLogUrl = (p?: {
 export const getHealth = () =>
   api.get('/health').then(r => r.data)
 
+// Whether the privileged runner can actually assess compliance. `available` is
+// stricter than `runner_connected`: a runner can answer and still be unusable.
+export const getRunnerStatus = () =>
+  api.get('/runner/status').then(r => r.data)
+
 // ─── Settings / 2FA ───────────────────────────────────────────────────────────
 
 export const get2faStatus = () =>

@@ -48,6 +48,15 @@ def run_script(script_path: str) -> Tuple[dict, int, int]:
             status_map = {0: "PASS", 1: "FAIL", 2: "NOT_APPLICABLE", 3: "ERROR"}
             data["status"] = status_map.get(exit_code, "ERROR")
 
+        # Surface stderr alongside the script's own verdict. Most fix scripts
+        # report EXECUTED unconditionally, so a failed chmod/defaults/launchctl
+        # was previously invisible — the dashboard said "fixed" and the next
+        # scan disagreed. The script's JSON stays authoritative; this only
+        # stops failures from being silent.
+        stderr = result.stderr.strip()
+        if stderr:
+            data.setdefault("stderr", stderr[:1000])
+
         return data, exit_code, duration_ms
 
     except subprocess.TimeoutExpired:

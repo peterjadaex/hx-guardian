@@ -54,6 +54,11 @@ logger = logging.getLogger(__name__)
 _manifest: dict = {}
 _manifest_lock = threading.Lock()
 
+# Bumped when the capabilities payload gains or changes fields, so a newer server
+# can reason about an older runner it has not been redeployed alongside.
+RUNNER_CAPS_VERSION = 1
+_STARTED_AT = time.time()
+
 
 def load_manifest() -> None:
     global _manifest
@@ -127,6 +132,9 @@ def handle_request(req: dict):
     if action == "ping":
         yield {"req_id": req_id, "pong": True, "done": True}
 
+    elif action == "capabilities":
+        yield _exec_capabilities(req_id)
+
     elif action == "scan":
         result = _exec_scan(req_id, req.get("rule", ""))
         result["done"] = True
@@ -143,7 +151,10 @@ def handle_request(req: dict):
         yield result
 
     elif action == "scan_batch":
-        rules = req.get("rules") or list(_manifest.keys())
+        rules = req.get("rules")
+        if not rules:
+            with _manifest_lock:
+                rules = list(_manifest.keys())
         count = 0
         for rule_name in rules:
             yield _exec_scan(req_id, rule_name)
@@ -171,7 +182,43 @@ def handle_request(req: dict):
         yield {"req_id": req_id, "done": True, "total": len(paths), "installed": installed}
 
     else:
-        yield {"req_id": req_id, "status": "ERROR", "message": f"Unknown action: {action}"}
+        # "done" matters here: without it a client talking to an older runner
+        # waits out its full read timeout instead of failing fast.
+        yield {"req_id": req_id, "status": "ERROR", "done": True,
+               "message": f"Unknown action: {action}"}
+
+
+def _exec_capabilities(req_id: str) -> dict:
+    """Read-only introspection so the server can tell a healthy runner from one
+    that is listening but cannot actually assess anything (empty manifest,
+    missing standards tree). Takes no parameters and executes nothing."""
+    scan_dir = STANDARDS_BASE / "scripts" / "scan"
+    try:
+        scan_dir_count = len([p for p in scan_dir.iterdir() if p.suffix == ".sh"])
+    except OSError:
+        scan_dir_count = 0
+    try:
+        manifest_mtime = int(MANIFEST_PATH.stat().st_mtime)
+    except OSError:
+        manifest_mtime = None
+    with _manifest_lock:
+        manifest_rules = len(_manifest)
+    return {
+        "req_id": req_id,
+        "done": True,
+        "caps_version": RUNNER_CAPS_VERSION,
+        "uid": os.getuid(),
+        "euid": os.geteuid(),
+        "pid": os.getpid(),
+        "started_at": _STARTED_AT,
+        "manifest_path": str(MANIFEST_PATH),
+        "manifest_present": MANIFEST_PATH.exists(),
+        "manifest_mtime": manifest_mtime,
+        "manifest_rules": manifest_rules,
+        "standards_base": str(STANDARDS_BASE),
+        "standards_base_ok": scan_dir.is_dir(),
+        "scan_dir_count": scan_dir_count,
+    }
 
 
 def _exec_scan(req_id: str, rule_name: str) -> dict:
@@ -194,6 +241,7 @@ def _exec_scan(req_id: str, rule_name: str) -> dict:
         "result": data.get("result"),
         "expected": data.get("expected"),
         "message": data.get("message"),
+        "stderr": data.get("stderr"),
         "exit_code": exit_code,
         "duration_ms": duration_ms,
     }
@@ -217,6 +265,7 @@ def _exec_fix(req_id: str, rule_name: str) -> dict:
         "rule": rule_name,
         "action": data.get("action", "ERROR"),
         "message": data.get("message"),
+        "stderr": data.get("stderr"),
         "exit_code": exit_code,
         "duration_ms": duration_ms,
     }
@@ -240,6 +289,7 @@ def _exec_undo_fix(req_id: str, rule_name: str) -> dict:
         "rule": rule_name,
         "action": data.get("action", "ERROR"),
         "message": data.get("message"),
+        "stderr": data.get("stderr"),
         "exit_code": exit_code,
         "duration_ms": duration_ms,
     }

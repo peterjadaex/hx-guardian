@@ -19,6 +19,21 @@ from core.database import Base
 # operator-facing history, trends, and report session pickers.
 VERIFICATION_TRIGGERS = ("single_rule", "fix_rescan", "undo_fix_rescan", "post_exemption")
 
+# Status for a rule that could not be evaluated because the privileged runner was
+# unreachable or not functioning. Distinct from ERROR (the check ran and failed)
+# and from MDM_REQUIRED (there is no local check at all): it means "we did not
+# look", so it must never be presented as a result.
+NOT_ASSESSED = "NOT_ASSESSED"
+
+# Compliance-score rule (operator decision): FAIL and ERROR are non-compliant —
+# a check that crashed is unverified, not verified-good. Every other outcome
+# (PASS, NOT_APPLICABLE, MDM_REQUIRED, EXEMPT) counts as compliant.
+# NOT_ASSESSED alone is excluded from both sides of the ratio, so rules that
+# were never evaluated cannot move the score in either direction:
+#   score = (denominator - fail - error) / denominator,
+#   denominator = total rules - not_assessed.
+NON_COMPLIANT_STATUSES = ("FAIL", "ERROR")
+
 
 class ScanSession(Base):
     __tablename__ = "scan_sessions"
@@ -35,7 +50,15 @@ class ScanSession(Base):
     error_count = Column(Integer, default=0)
     mdm_count = Column(Integer, default=0)
     exempt_count = Column(Integer, default=0)
-    score_pct = Column(Float, nullable=True)    # pass / (pass+fail) * 100
+    not_assessed_count = Column(Integer, default=0)   # runner unavailable — never looked
+    # Machine-readable reason this session could not assess everything, or NULL
+    # for a fully assessed scan. See core/runner_health.py for the vocabulary.
+    degraded_reason = Column(String(32), nullable=True)
+    # (total - fail - error - not_assessed) / (total - not_assessed) * 100 —
+    # FAIL and ERROR count against the score; NOT_ASSESSED is excluded from both
+    # sides. NULL when every rule was NOT_ASSESSED — a null score must render
+    # as "—", never as 0%.
+    score_pct = Column(Float, nullable=True)
 
     results = relationship("ScanResult", back_populates="session", cascade="all, delete-orphan")
 
@@ -48,7 +71,7 @@ class ScanResult(Base):
     scanned_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     rule = Column(String(128), nullable=False, index=True)
     category = Column(String(64), nullable=False, default="")
-    status = Column(String(32), nullable=False)  # PASS|FAIL|NOT_APPLICABLE|ERROR|EXEMPT|MDM_REQUIRED
+    status = Column(String(32), nullable=False)  # PASS|FAIL|NOT_APPLICABLE|ERROR|EXEMPT|MDM_REQUIRED|NOT_ASSESSED
     result_value = Column(Text, nullable=True)
     expected_value = Column(Text, nullable=True)
     message = Column(Text, nullable=True)

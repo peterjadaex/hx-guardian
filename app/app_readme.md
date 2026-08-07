@@ -191,11 +191,28 @@ airgap device does not need Node.js at install time.
 
 ```bash
 curl -s http://127.0.0.1:8000/api/health
-# → {"status":"ok","runner_connected":true,"version":"1.0.0"}
+# → {"status":"ok","ready":true,"version":"1.0.0"}
+
+curl -s http://127.0.0.1:8000/api/runner/status
+# → {"runner_connected":true,"available":true,"reason":null,"detail":"Runner is available.",
+#    "uid":0,"manifest_rules":268,"server_manifest_rules":268,
+#    "stale_manifest":false,"legacy":false,"checked_at":"..."}
 ```
 
-If `runner_connected` is `false`, the runner daemon (Terminal 1) is not running
-or the socket was not created. Restart Terminal 1 and re-check.
+`/api/health` covers only this server; runner state lives at
+`/api/runner/status`. Two fields matter there and they are not the same thing:
+
+- `runner_connected` — something answered on the socket. This is what
+  `update.sh` checks during post-deploy verification.
+- `available` — the runner can actually assess compliance. A runner can be
+  connected yet unusable: `manifest_empty` (it loaded zero rules),
+  `standards_missing`, or `not_root`. `reason` and `detail` say which, and
+  `detail` includes the command to fix it.
+
+If `available` is `false`, a scan will not attempt those rules; it records them
+as **Not Assessed** rather than guessing. `stale_manifest` means the manifest
+changed since the runner started — the runner reads it once at startup, so it
+needs `sudo zsh app/update.sh runner` to pick up edits.
 
 ---
 
@@ -276,7 +293,7 @@ Before handing a build to operators, run through these:
 - [ ] `.venv` exists and `pip install -r app/backend/requirements.txt` completes cleanly.
 - [ ] `sudo "$(which python3)" app/backend/hxg_runner.py` starts and logs `Manifest loaded: 266 rules` (venv-activated shell).
 - [ ] `zsh app/start-dev.sh` starts and uvicorn reports running on `127.0.0.1:8000`.
-- [ ] `curl -s http://127.0.0.1:8000/api/health` returns `runner_connected: true`.
+- [ ] `curl -s http://127.0.0.1:8000/api/runner/status` returns `runner_connected: true` **and** `available: true`.
 - [ ] `npm run build` in `app/frontend/` completes without errors (if frontend changed).
 - [ ] [app/frontend/dist/index.html](frontend/dist/index.html) is up to date and committed.
 - [ ] A matching Xcode CLT installer is staged under `app/vendor/clt/` when the target does not already have CLT.
@@ -321,7 +338,10 @@ python3 -m uvicorn main:app --host 127.0.0.1 --port 8000
 | `sudo: python3: command not found` | `sudo` dropped PATH — use `sudo "$(which python3)" app/backend/hxg_runner.py` |
 | `Manifest not found` in runner log | Run from repo root — the runner resolves paths relative to cwd |
 | `Permission denied` on socket | `sudo rm -rf /var/run/hxg && sudo mkdir -p /var/run/hxg && sudo chown root:admin /var/run/hxg && sudo chmod 770 /var/run/hxg`, then restart the runner |
-| `runner_connected: false` in `/api/health` | Runner is not running or its socket is missing — check Terminal 1 |
+| `runner_connected: false` in `/api/runner/status` | Runner is not running or its socket is missing — check Terminal 1 |
+| `available: false` with `reason: manifest_empty` | The runner started but `load_manifest()` failed, so it knows zero rules. Restore `standards/scripts/manifest.json`, then restart the runner — it reads the manifest once at startup |
+| `available: false` with `reason: standards_missing` | The runner cannot find `standards/scripts/scan/` — check the path it reports in `detail` |
+| Rules show **Not Assessed** after a scan | The runner was unavailable, so those rules were never evaluated. Fix the runner (see `detail` on `/api/runner/status`) and re-scan; the score deliberately excludes them rather than counting them as failures |
 | All rules return `ERROR` | Runner not running as root, or socket missing — see above |
 | `PermissionError: /tmp/hxg_build/... base_library.zip` during `build.sh` / `prepare_sd_card.sh` | The legacy workpath is owned by root from a prior `sudo` build. Run `sudo rm -rf /tmp/hxg_build` once, then re-run without sudo. The current [app/build.sh](build.sh) uses `$TMPDIR/hxg_build` (per-user), so this only affects repos that ran an older build.sh with sudo. |
 | `PermissionError: .../app/dist/hxg-server` during PyInstaller COLLECT | `app/dist/` was created by a prior `sudo` build and is now owned by root. Run `sudo rm -rf app/dist` once, then re-run `zsh app/prepare_sd_card.sh` without sudo. |

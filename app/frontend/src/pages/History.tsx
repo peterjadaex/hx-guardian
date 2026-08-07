@@ -6,6 +6,47 @@ import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../compo
 import { getHistory, getTrends, getReportCsv, getReportPdf } from '../lib/api'
 import { parseServerTime } from '../lib/time'
 
+interface TrendPoint {
+  date: string
+  score_pct: number | null
+  assessed: number
+  not_assessed: number
+  total_rules: number
+  degraded_reason: string | null
+}
+
+/**
+ * A partial scan plots on the same axis as a full one, so the point itself has to
+ * carry the caveat — amber when coverage was incomplete.
+ */
+function TrendDot({ cx, cy, payload }: { cx?: number; cy?: number; payload?: TrendPoint }) {
+  if (cx == null || cy == null) return null
+  const incomplete = (payload?.not_assessed ?? 0) > 0
+  return <circle cx={cx} cy={cy} r={3} fill={incomplete ? '#f59e0b' : '#3b82f6'} />
+}
+
+function TrendTooltip({ active, payload }: {
+  active?: boolean
+  payload?: Array<{ payload: TrendPoint }>
+}) {
+  if (!active || !payload?.length) return null
+  const p = payload[0].payload
+  return (
+    <div className="bg-[#0f1629] border border-[#1e2d4a] rounded-lg px-3 py-2 text-xs text-slate-200">
+      <div>{new Date(p.date).toLocaleString()}</div>
+      <div className="font-semibold">
+        Score {p.score_pct === null ? '—' : `${p.score_pct}%`}
+      </div>
+      <div className="text-slate-400">{p.assessed} of {p.total_rules} assessed</div>
+      {p.not_assessed > 0 && (
+        <div className="text-amber-400">
+          {p.not_assessed} not assessed{p.degraded_reason ? ` (${p.degraded_reason})` : ''}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function History() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -57,15 +98,11 @@ export function History() {
                   tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 100]} tick={{ fill: '#475569', fontSize: 10 }} axisLine={false} tickLine={false}
                   tickFormatter={v => `${v}%`} />
-                <Tooltip
-                  contentStyle={{ background: '#0f1629', border: '1px solid #1e2d4a', borderRadius: 8, color: '#e2e8f0' }}
-                  formatter={(v: unknown) => [`${v}%`, 'Score']}
-                  labelFormatter={d => new Date(d).toLocaleString()}
-                />
+                <Tooltip content={<TrendTooltip />} />
                 <ReferenceLine y={90} stroke="#22c55e" strokeDasharray="3 3" opacity={0.4} />
                 <ReferenceLine y={70} stroke="#eab308" strokeDasharray="3 3" opacity={0.4} />
                 <Line type="monotone" dataKey="score_pct" stroke="#3b82f6" strokeWidth={2}
-                  dot={{ fill: '#3b82f6', r: 3 }} activeDot={{ r: 5 }} />
+                  dot={<TrendDot />} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           </Card>
@@ -92,23 +129,41 @@ export function History() {
                     {s.id === highlightSession && (
                       <span className="ml-2 text-xs text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded">Latest</span>
                     )}
+                    {s.degraded_reason && (
+                      <span title={`Incomplete scan: ${s.degraded_reason}`}
+                        className="ml-2 text-xs text-purple-300 bg-purple-900/30 px-1.5 py-0.5 rounded">
+                        Degraded
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-slate-400 text-xs capitalize">{s.triggered_by}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`font-semibold ${
-                      (s.score_pct || 0) >= 90 ? 'text-green-400' :
-                      (s.score_pct || 0) >= 70 ? 'text-yellow-400' : 'text-red-400'
-                    }`}>
-                      {s.score_pct?.toFixed(1) ?? '—'}%
-                    </span>
+                    {/* A null score means nothing was assessed — grey dash, not a red 0%. */}
+                    {s.score_pct === null || s.score_pct === undefined ? (
+                      <span className="font-semibold text-slate-500" title="Nothing was assessed">—</span>
+                    ) : (
+                      <span className={`font-semibold ${
+                        s.score_pct >= 90 ? 'text-green-400' :
+                        s.score_pct >= 70 ? 'text-yellow-400' : 'text-red-400'
+                      }`}>
+                        {s.score_pct.toFixed(1)}%
+                      </span>
+                    )}
+                    <div className="text-slate-600 text-xs">
+                      {s.assessed ?? 0} of {s.total_rules} assessed
+                    </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-3 text-xs">
+                    <div className="flex flex-wrap gap-x-3 text-xs">
                       <span className="text-green-400">{s.pass_count} pass</span>
                       <span className="text-red-400">{s.fail_count} fail</span>
+                      {s.error_count > 0 && <span className="text-orange-400">{s.error_count} error</span>}
                       <span className="text-slate-500">{s.na_count} n/a</span>
+                      {s.not_assessed_count > 0 && (
+                        <span className="text-amber-400">{s.not_assessed_count} not assessed</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3">

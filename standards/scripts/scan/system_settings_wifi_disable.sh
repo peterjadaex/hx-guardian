@@ -6,6 +6,7 @@
 # Standards: cisv8, 800-53r5_high
 # Description: Disable Wi-Fi Interface
 # =============================================================================
+# Hand-maintained — do not overwrite with generate_scripts.py output.
 # Exit codes: 0=PASS  1=FAIL  2=NOT_APPLICABLE  3=ERROR(root)
 
 if [[ $EUID -ne 0 ]]; then
@@ -13,7 +14,9 @@ if [[ $EUID -ne 0 ]]; then
     exit 3
 fi
 
-if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qx "Wi-Fi"; then
+# Match "*Wi-Fi" too: a disabled service is listed with an asterisk and must be
+# assessed via getnetworkserviceenabled, not reported as absent.
+if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qxE '\*?Wi-Fi'; then
     # No Wi-Fi service listed. This is the desired end-state — either the MDM
     # profile has removed the service or the hardware has none. The rule's
     # goal (Wi-Fi disabled) is satisfied either way.

@@ -35,7 +35,7 @@ async def apply_fix(
     last_scan = (
         db.query(ScanResult)
         .filter(ScanResult.rule == rule_name)
-        .order_by(ScanResult.scanned_at.desc())
+        .order_by(ScanResult.scanned_at.desc(), ScanResult.id.desc())
         .first()
     )
     scan_before = last_scan.status if last_scan else "UNKNOWN"
@@ -62,7 +62,7 @@ async def apply_fix(
                 total_rules=1,
                 pass_count=1 if scan_after == "PASS" else 0,
                 fail_count=1 if scan_after == "FAIL" else 0,
-                score_pct=100.0 if scan_after == "PASS" else 0.0,
+                score_pct=0.0 if scan_after in ("FAIL", "ERROR") else 100.0,
             )
             db.add(session)
             db.commit()
@@ -86,6 +86,9 @@ async def apply_fix(
         rule=rule_name,
         action=fix_res.get("action"),
         message=fix_res.get("message"),
+        # stderr from the fix script — most fix scripts report EXECUTED
+        # unconditionally, so this is often the only evidence a fix failed.
+        raw_output=fix_res.get("stderr"),
         exit_code=fix_res.get("exit_code"),
         duration_ms=fix_res.get("duration_ms"),
         scan_before=scan_before,
@@ -125,7 +128,7 @@ async def undo_fix(
     last_scan = (
         db.query(ScanResult)
         .filter(ScanResult.rule == rule_name)
-        .order_by(ScanResult.scanned_at.desc())
+        .order_by(ScanResult.scanned_at.desc(), ScanResult.id.desc())
         .first()
     )
     scan_before = last_scan.status if last_scan else "UNKNOWN"
@@ -150,7 +153,7 @@ async def undo_fix(
                 total_rules=1,
                 pass_count=1 if scan_after == "PASS" else 0,
                 fail_count=1 if scan_after == "FAIL" else 0,
-                score_pct=100.0 if scan_after == "PASS" else 0.0,
+                score_pct=0.0 if scan_after in ("FAIL", "ERROR") else 100.0,
             )
             db.add(session)
             db.commit()
@@ -175,6 +178,7 @@ async def undo_fix(
         rule=rule_name,
         action=f"UNDONE:{undo_res.get('action', 'ERROR')}",
         message=undo_res.get("message"),
+        raw_output=undo_res.get("stderr"),
         exit_code=undo_res.get("exit_code"),
         duration_ms=undo_res.get("duration_ms"),
         scan_before=scan_before,
@@ -219,6 +223,7 @@ def get_fix_history(
                 "executed_at": r.executed_at.isoformat() if r.executed_at else None,
                 "action": r.action,
                 "message": r.message,
+                "stderr": r.raw_output,
                 "scan_before": r.scan_before,
                 "scan_after": r.scan_after,
                 "exit_code": r.exit_code,

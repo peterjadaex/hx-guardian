@@ -4,6 +4,8 @@
 # Category:  System Settings
 # Description: Re-enable the Ethernet service.
 # =============================================================================
+# Hand-maintained — do not overwrite with generate_scripts.py output.
+# A disabled service is listed as "*Ethernet"; the guard must match it too.
 # Exit codes: 0=OK  1=ERROR  3=ERROR(root)
 
 if [[ $EUID -ne 0 ]]; then
@@ -11,7 +13,7 @@ if [[ $EUID -ne 0 ]]; then
     exit 3
 fi
 
-if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qx "Ethernet"; then
+if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qxE '\*?Ethernet'; then
     printf '{"rule":"system_settings_ethernet_disable","action":"UNDONE","message":"No Ethernet service present"}\n'
     exit 0
 fi

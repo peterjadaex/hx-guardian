@@ -67,6 +67,8 @@ async def collect_device_status() -> dict:
         _run(["/usr/sbin/nvram", "94b73556-2197-4702-82a8-3e1337dafbfb:AppleSecureBootPolicy"]),
         _run(["/usr/sbin/system_profiler", "SPHardwareDataType", "-json"]),
         _run(["/bin/uptime"]),
+        _run(["/usr/sbin/system_profiler", "SPiBridgeDataType", "-json"]),
+        _run(["/usr/sbin/diskutil", "info", "-plist", "/"]),
         return_exceptions=True,
     )
 
@@ -78,6 +80,8 @@ async def collect_device_status() -> dict:
     sb_out, _, _ = results[5]
     hw_out, _, _ = results[6]
     uptime_out, _, _ = results[7]
+    ibridge_out, _, _ = results[8]
+    du_root_out, _, _ = results[9]
 
     # Parse sw_vers
     os_version = build = ""
@@ -91,8 +95,25 @@ async def collect_device_status() -> dict:
     # e.g. "enabled (Custom Configuration)." would not match and correctly returns False
     sip_enabled = "status: enabled." in sip_out.lower()
 
-    # FileVault
-    fv_on = "On" in fv_out or "FileVault is On" in fv_out
+    # FileVault — parse fdesetup explicitly; an empty or garbled reply must
+    # read as unknown (None), never as off. Corroborate with the FileVault key
+    # from `diskutil info /`, which reads the APFS volume state directly and
+    # catches FileVault enabled during Setup Assistant when fdesetup misses it.
+    fv_lower = fv_out.lower()
+    if "filevault is on" in fv_lower:
+        fv_on: Optional[bool] = True
+    elif "filevault is off" in fv_lower:
+        fv_on = False
+    else:
+        fv_on = None
+    try:
+        du_fv = plistlib.loads(du_root_out.encode()).get("FileVault")
+    except Exception:
+        du_fv = None
+    if du_fv is True:
+        fv_on = True
+    elif fv_on is None and du_fv is False:
+        fv_on = False
 
     # Gatekeeper
     gk_on = "enabled" in gk_out.lower()
@@ -109,9 +130,27 @@ async def collect_device_status() -> dict:
     else:
         fw_on = None
 
-    # Secure boot
+    # Secure boot — SPiBridgeDataType reports it on both Apple Silicon and
+    # Intel T2 ("Full Security" / "Reduced Security" or "Medium Security" /
+    # "Permissive Security" or "No Security") without privileges. The nvram
+    # AppleSecureBootPolicy variable is kept only as a T2-era fallback: it does
+    # not exist on Apple Silicon, which is why this read "unknown" forever.
+    ib_sb = ""
+    try:
+        ib_items = json.loads(ibridge_out).get("SPiBridgeDataType", [])
+        if ib_items:
+            ib_sb = str(ib_items[0].get("ibridge_secure_boot", "")).lower()
+    except Exception:
+        pass
+
     secure_boot = "unknown"
-    if "FullSecurityEnabled" in sb_out or "\x02" in sb_out:
+    if "full" in ib_sb:
+        secure_boot = "full"
+    elif "medium" in ib_sb or "reduced" in ib_sb:
+        secure_boot = "medium"
+    elif "permissive" in ib_sb or "no security" in ib_sb or "none" in ib_sb:
+        secure_boot = "none"
+    elif "FullSecurityEnabled" in sb_out or "\x02" in sb_out:
         secure_boot = "full"
     elif "MediumSecurityEnabled" in sb_out:
         secure_boot = "medium"
@@ -565,10 +604,12 @@ async def preflight_check(
     Returns GREEN / YELLOW / RED.
     """
     from core.manifest import get_all_rules
-    from core.models import ScanResult
+    from core.models import ScanResult, NOT_ASSESSED
+    from core.runner_health import probe_runner
 
     # Rules in all 3 standards are the critical baseline
     all_rules = get_all_rules()
+    manifest_map = {r["rule"]: r for r in all_rules}
     universal_rules = [
         r["rule"] for r in all_rules
         if r.get("standards", {}).get("800-53r5_high")
@@ -576,23 +617,42 @@ async def preflight_check(
         and r.get("standards", {}).get("cis_lvl2")
     ]
 
+    # Only rules with a local check can ever be assessed; the rest are
+    # permanently MDM_REQUIRED and would otherwise make GREEN unreachable.
+    universal_scannable = [
+        r for r in universal_rules
+        if manifest_map.get(r, {}).get("scan_script")
+    ]
+
     failing = []
-    for rule_name in universal_rules:
+    unassessed = []
+    for rule_name in universal_scannable:
         latest = (
             db.query(ScanResult)
             .filter(ScanResult.rule == rule_name)
-            .order_by(ScanResult.scanned_at.desc())
+            .order_by(ScanResult.scanned_at.desc(), ScanResult.id.desc())
             .first()
         )
-        if latest and latest.status == "FAIL":
+        # No result and NOT_ASSESSED are the same fact: we have no evidence about
+        # this control. Treating either as "not failing" is what let a device with
+        # zero scans report Ready.
+        if latest is None or latest.status == NOT_ASSESSED:
+            unassessed.append(rule_name)
+        elif latest.status == "FAIL":
             failing.append(rule_name)
 
     device = await collect_device_status()
     device_issues = []
     if not device.get("sip_enabled"):
         device_issues.append("SIP is disabled")
-    if not device.get("filevault_on"):
+    # filevault_on is tri-state: False is a verified "off", None means neither
+    # fdesetup nor diskutil gave an answer — both block readiness, but the
+    # operator needs to know which problem they are fixing.
+    fv_state = device.get("filevault_on")
+    if fv_state is False:
         device_issues.append("FileVault is off")
+    elif fv_state is None:
+        device_issues.append("FileVault state could not be determined")
     if not device.get("gatekeeper_on"):
         device_issues.append("Gatekeeper is disabled")
 
@@ -600,8 +660,19 @@ async def preflight_check(
     if connections.get("internet_detected"):
         device_issues.append("Active internet connections detected")
 
+    cap = await probe_runner()
+    if not cap.available:
+        device_issues.append(
+            "Privileged runner unavailable — compliance cannot be verified or "
+            f"remediated: {cap.detail}"
+        )
+
     total_issues = len(failing) + len(device_issues)
-    if total_issues == 0:
+    # Readiness must never be GREEN while any universal control is unverified —
+    # "we did not check" is not evidence of compliance on a signing device.
+    if unassessed:
+        readiness = "RED" if (total_issues + len(unassessed)) > 3 else "YELLOW"
+    elif total_issues == 0:
         readiness = "GREEN"
     elif total_issues <= 3:
         readiness = "YELLOW"
@@ -611,13 +682,19 @@ async def preflight_check(
     audit.log_action(db, audit.PREFLIGHT_RUN, None, {
         "readiness": readiness,
         "failing_universal_rules": len(failing),
+        "unassessed_universal_rules": len(unassessed),
+        "runner_available": cap.available,
         "device_issues": device_issues,
     })
 
     return {
         "readiness": readiness,
-        "universal_rules_checked": len(universal_rules),
+        "universal_rules_checked": len(universal_scannable),
+        "universal_rules_assessed": len(universal_scannable) - len(unassessed),
         "failing_universal_rules": failing,
+        "unassessed_universal_rules": unassessed,
+        "coverage_complete": not unassessed,
+        "runner_available": cap.available,
         "device_issues": device_issues,
         "device_status": device,
         "checked_at": datetime.utcnow().isoformat(),

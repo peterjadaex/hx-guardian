@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from core.database import get_db
-from core.models import ScanSession, ScanResult, VERIFICATION_TRIGGERS
+from core.models import ScanSession, ScanResult, VERIFICATION_TRIGGERS, NOT_ASSESSED
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 
@@ -47,6 +47,12 @@ def list_history(
                 "pass_count": s.pass_count,
                 "fail_count": s.fail_count,
                 "na_count": s.na_count,
+                "error_count": s.error_count,
+                "mdm_count": s.mdm_count,
+                "exempt_count": s.exempt_count,
+                "not_assessed_count": s.not_assessed_count or 0,
+                "degraded_reason": s.degraded_reason,
+                "assessed": (s.pass_count or 0) + (s.fail_count or 0) + (s.error_count or 0),
                 "score_pct": s.score_pct,
             }
             for s in sessions
@@ -80,6 +86,12 @@ def get_trends(
                 "score_pct": s.score_pct,
                 "pass": s.pass_count,
                 "fail": s.fail_count,
+                # Coverage travels with the point so the chart can show that a
+                # 100% scored over 12 rules is not the same as one over 268.
+                "assessed": (s.pass_count or 0) + (s.fail_count or 0) + (s.error_count or 0),
+                "not_assessed": s.not_assessed_count or 0,
+                "total_rules": s.total_rules,
+                "degraded_reason": s.degraded_reason,
                 "session_id": s.id,
             }
             for s in sessions
@@ -112,7 +124,8 @@ def get_category_trends(
     for r in results:
         cat = r.category or "Other"
         if cat not in by_cat:
-            by_cat[cat] = {"category": cat, "pass": 0, "fail": 0, "na": 0, "mdm": 0, "exempt": 0, "error": 0}
+            by_cat[cat] = {"category": cat, "pass": 0, "fail": 0, "na": 0, "mdm": 0,
+                           "exempt": 0, "error": 0, "not_assessed": 0}
         st = r.status
         if st == "PASS":
             by_cat[cat]["pass"] += 1
@@ -124,11 +137,23 @@ def get_category_trends(
             by_cat[cat]["mdm"] += 1
         elif st == "EXEMPT":
             by_cat[cat]["exempt"] += 1
+        elif st == NOT_ASSESSED:
+            by_cat[cat]["not_assessed"] += 1
         else:
             by_cat[cat]["error"] += 1
 
     for cat_data in by_cat.values():
-        scoreable = cat_data["pass"] + cat_data["fail"] + cat_data["error"]
-        cat_data["score_pct"] = round(cat_data["pass"] / max(scoreable, 1) * 100, 1)
+        cat_data["assessed"] = cat_data["pass"] + cat_data["fail"] + cat_data["error"]
+        cat_data["total"] = sum(
+            cat_data[k] for k in ("pass", "fail", "na", "mdm", "exempt", "error", "not_assessed")
+        )
+        # Same score rule as the session (see models.py): FAIL and ERROR count
+        # against, NOT_ASSESSED is excluded, and a category with nothing but
+        # NOT_ASSESSED has no percentage to express.
+        denominator = cat_data["total"] - cat_data["not_assessed"]
+        cat_data["score_pct"] = (
+            round((denominator - cat_data["fail"] - cat_data["error"]) / denominator * 100, 1)
+            if denominator else None
+        )
 
     return {"session_id": session_id, "categories": sorted(by_cat.values(), key=lambda x: x["category"])}

@@ -10,21 +10,12 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.manifest import get_all_rules, get_rule, get_categories, get_standards, compute_severity, compute_impact
-from core.models import ScanResult, Exemption, ScanSession
+from core.models import ScanResult, Exemption, ScanSession, NOT_ASSESSED
 
 router = APIRouter(prefix="/api/rules", tags=["rules"])
 
 
-def _latest_status(rule_name: str, db: Session) -> Optional[dict]:
-    """Get the most recent scan result for a rule."""
-    result = (
-        db.query(ScanResult)
-        .filter(ScanResult.rule == rule_name)
-        .order_by(ScanResult.scanned_at.desc())
-        .first()
-    )
-    if not result:
-        return None
+def _serialise_result(result: ScanResult) -> dict:
     return {
         "status": result.status,
         "result_value": result.result_value,
@@ -32,6 +23,49 @@ def _latest_status(rule_name: str, db: Session) -> Optional[dict]:
         "scanned_at": result.scanned_at.isoformat() if result.scanned_at else None,
         "session_id": result.session_id,
     }
+
+
+def _latest_status(rule_name: str, db: Session) -> Optional[dict]:
+    """Get the most recent scan result for a rule.
+
+    The id tiebreak matters: reconciled NOT_ASSESSED rows are all written with a
+    single timestamp, so ordering by scanned_at alone is non-deterministic.
+    """
+    result = (
+        db.query(ScanResult)
+        .filter(ScanResult.rule == rule_name)
+        .order_by(ScanResult.scanned_at.desc(), ScanResult.id.desc())
+        .first()
+    )
+    return _serialise_result(result) if result else None
+
+
+def _last_assessed(rule_name: str, db: Session) -> Optional[dict]:
+    """The most recent result that actually evaluated the rule.
+
+    When the current status is NOT_ASSESSED the operator still wants the dated
+    prior verdict — "unknown now, was FAIL three days ago" — rather than either
+    nothing or a stale PASS presented as current.
+    """
+    result = (
+        db.query(ScanResult)
+        .filter(ScanResult.rule == rule_name, ScanResult.status != NOT_ASSESSED)
+        .order_by(ScanResult.scanned_at.desc(), ScanResult.id.desc())
+        .first()
+    )
+    return _serialise_result(result) if result else None
+
+
+def _current_status(rule_meta: dict, latest: Optional[dict],
+                    exemption: Optional[dict]) -> str:
+    """Single definition of the status precedence ladder."""
+    if exemption:
+        return "EXEMPT"
+    if latest:
+        return latest["status"]
+    if not rule_meta.get("scan_script"):
+        return "MDM_REQUIRED"
+    return "NEVER_SCANNED"
 
 
 def _is_exempt(rule_name: str, db: Session) -> Optional[dict]:
@@ -77,13 +111,7 @@ def list_rules(
     for r in rules:
         latest = _latest_status(r["rule"], db)
         exemption = _is_exempt(r["rule"], db)
-        current_status = "NEVER_SCANNED"
-        if exemption:
-            current_status = "EXEMPT"
-        elif latest:
-            current_status = latest["status"]
-        elif not r.get("scan_script"):
-            current_status = "MDM_REQUIRED"
+        current_status = _current_status(r, latest, exemption)
 
         if status and current_status != status:
             continue
@@ -132,7 +160,7 @@ def get_rule_detail(
     history = (
         db.query(ScanResult)
         .filter(ScanResult.rule == rule_name)
-        .order_by(ScanResult.scanned_at.desc())
+        .order_by(ScanResult.scanned_at.desc(), ScanResult.id.desc())
         .limit(30)
         .all()
     )
@@ -145,18 +173,16 @@ def get_rule_detail(
         for h in reversed(history)
     ]
 
-    current_status = "NEVER_SCANNED"
-    if exemption:
-        current_status = "EXEMPT"
-    elif latest:
-        current_status = latest["status"]
-    elif not rule.get("scan_script"):
-        current_status = "MDM_REQUIRED"
+    current_status = _current_status(rule, latest, exemption)
 
     return {
         **rule,
         "current_status": current_status,
         "last_scan": latest,
+        # Only meaningful when the current status is NOT_ASSESSED: the dated
+        # verdict from the last time this rule was actually evaluated.
+        "last_assessed": (_last_assessed(rule_name, db)
+                          if current_status == NOT_ASSESSED else None),
         "exemption": exemption,
         "scan_history": history_list,
         "has_scan": bool(rule.get("scan_script")),

@@ -6,6 +6,7 @@
 # Standards: cisv8, 800-53r5_high
 # Description: Disable Wi-Fi Interface
 # =============================================================================
+# Hand-maintained — do not overwrite with generate_scripts.py output.
 # Exit codes: 0=PASS/OK  1=FAIL/ERROR  2=NOT_APPLICABLE  3=ERROR(root)
 
 if [[ $EUID -ne 0 ]]; then
@@ -13,7 +14,9 @@ if [[ $EUID -ne 0 ]]; then
     exit 3
 fi
 
-if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qx "Wi-Fi"; then
+# "*Wi-Fi" (asterisk = already disabled) still counts as present — re-applying
+# the fix must stay EXECUTED/idempotent, not flip to NOT_APPLICABLE.
+if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qxE '\*?Wi-Fi'; then
     printf '{"rule":"system_settings_wifi_disable","action":"NOT_APPLICABLE","message":"No Wi-Fi service present"}\n'
     exit 2
 fi

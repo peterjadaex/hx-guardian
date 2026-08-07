@@ -228,8 +228,11 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 arch=$(/usr/bin/arch)
-CURRENT_USER=$(/usr/bin/defaults read /Library/Preferences/com.apple.loginwindow lastUserName)
-CURR_USER_UID=$(/usr/bin/id -u $CURRENT_USER)
+# Console user via scutil — loginwindow's lastUserName is only the account shown
+# at the login window and can be stale or empty for scripts that read/write
+# per-user preferences.
+CURRENT_USER=$(/usr/sbin/scutil <<< "show State:/Users/ConsoleUser" | /usr/bin/awk '/Name :/ && ! /loginwindow/ {{ print $3 }}')
+CURR_USER_UID=$(/usr/bin/id -u "$CURRENT_USER" 2>/dev/null)
 """
 
 
@@ -328,7 +331,25 @@ def main():
     os.makedirs(fix_dir, exist_ok=True)
 
     manifest = {}
-    stats = {"scan": 0, "fix": 0, "no_scan": [], "no_fix": []}
+    stats = {"scan": 0, "fix": 0, "no_scan": [], "no_fix": [], "preserved": []}
+
+    def write_script(path: str, script: str) -> None:
+        """Write a generated script, refusing to clobber hand-maintained ones.
+
+        Several scripts carry fixes the mSCP source does not (ssh_disable's
+        launchctl semantics, the scutil console-user derivation, cfprefsd
+        flushes). Those are marked 'Hand-maintained' on line 9 and must survive
+        regeneration.
+        """
+        if os.path.exists(path):
+            with open(path) as f:
+                head = f.read(600)
+            if "Hand-maintained" in head:
+                stats["preserved"].append(os.path.basename(path))
+                return
+        with open(path, "w") as f:
+            f.write(script)
+        os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
     for rule_name in sorted(rules):
         rule_info = rules[rule_name]
@@ -370,9 +391,7 @@ def main():
         if scan_info:
             script = generate_scan_script(rule_name, rule_info, scan_info, scan_source)
             path = os.path.join(scan_dir, f"{rule_name}.sh")
-            with open(path, "w") as f:
-                f.write(script)
-            os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+            write_script(path, script)
             entry["scan_script"] = f"scripts/scan/{rule_name}.sh"
             stats["scan"] += 1
         else:
@@ -382,9 +401,7 @@ def main():
         if fix_cmd:
             script = generate_fix_script(rule_name, rule_info, fix_cmd, scan_info, fix_source)
             path = os.path.join(fix_dir, f"{rule_name}.sh")
-            with open(path, "w") as f:
-                f.write(script)
-            os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+            write_script(path, script)
             entry["fix_script"] = f"scripts/fix/{rule_name}.sh"
             stats["fix"] += 1
         else:
@@ -392,12 +409,23 @@ def main():
 
         manifest[rule_name] = entry
 
-    # Write manifest
+    # Write manifest, preserving post-generation fields the generator does not
+    # produce (undo_fix_script exists on ~70 entries and was added by hand).
     manifest_path = os.path.join(BUILD_DIR, "scripts", "manifest.json")
+    if os.path.exists(manifest_path):
+        with open(manifest_path) as f:
+            previous = json.load(f)
+        for rule_name, entry in manifest.items():
+            old_entry = previous.get(rule_name, {})
+            if "undo_fix_script" in old_entry:
+                entry["undo_fix_script"] = old_entry["undo_fix_script"]
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2, sort_keys=True)
 
     # Summary
+    if stats["preserved"]:
+        print(f"\nPreserved {len(stats['preserved'])} hand-maintained scripts "
+              f"(not overwritten): {', '.join(sorted(stats['preserved']))}")
     print(f"\nGenerated {stats['scan']} scan scripts  -> {scan_dir}")
     print(f"Generated {stats['fix']} fix scripts   -> {fix_dir}")
     print(f"Manifest                   -> {manifest_path}")

@@ -3,6 +3,10 @@ import { getActiveScan, getSession } from './api'
 
 const POLL_MS = 2000
 const MAX_CONSECUTIVE_ERRORS = 10
+// Backstop for a session that was never finalised (e.g. the server process died
+// mid-scan). Without it the button would stay disabled forever, because the
+// status request succeeds and simply keeps reporting is_running.
+const MAX_TRACK_MS = 15 * 60 * 1000
 
 /**
  * Tracks the scan session that is currently running, independent of which page
@@ -32,7 +36,14 @@ export function useActiveScan(onComplete?: () => void) {
     if (sessionId === null) return
 
     let errors = 0
+    let elapsed = 0
     const timer = setInterval(async () => {
+      elapsed += POLL_MS
+      if (elapsed > MAX_TRACK_MS) {
+        clearInterval(timer)
+        setSessionId(null)
+        return
+      }
       try {
         const sess = await getSession(sessionId)
         errors = 0

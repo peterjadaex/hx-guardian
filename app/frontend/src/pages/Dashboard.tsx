@@ -1,21 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { RefreshCw, Play, CheckCircle, XCircle, Shield, Monitor } from 'lucide-react'
+import { RefreshCw, Play, CheckCircle, XCircle, Shield, Monitor, AlertTriangle } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../components/Layout'
 import { StatusBadge } from '../components/StatusBadge'
 import { getHistory, getTrends, getCategoryBreakdown, startScan, getPreflight, getDeviceStatus } from '../lib/api'
 import { useActiveScan } from '../lib/useActiveScan'
+import { useRunnerStatus } from '../lib/useRunnerStatus'
+import { statusHex, statusLabel } from '../lib/status'
 import { parseServerTime } from '../lib/time'
 
-const STATUS_COLORS: Record<string, string> = {
-  PASS: '#22c55e',
-  FAIL: '#ef4444',
-  NOT_APPLICABLE: '#475569',
-  MDM_REQUIRED: '#3b82f6',
-  EXEMPT: '#eab308',
-  ERROR: '#f97316',
-}
 
 export function Dashboard() {
   const navigate = useNavigate()
@@ -66,6 +60,7 @@ export function Dashboard() {
   }
 
   const { scanning, trackSession } = useActiveScan(() => loadData(true))
+  const runner = useRunnerStatus()
 
   const handleFullScan = async () => {
     try {
@@ -80,15 +75,20 @@ export function Dashboard() {
   if (loading) return <Layout><LoadingSpinner /></Layout>
 
   const score = latestSession?.score_pct ?? null
+  // Keyed by raw status so the colour lookup and the label come from one map.
   const pieData = latestSession ? [
-    { name: 'PASS', value: latestSession.pass_count },
-    { name: 'FAIL', value: latestSession.fail_count },
-    { name: 'N/A', value: latestSession.na_count },
-    { name: 'Not Scannable', value: latestSession.mdm_count },
-    { name: 'Exempt', value: latestSession.exempt_count },
-  ].filter(d => d.value > 0) : []
+    { status: 'PASS', value: latestSession.pass_count },
+    { status: 'FAIL', value: latestSession.fail_count },
+    { status: 'ERROR', value: latestSession.error_count },
+    { status: 'NOT_ASSESSED', value: latestSession.not_assessed_count },
+    { status: 'NOT_APPLICABLE', value: latestSession.na_count },
+    { status: 'MDM_REQUIRED', value: latestSession.mdm_count },
+    { status: 'EXEMPT', value: latestSession.exempt_count },
+  ].filter(d => (d.value ?? 0) > 0).map(d => ({ ...d, name: statusLabel(d.status) })) : []
 
   const scoreColor = score === null ? '#64748b' : score >= 90 ? '#22c55e' : score >= 70 ? '#eab308' : '#ef4444'
+  const notAssessed = latestSession?.not_assessed_count ?? 0
+  const assessed = latestSession?.assessed ?? 0
 
   const uptimeStr = deviceStatus?.uptime_secs
     ? `${Math.floor(deviceStatus.uptime_secs / 3600)}h ${Math.floor((deviceStatus.uptime_secs % 3600) / 60)}m`
@@ -116,6 +116,18 @@ export function Dashboard() {
       {error && <ErrorMessage message={error} />}
 
       <div className="px-6 pb-6 space-y-6">
+        {runner.loaded && !runner.available && (
+          <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-red-900/30 border border-red-700/50">
+            <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <div className="text-red-300 font-medium">
+                Privileged runner unavailable — rules cannot be assessed and remediation is unavailable.
+              </div>
+              <div className="text-red-400/80 text-xs mt-1">{runner.detail}</div>
+            </div>
+          </div>
+        )}
+
         {/* Pre-flight + Device Strip */}
         <div className="grid grid-cols-6 gap-4">
           {/* Pre-flight */}
@@ -125,13 +137,49 @@ export function Dashboard() {
               <div className="flex flex-col gap-1">
                 <StatusBadge status={preflight.readiness} size="lg" />
                 {preflight.failing_universal_rules?.length > 0 && (
-                  <div className="text-slate-400 text-xs mt-2">
-                    {preflight.failing_universal_rules.length} critical {preflight.failing_universal_rules.length === 1 ? 'failure' : 'failures'}
+                  <div className="text-xs mt-2">
+                    <div className="text-red-400 font-medium">
+                      {preflight.failing_universal_rules.length} critical {preflight.failing_universal_rules.length === 1 ? 'failure' : 'failures'}
+                    </div>
+                    <ul className="mt-1 space-y-0.5">
+                      {preflight.failing_universal_rules.slice(0, 5).map((r: string) => (
+                        <li key={r}>
+                          <button
+                            onClick={() => navigate(`/rules/${r}`)}
+                            className="text-slate-400 hover:text-slate-200 truncate block max-w-full text-left"
+                            title={r}
+                          >
+                            {r}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {preflight.failing_universal_rules.length > 5 && (
+                      <button
+                        onClick={() => navigate('/rules')}
+                        className="text-slate-500 hover:text-slate-300 mt-0.5"
+                      >
+                        +{preflight.failing_universal_rules.length - 5} more…
+                      </button>
+                    )}
                   </div>
                 )}
                 {preflight.device_issues?.length > 0 && (
-                  <div className="text-orange-400 text-xs">
-                    {preflight.device_issues.length} device {preflight.device_issues.length === 1 ? 'issue' : 'issues'}
+                  <div className="text-xs mt-2">
+                    <div className="text-orange-400 font-medium">
+                      {preflight.device_issues.length} device {preflight.device_issues.length === 1 ? 'issue' : 'issues'}
+                    </div>
+                    <ul className="mt-1 space-y-0.5 text-orange-300/80">
+                      {preflight.device_issues.map((issue: string) => (
+                        <li key={issue}>{issue}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {/* Explains why readiness is not green when nothing is failing. */}
+                {preflight.unassessed_universal_rules?.length > 0 && (
+                  <div className="text-amber-400 text-xs">
+                    {preflight.unassessed_universal_rules.length} not assessed
                   </div>
                 )}
               </div>
@@ -187,19 +235,32 @@ export function Dashboard() {
                   <PieChart width={160} height={160}>
                     <Pie data={pieData} cx={80} cy={80} innerRadius={55} outerRadius={75} dataKey="value" strokeWidth={0}>
                       {pieData.map((entry) => (
-                        <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || STATUS_COLORS[entry.name.toUpperCase()] || '#64748b'} />
+                        <Cell key={entry.status} fill={statusHex(entry.status)} />
                       ))}
                     </Pie>
                   </PieChart>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-bold" style={{ color: scoreColor }}>{score?.toFixed(0)}%</span>
+                    <span className="text-3xl font-bold" style={{ color: scoreColor }}>
+                      {score === null ? '—' : `${score.toFixed(0)}%`}
+                    </span>
                     <span className="text-slate-500 text-xs">compliant</span>
                   </div>
                 </div>
+                {/* Coverage sits with the score: a 100% over 12 rules must never
+                    be mistakable for a 100% over the whole baseline. */}
+                <div className="text-slate-500 text-xs mt-2">
+                  {assessed} of {latestSession.total_rules} rules assessed
+                </div>
+                {notAssessed > 0 && (
+                  <div className="flex items-center gap-1.5 text-amber-400 text-xs mt-1">
+                    <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                    Coverage incomplete — {notAssessed} not assessed
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 text-xs w-full">
                   {pieData.map(d => (
-                    <div key={d.name} className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: STATUS_COLORS[d.name] || STATUS_COLORS[d.name.toUpperCase()] || '#64748b' }} />
+                    <div key={d.status} className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: statusHex(d.status) }} />
                       <span className="text-slate-400">{d.name}: <span className="text-white">{d.value}</span></span>
                     </div>
                   ))}
@@ -240,11 +301,13 @@ export function Dashboard() {
                   />
                   <Tooltip
                     contentStyle={{ background: '#0f1629', border: '1px solid #1e2d4a', borderRadius: 8, color: '#e2e8f0' }}
-                    formatter={(v: unknown) => [`${v}%`, 'Score']}
+                    formatter={(v: unknown) => [v == null ? '— not assessed' : `${v}%`, 'Score']}
                   />
                   <Bar dataKey="score_pct" radius={[0, 4, 4, 0]}>
                     {categories.map((c) => (
-                      <Cell key={c.category} fill={c.score_pct >= 90 ? '#22c55e' : c.score_pct >= 70 ? '#eab308' : '#ef4444'} />
+                      // Null score = nothing in this category was assessed —
+                      // grey, not the red that 0% would imply.
+                      <Cell key={c.category} fill={c.score_pct == null ? '#64748b' : c.score_pct >= 90 ? '#22c55e' : c.score_pct >= 70 ? '#eab308' : '#ef4444'} />
                     ))}
                   </Bar>
                 </BarChart>

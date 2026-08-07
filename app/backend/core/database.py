@@ -110,4 +110,24 @@ def init_db() -> None:
                 conn.execute(text("ALTER TABLE usb_whitelist ADD COLUMN volume_uuid VARCHAR(64)"))
                 conn.commit()
 
+        # Migration: scan_sessions gains coverage bookkeeping so a scan that could
+        # not assess everything is distinguishable from one that passed everything.
+        # ADD COLUMN with a constant default is O(1) in SQLite; existing rows read
+        # 0 / NULL, and no operator history is touched.
+        session_cols = [c["name"] for c in inspector.get_columns("scan_sessions")]
+        pending_ddl = []
+        if "not_assessed_count" not in session_cols:
+            pending_ddl.append(
+                "ALTER TABLE scan_sessions ADD COLUMN not_assessed_count INTEGER DEFAULT 0"
+            )
+        if "degraded_reason" not in session_cols:
+            pending_ddl.append(
+                "ALTER TABLE scan_sessions ADD COLUMN degraded_reason VARCHAR(32)"
+            )
+        if pending_ddl:
+            with engine.connect() as conn:
+                for stmt in pending_ddl:
+                    conn.execute(text(stmt))
+                conn.commit()
+
         _init_done = True

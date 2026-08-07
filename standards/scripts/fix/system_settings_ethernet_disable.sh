@@ -6,6 +6,8 @@
 # Standards: hxguardian
 # Description: Disable Ethernet Interface
 # =============================================================================
+# Hand-maintained — do not overwrite with generate_scripts.py output.
+# A disabled service is listed as "*Ethernet"; the guard must match it too.
 # Exit codes: 0=PASS/OK  1=FAIL/ERROR  2=NOT_APPLICABLE  3=ERROR(root)
 
 if [[ $EUID -ne 0 ]]; then
@@ -13,7 +15,7 @@ if [[ $EUID -ne 0 ]]; then
     exit 3
 fi
 
-if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qx "Ethernet"; then
+if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qxE '\*?Ethernet'; then
     printf '{"rule":"system_settings_ethernet_disable","action":"NOT_APPLICABLE","message":"No Ethernet service present"}\n'
     exit 2
 fi

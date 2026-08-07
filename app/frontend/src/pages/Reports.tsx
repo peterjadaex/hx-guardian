@@ -40,7 +40,7 @@ export function Reports() {
             <option value="">Latest Session</option>
             {sessions.map(s => (
               <option key={s.id} value={s.id}>
-                Session #{s.id} — {parseServerTime(s.started_at)?.toLocaleString()} ({s.score_pct?.toFixed(1)}% compliant)
+                Session #{s.id} — {parseServerTime(s.started_at)?.toLocaleString()} ({s.score_pct == null ? '— not assessed' : `${s.score_pct.toFixed(1)}% compliant`})
               </option>
             ))}
           </select>

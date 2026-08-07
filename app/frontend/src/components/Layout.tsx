@@ -3,8 +3,9 @@ import { clsx } from 'clsx'
 import {
   Shield, LayoutDashboard, ListChecks, History,
   FileText, Usb, Settings, Calendar,
-  ClipboardList, BookOpen, SlidersHorizontal
+  ClipboardList, BookOpen, SlidersHorizontal, AlertTriangle
 } from 'lucide-react'
+import { useRunnerStatus } from '../lib/useRunnerStatus'
 
 const NAV_ITEMS = [
   { path: '/',            label: 'Dashboard',     icon: LayoutDashboard },
@@ -18,6 +19,36 @@ const NAV_ITEMS = [
   { path: '/audit-log',   label: 'Audit Log',     icon: BookOpen },
   { path: '/settings',    label: 'Settings',      icon: SlidersHorizontal },
 ]
+
+/**
+ * Persistent runner indicator. Lives in the sidebar so a degraded runner is
+ * visible on every page — previously it surfaced only as a 503 buried in one
+ * output pane, so an operator could scan for hours without noticing.
+ */
+function RunnerPill() {
+  const runner = useRunnerStatus()
+  if (!runner.loaded || (runner.available && !runner.staleManifest)) return null
+
+  const critical = !runner.available
+  return (
+    <div className="px-3 pb-4">
+      <div
+        title={runner.detail}
+        className={clsx(
+          'flex items-center gap-2 px-3 py-2 rounded-lg text-xs border',
+          critical
+            ? 'bg-red-900/30 text-red-300 border-red-700/50'
+            : 'bg-amber-900/30 text-amber-300 border-amber-700/50'
+        )}
+      >
+        <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+        <span className="leading-tight">
+          {critical ? 'Runner unavailable' : 'Runner restart required'}
+        </span>
+      </div>
+    </div>
+  )
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -55,6 +86,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
+        <RunnerPill />
       </aside>
 
       {/* Main content */}

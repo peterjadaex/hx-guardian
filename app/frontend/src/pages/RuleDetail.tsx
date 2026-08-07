@@ -5,6 +5,8 @@ import { Layout, Card, LoadingSpinner, ErrorMessage } from '../components/Layout
 import { StatusBadge } from '../components/StatusBadge'
 import { getRuleDetail, scanRule, fixRule, undoFix, getFixHistory, grantExemption, revokeExemption, get2faStatus, verify2fa } from '../lib/api'
 import { useActiveScan } from '../lib/useActiveScan'
+import { useRunnerStatus } from '../lib/useRunnerStatus'
+import { statusHex } from '../lib/status'
 import { parseServerTime } from '../lib/time'
 
 // ─── Inline OTP prompt (same pattern as Connections page) ────────────────────
@@ -139,6 +141,8 @@ export function RuleDetail() {
 
   // A full scan running elsewhere blocks the per-rule actions on this page.
   const { scanning: fullScanRunning } = useActiveScan(() => loadRule(true))
+  const runner = useRunnerStatus()
+  const runnerDown = runner.loaded && !runner.available
 
   const require2fa = (action: (token: string) => Promise<void>) => {
     if (!twoFaEnabled || twoFaToken) {
@@ -188,7 +192,9 @@ export function RuleDetail() {
         setFixOutput(JSON.stringify(res, null, 2))
         await loadRule()
       } catch (e: any) {
-        setFixOutput(`Error: ${e.message}`)
+        // The server's detail explains *why* (e.g. runner unavailable); e.message
+        // alone is just "Request failed with status code 503".
+        setFixOutput(`Error: ${e.response?.data?.detail || e.message}`)
       } finally {
         setFixing(false)
       }
@@ -275,29 +281,46 @@ export function RuleDetail() {
                 {rule.last_scan?.scanned_at && (
                   <span className="ml-4"><span className="text-slate-300">Last scanned:</span> {parseServerTime(rule.last_scan.scanned_at)?.toLocaleString()}</span>
                 )}
+                {/* Current state is unknown, so show the dated prior verdict rather
+                    than letting a stale PASS pass for current. */}
+                {rule.last_assessed && (
+                  <div className="text-slate-500 text-xs mt-1">
+                    Last known: {rule.last_assessed.status} on{' '}
+                    {parseServerTime(rule.last_assessed.scanned_at)?.toLocaleString()}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {rule.has_scan && (
-                <button onClick={handleScan} disabled={scanning || fullScanRunning}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-700/50 text-blue-400 text-sm rounded-lg transition-colors disabled:opacity-50">
-                  <Play className="w-3.5 h-3.5" />
-                  {scanning ? 'Scanning...' : 'Scan Now'}
-                </button>
-              )}
-              {rule.has_fix && (
-                <button onClick={handleFix} disabled={fixing || fullScanRunning}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 border border-green-700/50 text-green-400 text-sm rounded-lg transition-colors disabled:opacity-50">
-                  <Wrench className="w-3.5 h-3.5" />
-                  {fixing ? 'Fixing...' : 'Apply Fix'}
-                </button>
-              )}
-              {rule.has_undo_fix && (
-                <button onClick={handleUndoFix} disabled={undoing || fullScanRunning}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-700/50 text-amber-400 text-sm rounded-lg transition-colors disabled:opacity-50">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  {undoing ? 'Undoing...' : 'Undo Fix'}
-                </button>
+            {/* Disabled-but-visible when the runner is down: hiding these would
+                make the capability look like it does not exist at all. */}
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                {rule.has_scan && (
+                  <button onClick={handleScan} disabled={scanning || fullScanRunning || runnerDown}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-700/50 text-blue-400 text-sm rounded-lg transition-colors disabled:opacity-50">
+                    <Play className="w-3.5 h-3.5" />
+                    {scanning ? 'Scanning...' : 'Scan Now'}
+                  </button>
+                )}
+                {rule.has_fix && (
+                  <button onClick={handleFix} disabled={fixing || fullScanRunning || runnerDown}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 border border-green-700/50 text-green-400 text-sm rounded-lg transition-colors disabled:opacity-50">
+                    <Wrench className="w-3.5 h-3.5" />
+                    {fixing ? 'Fixing...' : 'Apply Fix'}
+                  </button>
+                )}
+                {rule.has_undo_fix && (
+                  <button onClick={handleUndoFix} disabled={undoing || fullScanRunning || runnerDown}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-700/50 text-amber-400 text-sm rounded-lg transition-colors disabled:opacity-50">
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    {undoing ? 'Undoing...' : 'Undo Fix'}
+                  </button>
+                )}
+              </div>
+              {runnerDown && (
+                <div className="text-xs text-red-400" title={runner.detail}>
+                  Requires the privileged runner, which is unavailable
+                </div>
               )}
             </div>
           </div>
@@ -340,12 +363,8 @@ export function RuleDetail() {
             <div className="flex gap-1 flex-wrap">
               {rule.scan_history.map((h: any, i: number) => (
                 <div key={i} title={`${h.status} — ${parseServerTime(h.scanned_at)?.toLocaleString()}`}
-                  className={`w-4 h-4 rounded-sm cursor-default ${
-                    h.status === 'PASS' ? 'bg-green-500/70' :
-                    h.status === 'FAIL' ? 'bg-red-500/70' :
-                    h.status === 'EXEMPT' ? 'bg-yellow-500/70' :
-                    'bg-slate-600/50'
-                  }`} />
+                  className="w-4 h-4 rounded-sm cursor-default"
+                  style={{ backgroundColor: statusHex(h.status), opacity: 0.7 }} />
               ))}
             </div>
           </Card>

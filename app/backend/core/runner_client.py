@@ -65,32 +65,36 @@ async def _send_recv_lines(req: dict, timeout: float = 10.0) -> list[dict]:
 
     try:
         reader, writer = await _open_connection()
-        writer.write(payload)
-        await writer.drain()
-
-        results = []
-        while True:
-            try:
-                line = await asyncio.wait_for(reader.readline(), timeout=timeout)
-            except asyncio.TimeoutError:
-                break
-            if not line:
-                break
-            try:
-                data = json.loads(line.decode().strip())
-                results.append(data)
-                if data.get("done"):
-                    break
-            except json.JSONDecodeError:
-                continue
-
-        writer.close()
         try:
-            await writer.wait_closed()
-        except Exception:
-            pass
+            writer.write(payload)
+            await writer.drain()
 
-        return results
+            results = []
+            while True:
+                try:
+                    line = await asyncio.wait_for(reader.readline(), timeout=timeout)
+                except asyncio.TimeoutError:
+                    break
+                if not line:
+                    break
+                try:
+                    data = json.loads(line.decode().strip())
+                    results.append(data)
+                    if data.get("done"):
+                        break
+                except json.JSONDecodeError:
+                    continue
+
+            return results
+        finally:
+            # Close on every exit — including cancellation from a caller's
+            # wait_for — so the runner's connection thread is not left blocked
+            # on a half-open socket until garbage collection.
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
     except RunnerError:
         raise
     except Exception as e:
@@ -98,10 +102,15 @@ async def _send_recv_lines(req: dict, timeout: float = 10.0) -> list[dict]:
 
 
 async def scan_rule(rule_name: str) -> dict:
-    """Run a single scan script and return the result dict."""
+    """Run a single scan script and return the result dict.
+
+    Raises RunnerError when the runner never answers. Returning a synthetic
+    ERROR here would get persisted as the rule's newest result and clobber a
+    genuine PASS with a failure the device never actually had.
+    """
     results = await _send_recv_lines({"action": "scan", "rule": rule_name}, timeout=70.0)
     if not results:
-        return {"rule": rule_name, "status": "ERROR", "message": "No response from runner"}
+        raise RunnerError(f"No response from runner for scan of {rule_name}")
     return results[0]
 
 
@@ -134,32 +143,46 @@ async def scan_batch_stream(rules: Optional[list[str]] = None) -> AsyncGenerator
 
     try:
         reader, writer = await _open_connection()
-        writer.write(payload)
-        await writer.drain()
-
-        while True:
-            try:
-                # 120s per line — enough for any single script (executor cap is 60s)
-                # plus some headroom. With streaming, each line arrives as soon as
-                # one script finishes, so this timeout is per-script not per-batch.
-                line = await asyncio.wait_for(reader.readline(), timeout=120.0)
-            except asyncio.TimeoutError:
-                break
-            if not line:
-                break
-            try:
-                data = json.loads(line.decode().strip())
-                if data.get("done"):
-                    break
-                yield data
-            except json.JSONDecodeError:
-                continue
-
-        writer.close()
         try:
-            await writer.wait_closed()
-        except Exception:
-            pass
+            writer.write(payload)
+            await writer.drain()
+
+            # Distinguish "the runner finished the batch" from "the runner stopped
+            # answering". Ending the generator quietly on a timeout made a wedged
+            # runner look like a completed scan of zero rules.
+            saw_done = False
+            while True:
+                try:
+                    # 120s per line — enough for any single script (executor cap is
+                    # 60s) plus headroom. With streaming, each line arrives as soon
+                    # as one script finishes, so this is per-script not per-batch.
+                    line = await asyncio.wait_for(reader.readline(), timeout=120.0)
+                except asyncio.TimeoutError:
+                    raise RunnerError(
+                        "Runner stopped responding mid-scan (no result within 120s)"
+                    )
+                if not line:
+                    break
+                try:
+                    data = json.loads(line.decode().strip())
+                    if data.get("done"):
+                        saw_done = True
+                        break
+                    yield data
+                except json.JSONDecodeError:
+                    continue
+
+            if not saw_done:
+                raise RunnerError("Runner closed the connection before finishing the scan")
+        finally:
+            # Close on every exit — the raise paths above must not leave the
+            # runner's connection thread executing scripts into a socket that
+            # only garbage collection will eventually close.
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
 
     except RunnerError:
         raise
@@ -234,3 +257,14 @@ async def ping() -> bool:
         return bool(results and results[0].get("pong"))
     except RunnerError:
         return False
+
+
+async def capabilities(timeout: float = 2.0) -> list[dict]:
+    """Ask the runner what it can actually do.
+
+    Returns the raw result list so the caller can tell three cases apart: an
+    empty list (no response at all), a reply carrying an "Unknown action"
+    error (a runner too old to support this), and a real payload. A pong only
+    proves something is listening — it cannot detect an empty manifest.
+    """
+    return await _send_recv_lines({"action": "capabilities"}, timeout=timeout)

@@ -4,6 +4,7 @@
 # Category:  System Settings
 # Description: Re-enable the Wi-Fi service and power the radio back on.
 # =============================================================================
+# Hand-maintained — do not overwrite with generate_scripts.py output.
 # Exit codes: 0=OK  1=ERROR  3=ERROR(root)
 
 if [[ $EUID -ne 0 ]]; then
@@ -11,7 +12,9 @@ if [[ $EUID -ne 0 ]]; then
     exit 3
 fi
 
-if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qx "Wi-Fi"; then
+# A disabled service is listed as "*Wi-Fi" — the asterisk is exactly the state
+# this undo exists to reverse, so the guard must match it or the undo no-ops.
+if ! /usr/sbin/networksetup -listallnetworkservices 2>/dev/null | /usr/bin/grep -qxE '\*?Wi-Fi'; then
     printf '{"rule":"system_settings_wifi_disable","action":"UNDONE","message":"No Wi-Fi service present"}\n'
     exit 0
 fi

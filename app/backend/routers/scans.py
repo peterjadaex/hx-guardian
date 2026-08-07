@@ -18,8 +18,11 @@ from sqlalchemy.orm import Session
 import core.audit as audit
 from core.database import get_db, SessionLocal
 from core.manifest import get_all_rules, get_rules_by_category, get_rules_by_standard, get_rule
-from core.models import ScanSession, ScanResult, Exemption, VERIFICATION_TRIGGERS
+from core.models import (
+    ScanSession, ScanResult, Exemption, VERIFICATION_TRIGGERS, NOT_ASSESSED,
+)
 from core.runner_client import scan_rule, scan_batch_stream, RunnerError
+from core.runner_health import probe_runner
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["scans"])
@@ -55,11 +58,133 @@ def _active_exemptions(db: Session) -> set[str]:
     }
 
 
+def _assessed(session: ScanSession) -> int:
+    """Rules this session actually evaluated — the score's denominator."""
+    return (session.pass_count or 0) + (session.fail_count or 0) + (session.error_count or 0)
+
+
+def _bump(counts: dict, status: str, session_id: int) -> None:
+    """Tally one result. Unknown statuses stay visible in the error bucket rather
+    than silently vanishing, but they are logged so they get noticed."""
+    if status == "PASS":
+        counts["pass"] += 1
+    elif status == "FAIL":
+        counts["fail"] += 1
+    elif status == "NOT_APPLICABLE":
+        counts["na"] += 1
+    elif status == NOT_ASSESSED:
+        counts["not_assessed"] += 1
+    elif status == "MDM_REQUIRED":
+        # A stale-manifest runner can return this for a rule the server thinks is
+        # scannable. It must not land in the score denominator as an ERROR, and
+        # the session counter must agree with the per-row category rollup.
+        counts["mdm"] += 1
+    else:
+        if status != "ERROR":
+            logger.warning("session %d: unexpected status %r counted as ERROR",
+                           session_id, status)
+        counts["error"] += 1
+
+
+def _reconcile_pending(db: Session, session_id: int, pending: set,
+                       manifest_map: dict, counts: dict, degraded_detail: str) -> None:
+    """Write a NOT_ASSESSED row for every requested rule that never got a result.
+
+    Lives outside the main try-block so that an unexpected exception mid-stream
+    (a failed commit, not just a RunnerError) still leaves every rule accounted
+    for. Counters move only after the commit succeeds, so the session row can
+    never claim NOT_ASSESSED rows that were rolled back.
+    """
+    if not pending:
+        return
+    db.rollback()   # a failed mid-loop commit leaves the session dirty
+    now = datetime.utcnow()
+    msg = ("Not assessed — "
+           + (degraded_detail or "no result returned by the privileged runner"))[:1000]
+    added = 0
+    for rule_name in sorted(pending):
+        db.add(ScanResult(
+            session_id=session_id,
+            scanned_at=now,
+            rule=rule_name,
+            category=manifest_map.get(rule_name, {}).get("category", ""),
+            status=NOT_ASSESSED,
+            message=msg,
+            # Deliberately no exit_code: a 3 here would be indistinguishable
+            # from a script that really did fail.
+        ))
+        added += 1
+    db.commit()
+    counts["not_assessed"] += added
+    pending.clear()
+
+
+def _finalise_session(db: Session, session_id: int, counts: dict,
+                      degraded: Optional[str], degraded_detail: str) -> dict:
+    """Close out a session on every exit path.
+
+    Previously finished_at was only assigned after the result loop, so a runner
+    failure left the session reporting is_running forever and the UI spinner
+    never cleared. Called from `finally`, defensive, and idempotent.
+    """
+    db.rollback()   # the caller may have died mid-transaction
+    session = db.query(ScanSession).filter(ScanSession.id == session_id).first()
+    if not session:
+        return {}
+
+    total = sum(counts.values())
+    assessed = counts["pass"] + counts["fail"] + counts["error"]
+    # Score rule (operator decision): FAIL and ERROR are the non-compliant
+    # outcomes; everything else counts as compliant. NOT_ASSESSED stays out of
+    # both sides so a rule we never looked at can neither raise nor lower the
+    # score — and with nothing but NOT_ASSESSED there is no percentage to
+    # express at all (a 0.0 would read as "totally non-compliant" for a scan
+    # that never ran).
+    denominator = total - counts["not_assessed"]
+    score = (round((denominator - counts["fail"] - counts["error"]) / denominator * 100, 1)
+             if denominator else None)
+
+    if session.finished_at is None:
+        session.finished_at = datetime.utcnow()
+    session.total_rules = total
+    session.pass_count = counts["pass"]
+    session.fail_count = counts["fail"]
+    session.na_count = counts["na"]
+    session.error_count = counts["error"]
+    session.mdm_count = counts["mdm"]
+    session.exempt_count = counts["exempt"]
+    session.not_assessed_count = counts["not_assessed"]
+    session.degraded_reason = degraded
+    session.score_pct = score
+    db.commit()
+
+    summary = {
+        "total": total, "assessed": assessed,
+        "pass": counts["pass"], "fail": counts["fail"], "na": counts["na"],
+        "error": counts["error"], "not_assessed": counts["not_assessed"],
+        "score": score, "degraded_reason": degraded,
+    }
+    audit.log_action(db, audit.SCAN_COMPLETE, f"session:{session_id}", summary)
+    if degraded:
+        audit.log_action(db, audit.SCAN_DEGRADED, f"session:{session_id}",
+                         {"reason": degraded, "detail": degraded_detail,
+                          "not_assessed": counts["not_assessed"]})
+    return summary
+
+
 async def execute_scan_session(session_id: int, rules: Optional[list[str]] = None):
     """Background task: run all scans and stream results to SSE queue."""
     db = SessionLocal()
     queue = asyncio.Queue()
     _active_sessions[session_id] = queue
+    counts = {"pass": 0, "fail": 0, "na": 0, "error": 0,
+              "mdm": 0, "exempt": 0, "not_assessed": 0}
+    degraded: Optional[str] = None
+    degraded_detail = ""
+    # Defined before the try so the finally-block reconciliation can always see
+    # them, even if the failure happened before the scan target was built.
+    pending: set = set()
+    manifest_map: dict = {}
 
     try:
         session = db.query(ScanSession).filter(ScanSession.id == session_id).first()
@@ -105,76 +230,121 @@ async def execute_scan_session(session_id: int, rules: Optional[list[str]] = Non
                 db.add(result)
         db.commit()
 
-        pass_count = fail_count = na_count = error_count = mdm_count = exempt_count = 0
-        exempt_count = len(exempt_rules & (set(scan_rules) | set(mdm_rules)))
-        mdm_count = len([r for r in mdm_rules if r not in exempt_rules])
+        counts["exempt"] = len(exempt_rules & (set(scan_rules) | set(mdm_rules)))
+        counts["mdm"] = len([r for r in mdm_rules if r not in exempt_rules])
 
-        # Stream scan results
         scan_target = [r for r in scan_rules if r not in exempt_rules]
-        async for res in scan_batch_stream(scan_target):
-            rule_name = res.get("rule", "")
-            status = res.get("status", "ERROR")
-            rule_meta = manifest_map.get(rule_name, {})
+        # `pending` is the ledger: a rule leaves it only when its row is durable.
+        # Counters are derived from what was actually persisted, never from what
+        # we hoped the runner would return.
+        pending = set(scan_target)
 
-            scan_result = ScanResult(
-                session_id=session_id,
-                scanned_at=datetime.utcnow(),
-                rule=rule_name,
-                category=rule_meta.get("category", ""),
-                status=status,
-                result_value=res.get("result"),
-                expected_value=res.get("expected"),
-                message=res.get("message"),
-                exit_code=res.get("exit_code"),
-                duration_ms=res.get("duration_ms"),
-            )
-            db.add(scan_result)
-            db.commit()
-
-            if status == "PASS":
-                pass_count += 1
-            elif status == "FAIL":
-                fail_count += 1
-            elif status == "NOT_APPLICABLE":
-                na_count += 1
+        if not scan_target:
+            # Never hand an empty list to the runner: scan_batch_stream omits the
+            # "rules" key when it is falsy and the runner then scans everything.
+            pass
+        else:
+            cap = await probe_runner()
+            if not cap.available:
+                degraded, degraded_detail = cap.reason or "runner_unavailable", cap.detail
+                logger.error("session %d: not scanning — %s", session_id, cap.detail)
             else:
-                error_count += 1
+                if cap.stale_manifest:
+                    logger.warning("session %d: %s", session_id, cap.detail)
+                try:
+                    async for res in scan_batch_stream(scan_target):
+                        rule_name = res.get("rule", "")
+                        if rule_name not in pending:
+                            logger.warning(
+                                "session %d: ignoring unexpected/duplicate result for %r",
+                                session_id, rule_name)
+                            continue
+                        status = res.get("status", "ERROR")
+                        rule_meta = manifest_map.get(rule_name, {})
 
-            await queue.put({"type": "result", **res, "session_id": session_id})
+                        db.add(ScanResult(
+                            session_id=session_id,
+                            scanned_at=datetime.utcnow(),
+                            rule=rule_name,
+                            category=rule_meta.get("category", ""),
+                            status=status,
+                            result_value=res.get("result"),
+                            expected_value=res.get("expected"),
+                            message=res.get("message"),
+                            raw_output=res.get("stderr"),
+                            exit_code=res.get("exit_code"),
+                            duration_ms=res.get("duration_ms"),
+                        ))
+                        db.commit()
+                        # Only now is the row durable — a failed commit must leave
+                        # the rule in `pending` so reconciliation records it.
+                        pending.discard(rule_name)
+                        _bump(counts, status, session_id)
+                        await queue.put({"type": "result", **res, "session_id": session_id})
+                except RunnerError as e:
+                    degraded, degraded_detail = "stream_failed", str(e)
+                    logger.error("session %d: scan stream failed: %s", session_id, e)
 
-        # Update session totals
-        total = pass_count + fail_count + na_count + error_count + mdm_count + exempt_count
-        score = round(pass_count / max(pass_count + fail_count + error_count, 1) * 100, 1)
+                if degraded is None and pending:
+                    degraded = "incomplete_stream"
+                    degraded_detail = (
+                        f"Runner returned {len(scan_target) - len(pending)} of "
+                        f"{len(scan_target)} requested results")
+                    logger.error("session %d: %s", session_id, degraded_detail)
 
-        session.finished_at = datetime.utcnow()
-        session.total_rules = total
-        session.pass_count = pass_count
-        session.fail_count = fail_count
-        session.na_count = na_count
-        session.error_count = error_count
-        session.mdm_count = mdm_count
-        session.exempt_count = exempt_count
-        session.score_pct = score
-        db.commit()
-
-        audit.log_action(db, audit.SCAN_COMPLETE, f"session:{session_id}", {
-            "total": total, "pass": pass_count, "fail": fail_count, "score": score,
-        })
-
-        await queue.put({"type": "complete", "session_id": session_id,
-                         "score_pct": score, "pass": pass_count, "fail": fail_count,
-                         "na": na_count, "error": error_count, "total": total})
-
-    except RunnerError as e:
-        logger.error("Runner error during scan session %d: %s", session_id, e)
-        await queue.put({"type": "error", "session_id": session_id, "message": str(e)})
     except Exception as e:
         logger.error("Scan session %d error: %s", session_id, e)
-        await queue.put({"type": "error", "session_id": session_id, "message": str(e)})
+        degraded = degraded or "internal_error"
+        degraded_detail = degraded_detail or str(e)
+        # Not "error": stream.py terminates the SSE feed on an error event, which
+        # would hide the completion event that follows.
+        await queue.put({"type": "warning", "session_id": session_id, "message": str(e)})
     finally:
+        # Reconciliation lives here, not in the try-block, so a mid-stream commit
+        # failure cannot skip it — every requested rule ends up with a row.
+        try:
+            _reconcile_pending(db, session_id, pending, manifest_map,
+                               counts, degraded_detail)
+        except Exception:
+            logger.exception("session %d: reconciliation failed", session_id)
+
+        summary: dict = {}
+        for attempt in (1, 2):
+            try:
+                summary = _finalise_session(db, session_id, counts,
+                                            degraded, degraded_detail)
+                break
+            except Exception:
+                logger.exception("session %d: finalisation attempt %d failed",
+                                 session_id, attempt)
+                if attempt == 1:
+                    # One bounded retry — a transient SQLite lock (the root runner
+                    # writes audit rows to the same file) is the realistic cause.
+                    await asyncio.sleep(1.0)
+
+        # Terminal SSE events are sent even if finalisation failed, so a consumer
+        # is never left waiting out its timeout.
+        try:
+            if degraded:
+                await queue.put({"type": "degraded", "session_id": session_id,
+                                 "reason": degraded, "message": degraded_detail})
+            await queue.put({"type": "complete", "session_id": session_id,
+                             "score_pct": summary.get("score"),
+                             "pass": counts["pass"], "fail": counts["fail"],
+                             "na": counts["na"], "error": counts["error"],
+                             "not_assessed": counts["not_assessed"],
+                             "assessed": summary.get("assessed", 0),
+                             "degraded_reason": degraded,
+                             "total": summary.get("total", 0)})
+        except Exception:
+            logger.exception("session %d: completion events failed", session_id)
+
         db.close()
-        await asyncio.sleep(30)  # keep queue alive for late SSE consumers
-        _active_sessions.pop(session_id, None)
+        try:
+            await asyncio.sleep(30)  # keep queue alive for late SSE consumers
+        finally:
+            # Runs even on task cancellation, so no stale registry entry survives.
+            _active_sessions.pop(session_id, None)
 
 
 @router.post("/api/scans")
@@ -254,6 +424,9 @@ def get_session(
         "error_count": session.error_count,
         "mdm_count": session.mdm_count,
         "exempt_count": session.exempt_count,
+        "not_assessed_count": session.not_assessed_count or 0,
+        "degraded_reason": session.degraded_reason,
+        "assessed": _assessed(session),
         "score_pct": session.score_pct,
         "is_running": session.finished_at is None,
     }
@@ -330,7 +503,8 @@ async def scan_and_persist_single_rule(
         fail_count=1 if res.get("status") == "FAIL" else 0,
         na_count=1 if res.get("status") == "NOT_APPLICABLE" else 0,
         error_count=1 if res.get("status") == "ERROR" else 0,
-        score_pct=100.0 if res.get("status") == "PASS" else 0.0,
+        # FAIL and ERROR are the non-compliant outcomes (see models.py score rule).
+        score_pct=(0.0 if res.get("status") in ("FAIL", "ERROR") else 100.0),
     )
     db.add(session)
     db.commit()
@@ -345,6 +519,7 @@ async def scan_and_persist_single_rule(
         result_value=res.get("result"),
         expected_value=res.get("expected"),
         message=res.get("message"),
+        raw_output=res.get("stderr"),
         exit_code=res.get("exit_code"),
         duration_ms=res.get("duration_ms"),
     )
@@ -359,9 +534,10 @@ async def rescan_rule_background(rule_name: str) -> None:
     db = SessionLocal()
     try:
         await scan_and_persist_single_rule(rule_name, db, triggered_by="post_exemption")
-    except HTTPException:
+    except (HTTPException, RunnerError):
         # Rule not found or runner down — swallow; the audit log already
-        # reflects the exemption change.
+        # reflects the exemption change. RunnerError must be caught here too, or
+        # a missing runner becomes an unhandled background-task exception.
         pass
     finally:
         db.close()

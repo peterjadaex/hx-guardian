@@ -19,6 +19,7 @@ import { useSSE } from '../lib/sse'
 const ACTION_COLORS: Record<string, string> = {
   SCAN_RUN: 'text-blue-400',
   SCAN_COMPLETE: 'text-green-400',
+  SCAN_DEGRADED: 'text-purple-400',
   FIX_APPLIED: 'text-yellow-400',
   EXEMPTION_GRANTED: 'text-orange-400',
   EXEMPTION_REVOKED: 'text-red-400',

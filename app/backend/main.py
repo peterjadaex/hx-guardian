@@ -165,13 +165,27 @@ async def health():
 
 @app.get("/api/runner/status")
 async def runner_status():
-    """Runner liveness — bounded, never wedges the response."""
-    from core.runner_client import ping
-    try:
-        ok = await asyncio.wait_for(ping(), timeout=1.5)
-    except asyncio.TimeoutError:
-        ok = False
-    return {"runner_connected": ok}
+    """Runner health — bounded, never wedges the response.
+
+    `runner_connected` keeps its original meaning (something answered on the
+    socket) because app/update.sh greps for it during post-deploy verification.
+    `available` is the stricter verdict the scan path and the UI use: a runner
+    can be connected yet unable to assess anything.
+    """
+    from core.runner_health import probe_runner
+    cap = await probe_runner()
+    return {
+        "runner_connected": cap.connected,
+        "available": cap.available,
+        "reason": cap.reason,
+        "detail": cap.detail,
+        "uid": cap.uid,
+        "manifest_rules": cap.manifest_rules,
+        "server_manifest_rules": cap.server_manifest_rules,
+        "stale_manifest": cap.stale_manifest,
+        "legacy": cap.legacy,
+        "checked_at": cap.checked_at.isoformat(),
+    }
 
 
 @app.get("/api/internal/startup")

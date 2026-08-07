@@ -5,17 +5,14 @@ import { Layout, PageHeader, Card, LoadingSpinner, ErrorMessage } from '../compo
 import { StatusBadge } from '../components/StatusBadge'
 import { getRules, getRuleMeta, startScan } from '../lib/api'
 import { useActiveScan } from '../lib/useActiveScan'
+import { useRunnerStatus } from '../lib/useRunnerStatus'
+import { STATUS_ORDER, statusLabel } from '../lib/status'
 import { parseServerTime } from '../lib/time'
 
+// Built from the shared map so the dropdown can never drift from the badges.
 const STATUSES = [
   { value: '', label: 'All Statuses' },
-  { value: 'FAIL', label: 'FAIL' },
-  { value: 'PASS', label: 'PASS' },
-  { value: 'NOT_APPLICABLE', label: 'N/A' },
-  { value: 'MDM_REQUIRED', label: 'Not Scannable' },
-  { value: 'EXEMPT', label: 'Exempt' },
-  { value: 'ERROR', label: 'Error' },
-  { value: 'NEVER_SCANNED', label: 'Not Scanned' },
+  ...STATUS_ORDER.map(s => ({ value: s, label: statusLabel(s) })),
 ]
 
 type SortCol = 'rule' | 'category' | 'severity' | 'status' | 'last_scanned'
@@ -66,6 +63,8 @@ export function Rules() {
   }
 
   const { scanning, trackSession } = useActiveScan(() => loadRules(true))
+  const runner = useRunnerStatus()
+  const runnerDown = runner.loaded && !runner.available
 
   const handleScanCategory = async () => {
     const filter = category ? { category } : standard ? { standard } : undefined
@@ -116,9 +115,13 @@ export function Rules() {
   return (
     <Layout>
       <PageHeader title="Security Rules" subtitle={`${sortedRules.length} of ${meta.total || sortedRules.length} rules`}>
+        {/* Deliberately NOT gated on runner availability: a batch scan degrades
+            honestly (rules record as Not Assessed), and that degraded session is
+            the operator's evidence. Only remediation is gated. */}
         <button
           onClick={handleScanCategory}
           disabled={scanning}
+          title={runnerDown ? runner.detail : undefined}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-900 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
         >
           {scanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
